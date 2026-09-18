@@ -66,7 +66,7 @@ docker run --rm -w /app allisterb/anchor:latest check tests/policies/dead_forbid
 
 Two rules, both well-formed. `Approve` has no permit, so default-deny already refuses it and the
 `forbid` changes no verdict in any session — it reads like a control and is not one. Nothing about
-either rule is impossible in isolation, which is why a per-policy validator has nothing to say:
+either rule is impossible in isolation, which is why a per-rule validator has nothing to say:
 
 ```bash
 docker run --rm -w /app --entrypoint /app/bin/dogwood allisterb/anchor:latest \
@@ -78,7 +78,7 @@ OK: validation passed with no errors or warnings.
 ```
 
 That is the reference implementation, in the same image, agreeing the file is fine. The difference
-is not analysis versus none — it is **one policy at a time versus the set**.
+is not analysis versus none — it is **one rule at a time versus the whole rule set**.
 
 This mode runs three questions per rule, each answered with a concrete witness session or a bounded
 no: *can this permit ever grant anything*, *is this rule doing anything*, and with `--against`,

@@ -42,6 +42,9 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Specs", "Specs", "{72C83A35-EF40-48D6-8B0D-055CE4FAFA53}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "TemporalPolicy", "TemporalPolicy", "{577D97A1-F266-4AD6-8E40-098A4680E311}"
+	ProjectSection(SolutionItems) = preProject
+		specs\policy\TemporalPolicy\README.md = specs\policy\TemporalPolicy\README.md
+	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "TemporalPolicy", "TemporalPolicy", "{64265074-44E7-4EED-BC6B-4CBD1DA19D61}"
 EndProject

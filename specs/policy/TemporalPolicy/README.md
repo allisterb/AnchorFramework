@@ -1,6 +1,6 @@
 # TemporalPolicy
 
-**Three questions about a session-aware authorization policy**, each answered by exploring every
+**Three questions about a session-aware authorization policy set**, each answered by exploring every
 session a bounded run can have and reporting either a **witness** or a bounded no:
 
 | question | answer |
@@ -14,18 +14,26 @@ silent deny-everything. It reads correctly, it validates, it deploys, and the ca
 to allow is simply gone. The other two came out of the same machinery, because all three are
 really "compare what these policies decide, across every session".
 
+**Vocabulary, because Dogwood inherits Cedar's and it reliably trips people up.** A
+**policy** is one `permit` or `forbid` statement; a `.dw` file is a **policy set**. This README
+says *rule* wherever *policy* would be ambiguous, and *policy set* for the file. The distinction is
+the point of all three questions above: each is about what the **set** decides, and none of them
+can be answered by reading a statement on its own.
+
 **Point it at any `.dw` file:**
 
 ```bash
-python src/checker/properties.py tests/policies/docs_trading_forbidden.dw
+./anchor check tests/policies/docs_trading_forbidden.dw
 ```
 ```
 docs_trading_forbidden.dw: 1 permit(s), 1 forbid(s), bound 3 attempts
 
+  forbid #1  action == ApproveSale   DEAD      deleting it changes no verdict in any session
   permit #2  action == SellShares    VACUOUS   no session of up to 3 attempts makes it grant
+      because: formerly within 1h ApproveSale::response{ input.stock: 'stock', output.approved: True }
 ```
 
-Nothing about that policy is hand-modelled — see
+Nothing about that policy set is hand-modelled — see
 [the checker](#the-checker-takes-arbitrary-policy-text) below.
 
 | file | what it is |
@@ -61,6 +69,69 @@ New to TLA+? [`specs/strands/DependencyDAG/README.md`](../../strands/DependencyD
 java -cp lib/tla2tools-1.7.4.jar tlc2.TLC -cleanup \
     -config specs/policy/TemporalPolicy/TemporalPolicy.cfg specs/policy/TemporalPolicy/TemporalPolicy.tla
 ```
+
+## How these specs verify a policy set
+
+Nothing here models one policy. These specs model the **engine**, and a policy set is data fed to
+it. Three pieces, and which are generated matters:
+
+| piece | who writes it | what it holds |
+|---|---|---|
+| `DogwoodSemantics.tla` | by hand, once | what the engine does with *any* policy set |
+| `Policies.tla` | by hand | the policy set the hand-written spec runs on -- swappable |
+| `PolicyUnderTest.tla` | **generated** from a `.dw` | that file's rules, as a TLA+ sequence |
+| a property module + `.cfg` | by hand, per requirement | the claim, and the sessions to check it over |
+
+**The set is combined mechanically, in one operator.** `DogwoodSemantics!Decide` quantifies over
+every rule in it:
+
+```tla
+Decide(trace, policies, idx, values) ==
+    LET dec  == trace[idx]
+        seen == values \union TraceScalars(trace)
+        hit  == {k \in DOMAIN policies : PolicyMatches(policies[k], trace, idx, dec, seen)}
+    IN /\  \E k \in hit : policies[k].effect = "permit"
+       /\ ~\E k \in hit : policies[k].effect = "forbid"
+```
+
+Allowed iff **some** matching rule permits and **no** matching rule forbids, with default-deny
+falling out of the empty `hit` case. That `DOMAIN policies` is where cross-rule reasoning lives, and
+it is why "is this forbid dead?" has an answer here and none in a per-rule validator: a forbid is
+inert *given the rest of the set*, which is not a fact about the forbid.
+
+The permit/forbid combination is the easy half, and it is Cedar's. The temporal half sits in
+`PolicyMatches`, which takes the whole trace and a time point:
+
+```tla
+PolicyMatches(p, trace, upto, dec, values) ==
+    /\ p.actions = {} \/ dec.action \in p.actions
+    /\ CondHolds(p.cond, trace, upto, dec, << >>, values)
+```
+
+`CondHolds` is where event kinds (`::request` / `::response` / `::error`), `within` windows and
+aggregates over history are decided -- the part Cedar does not have.
+
+**A property module states a claim about that function's output**, over a session set it chooses:
+
+```tla
+EXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest   \* generated: carries `Policies`
+D == INSTANCE DogwoodSemantics WITH Cases <- << >>         \* the engine, above
+Allowed(s) == D!Decide(Session(s), Policies, Len(Session(s)), AllValues)
+```
+
+Two things follow that are easy to state wrongly:
+
+- **The claim is authored from the requirement, never derived from the rules.** Rules carry no
+  asserts, so there is nothing per-rule to combine. A claim read off the policy set is a
+  restatement of it and will hold no matter what the set does.
+- **The quantification is over sessions, not over time.** These modules set `Next == UNCHANGED`, so
+  the reachable states *are* the initial states: TLC enumerates a chosen finite set of sessions and
+  evaluates the invariant on each. That is why a verdict reads "violated by the initial state". It
+  is bounded model checking, and the bound is the session set rather than a trace depth.
+
+The sharpest claims are often not "x must be permitted" but **"these two sessions must decide the
+same"**. A requirement that says *transferred* is violated by a policy set that counts *attempts*,
+and the way to say so is that a refused attempt must leave the verdict unchanged.
 
 ## Read the result backwards
 
@@ -548,7 +619,7 @@ standing scenarios in `dogwood_replay.py`.
 
 #### Checking under the schema you deploy
 
-`properties.py` takes `--event-schema` now. Without it every answer assumes the **unpinned** reading,
+`anchor check` takes `--event-schema` now. Without it every answer assumes the **unpinned** reading,
 which is not the shipped default, and the tool says so rather than leaving it implicit:
 
 ```
@@ -682,7 +753,7 @@ metric. Once the deliverable is "point the checker at a policy somebody's pipeli
 question is no longer how much evidence a case adds but whether a real policy can be checked at
 all — **coverage, not evidence**. The same work, better justified.
 
-The parser now accepts **488 of 521** corpus policies, and `properties.py` checks **every one of
+The parser now accepts **488 of 521** corpus policies, and `anchor check` checks **every one of
 them**. Refusals fell from 123 cases to 53, and the pairs from 786 to 911.
 
 What that second push added was mostly *syntax the language has and we did not*: integer, decimal
@@ -961,11 +1032,12 @@ set** — so if the permit it was guarding against is ever added, it silently st
 nobody will connect the two changes.
 
 ```bash
-python src/checker/properties.py tests/policies/dead_forbid.dw
+./anchor check tests/policies/dead_forbid.dw
 ```
 ```
   permit #1  action == Trade         live      witness: Trade
   forbid #2  action == Approve       DEAD      deleting it changes no verdict in any session
+      the condition is not why -- it is inert even with no condition at all
 ```
 
 **The comparison is exact, not an approximation.** `Vacuity.tla` evaluates both the full policy set
@@ -982,11 +1054,17 @@ The third question the same machinery answers, and the one a policy author actua
 this rule inert* but **I am editing a set somebody else wrote — what did I just change?**
 
 ```bash
-python src/checker/properties.py tests/policies/docs_trading.dw \
+./anchor check tests/policies/docs_trading.dw \
     --against tests/policies/docs_trading_forbidden.dw
 ```
 ```
-  THEY DIFFER   witness: ApproveSale
+docs_trading.dw vs docs_trading_forbidden.dw: 2 rule(s) vs 2, bound 3 attempts
+
+  MORE PERMISSIVE   this edit ADDS permissions
+
+  ADDED     a session this policy permits and the old one denies:
+
+              1. ApproveSale(stock = 1)  allowed  (approved = false)   <- docs_trading_forbidden.dw DENIES this
 ```
 
 One TLC run rather than one per rule: `Target = 0` selects the second file as the set compared

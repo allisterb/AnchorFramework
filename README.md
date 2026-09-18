@@ -1,7 +1,7 @@
 # Anchor
 
 ## About
-Anchor is a agentic formal verification framework that uses the [TLA+](https://lamport.azurewebsites.net/tla/tla.html) formal specification language and model checker to formally verify Amazon Dogwood temporal policies, and provides a Strands SDK agent that allows humans to perform formal verification of these policies and code using natural language questions and prompts, without knowing the technical details of the formal verification framework or tools or theory.
+Anchor is an agentic formal verification framework that uses the [TLA+](https://lamport.azurewebsites.net/tla/tla.html) formal specification language and model checker to formally verify Amazon Dogwood temporal policies, and provides a Strands SDK agent that allows humans to perform formal verification of these policies and code using natural language questions and prompts, without knowing the technical details of the formal verification framework or tools or theory.
 
 Anchor allows developers and engineers and administrators to use the benefits of formal verification without requiring the specialized knowledge and skills formal methods typically demands. It uses a graph-based Strands multi-agent workflow to try to address the [known issues](https://arxiv.org/html/2606.05792v1) in agentic formal verification.
 
@@ -9,26 +9,25 @@ Anchor provides:
 
 * A parser and [translator](https://github.com/allisterb/Anchor/tree/master/src/translator) from the Dogwood policy language to TLA+.
 * A [specification](https://github.com/allisterb/Anchor/tree/master/specs/policy/TemporalPolicy) that models a large subset of Dogwood temporal policy semantics, validated in [CI](https://github.com/allisterb/Anchor/actions/workflows/build.yml) against the Dogwood unit test and examples corpus.
-* A [specification](https://github.com/allisterb/Anchor/tree/master/specs/strands) and [Python annotations](https://github.com/allisterb/Anchor/tree/master/src/annotations) that allow Strands SDK users to model multi-agent Strands graph workflows 
 * A [model property checker](https://github.com/allisterb/Anchor/tree/master/src/checker) that checks:
      * *derivable* property checks, which can be mechanically derived from all policies e.g. "is this policy vacuous or redundant?"
      * *intentional* property checks where a human or agent authors a check to explicitly capture the intent or requirements of a policy or workflow e.g. "Does this firewall policy block all inbound connections from external addresses?"
 * An [MCP server](https://github.com/allisterb/Anchor/tree/master/src/Anchor.MCPServer) that provides the following tools to agents:
     * The TLA+ SANY parser and a TLA+ evaluator to assist in code generation
     * The Dogwood translator and model property checker 
-    * Knowledge resources that an agent can use to author TLA+ specifications and properties modules.
+    * Knowledge resources that an agent can use to author TLA+ specifications and property modules.
 * A Strands [agentic workflow](https://github.com/allisterb/Anchor/tree/master/src/agent) for autonomous and HITL formal verification of Dogwood policies.
 * A [CLI](https://github.com/allisterb/Anchor/tree/master/src/Anchor.CLI) that provides command-line access to the framework tools and MCP server and agent workflow launcher .
 
 Anchor's formal verification can proceed in three modes. 
 
-* `check` Mechanically checks a Dogwood policy against a mechanically translated base policy specification and an existing TLA+ properties module that captures the intent of the policy. The most precise
-mode but it requires an existing TLA+ properties module and the knowledge to author one accurately. 
+* `check` Mechanically checks a Dogwood policy against a mechanically translated base policy specification and an existing TLA+ property module that captures the intent of the policy. The most precise
+mode but it requires an existing TLA+ property module and the knowledge to author one accurately. 
 * `auto` This is the autoformalization mode. The only artifact a human supplies is a natural language brief that describes the intent of the policy. The agent is handed a vocabulary derived mechanically from
-the policy, a knowledge article on how to write a properties module, and the brief, and it writes the TLA+ module. It never sees the policy's rule conditions, so what it drafts cannot be a restatement of the policy. Three models and four gates stand between a properties module draft and a acceptance verdict. Needs no formal methods knowledge on the user's part.
+the policy, a knowledge article on how to write a property module, and the brief, and it writes the TLA+ module. It never sees the policy's rule conditions, so what it drafts cannot be a restatement of the policy. Three models and four gates stand between a property module draft and a acceptance verdict. Needs no formal methods knowledge on the user's part.
 
 
-* `hitl` Similar to auto mode but with one additional step: when a gate rejects a properties module draft, it asks the person about the problem *requirement*, (never about TLA+), folds the answer into the brief and tries drafting the properties module again. Before the properties module is used, it reads the claim back in plain English for the user to confirm the intent is accurate. Needs no formal methods knowledge on the user's part.
+* `hitl` Similar to auto mode but with one additional step: when a gate rejects a property module draft, it asks the person about the problem *requirement*, (never about TLA+), folds the answer into the brief and tries drafting the property module again. Before the property module is used, it reads the claim back in plain English for the user to confirm the intent is accurate. Needs no formal methods knowledge on the user's part.
 
 ## Architecture diagram
 ![Anchor architecture](docs/images/architecture.svg)
@@ -38,16 +37,13 @@ the policy, a knowledge article on how to write a properties module, and the bri
 ### Using Docker
 
 
-Anchor needs four runtimes — .NET, a JVM, CPython and a Rust binary — so there is a container that
-carries all of them. Nothing is installed on your machine and nothing is cloned.
+Easiest way to get started is to use Docker:
 
-Linux:
+
 ```bash
 docker pull allisterb/anchor:latest
 docker run --rm allisterb/anchor:latest version
 ```
- or Windows:
- `docker run --rm -v ".:/work" allisterb/anchor:latest check my-policy.dw`
 
 On Apple Silicon, add `--platform linux/amd64` to the `pull` and to every `run`; it works under
 emulation and is slower.
@@ -58,11 +54,14 @@ options — the container behaves like the command.
 ```bash
 docker run --rm allisterb/anchor:latest help
 ```
-
-
-
 ```bash
 docker run --rm -v "$PWD:/work" allisterb/anchor:latest check my-policy.dw
+```
+
+ or Windows:
+
+```bash
+docker run --rm -v ".:/work" allisterb/anchor:latest check my-policy.dw
 ```
 
 Your working directory is mounted at `/work`, which is the container's working directory, so paths
