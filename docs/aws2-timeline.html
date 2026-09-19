@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A Refused Transfer Spends the Budget</title>
+<style>
+  :root {
+    --bg:        #f7f7f5;
+    --panel:     #ffffff;
+    --ink:       #1a1a18;
+    --ink-soft:  #55554e;
+    --ink-faint: #8a8a80;
+    --rule:      #e0e0d8;
+
+    --request:   #b7791f;   /* an attempt */
+    --response:  #2f7d5d;   /* it completed */
+    --error:     #b4342b;   /* it was refused */
+    --deny:      #b4342b;
+    --counted:   #b4342b;   /* what the policy counts */
+    --moved:     #2f7d5d;   /* what actually moved */
+    --cap:       #55554e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg:#16161a; --panel:#1e1e23; --ink:#ecece7; --ink-soft:#a8a89e;
+      --ink-faint:#74746b; --rule:#32323a; --request:#e0a94a; --response:#5fb98c;
+      --error:#e8695c; --deny:#e8695c; --counted:#e8695c; --moved:#5fb98c; --cap:#a8a89e;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg:#16161a; --panel:#1e1e23; --ink:#ecece7; --ink-soft:#a8a89e;
+    --ink-faint:#74746b; --rule:#32323a; --request:#e0a94a; --response:#5fb98c;
+    --error:#e8695c; --deny:#e8695c; --counted:#e8695c; --moved:#5fb98c; --cap:#a8a89e;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 32px 16px 56px;
+    background: var(--bg); color: var(--ink);
+    font: 16px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  .wrap { max-width: 900px; margin: 0 auto; }
+  h1 { font-size: 1.5rem; line-height: 1.25; margin: 0 0 6px; letter-spacing: -0.01em; }
+  .sub { color: var(--ink-soft); margin: 0 0 28px; font-size: 0.95rem; }
+  .panel {
+    background: var(--panel); border: 1px solid var(--rule);
+    border-radius: 10px; padding: 20px 18px; margin-bottom: 20px;
+  }
+  h2 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.09em;
+       color: var(--ink-faint); margin: 0 0 16px; font-weight: 600; }
+  svg { display: block; width: 100%; height: auto; overflow: visible; }
+  code, .mono { font-family: ui-monospace, SFMono-Regular, "Cascadia Mono", Consolas, monospace; }
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 14px;
+            font-size: 0.8rem; color: var(--ink-soft); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+  .claim { border-left: 3px solid var(--rule); padding: 2px 0 2px 14px; margin: 0 0 14px;
+           color: var(--ink-soft); font-size: 0.95rem; }
+  .claim b { color: var(--ink); }
+  p { margin: 0 0 12px; }
+  p:last-child { margin-bottom: 0; }
+  footer { color: var(--ink-faint); font-size: 0.8rem; line-height: 1.6; margin-top: 28px; }
+  footer code { color: var(--ink-soft); word-break: break-all; }
+  .missing { border: 1px solid var(--error); color: var(--error);
+             border-radius: 8px; padding: 16px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>A refused transfer spends the budget</h1>
+  <p class="sub" id="subtitle"></p>
+
+  <div id="content" hidden>
+    <div class="panel">
+      <h2>The session</h2>
+      <svg id="timeline" viewBox="0 0 860 260" role="img"></svg>
+      <div class="legend">
+        <span><i class="dot" style="background:var(--request)"></i>::request — an attempt</span>
+        <span><i class="dot" style="background:var(--response)"></i>::response — it completed</span>
+        <span><i class="dot" style="background:var(--error)"></i>::error — it was refused</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Two running totals over the same session</h2>
+      <p class="claim">
+        The requirement says: block a transfer if the total amount <b>transferred</b> in the
+        past 12&nbsp;hours would exceed&nbsp;$50,000.
+      </p>
+      <svg id="totals" viewBox="0 0 860 210" role="img"></svg>
+    </div>
+
+    <div class="panel">
+      <h2>Why</h2>
+      <p id="why-rule"></p>
+      <p id="why-consequence"></p>
+      <p>
+        Run the derived checks on this same file and every rule reports <b>live</b>.
+        The rule is live. It is also wrong.
+      </p>
+    </div>
+
+    <footer id="provenance"></footer>
+  </div>
+
+  <div class="panel missing" id="missing">
+    <b>No data loaded.</b> This page draws <code>docs/data/aws2-timeline.js</code>, which is
+    generated. Produce it with:
+    <p class="mono" style="margin-top:10px">python src/checker/timeline.py
+      examples/aws2/traces/agent-policy-CumulativeCap/witness --name aws2-timeline</p>
+  </div>
+
+</div>
+
+<script src="data/aws2-timeline.js"></script>
+<script>
+(function () {
+  const DATA = window.ANCHOR_TIMELINE;
+  if (!DATA) return;
+  document.getElementById("missing").hidden = true;
+  document.getElementById("content").hidden = false;
+
+  // ---------------------------------------------------------------------------
+  // The only authored numbers on this page, and deliberately so. The cap is the
+  // REQUIREMENT's cap -- the whole finding is that the policy implements it with the
+  // wrong event kind, so deriving the cap from the policy would be quoting the thing
+  // under suspicion. Everything else comes from DATA, which is generated.
+  // ---------------------------------------------------------------------------
+  const CONFIG = { action: "initiate_transfer", cap: 50000 };
+
+  const NS = "http://www.w3.org/2000/svg";
+  const el = (n, a = {}) => {
+    const e = document.createElementNS(NS, n);
+    for (const k in a) e.setAttribute(k, a[k]);
+    return e;
+  };
+  const money = n => "$" + Number(n).toLocaleString("en-US");
+  const KIND_COLOR = { request: "var(--request)", response: "var(--response)", error: "var(--error)" };
+  const ruleAt = Object.fromEntries(DATA.rules.map(r => [r.index, r]));
+
+  // Presentation, derived from the event rather than written next to it.
+  function note(ev) {
+    if (ev.kind === "error") return "refused — no money moved";
+    if (ev.kind === "request" && ev.input.amount != null) return "attempt " + money(ev.input.amount);
+    if (ev.kind === "response" && ev.output.verified === true) return "identity verified";
+    return ev.kind;
+  }
+
+  const EVENTS = DATA.events;
+  const decisions = EVENTS.filter(e => e.verdict);
+  const denied = decisions.filter(e => e.verdict === "DENY");
+  const smallest = denied.reduce((a, b) =>
+    (a && a.input.amount <= b.input.amount) ? a : b, null);
+
+  document.getElementById("subtitle").innerHTML =
+    `<code>${DATA.source.witness}/${DATA.policy}</code> — ${EVENTS.length} events, ` +
+    `${decisions.length} decisions, and a ${smallest ? money(smallest.input.amount) : ""} ` +
+    `transfer blocked by money that never moved.`;
+
+  // --- the timeline ---------------------------------------------------------
+  (function timeline(svg) {
+    const L = 60, R = 800, axisY = 120;
+    const step = (R - L) / Math.max(EVENTS.length - 1, 1);
+    svg.setAttribute("aria-label",
+      `Timeline of ${EVENTS.length} events; ${denied.length} transfer requests denied.`);
+
+    svg.appendChild(el("line", { x1: L - 24, y1: axisY, x2: R + 30, y2: axisY,
+                                 stroke: "var(--rule)", "stroke-width": 2 }));
+
+    EVENTS.forEach((ev, i) => {
+      const x = L + i * step, color = KIND_COLOR[ev.kind] || "var(--ink-faint)";
+
+      svg.appendChild(el("line", { x1: x, y1: axisY - 30, x2: x, y2: axisY,
+                                   stroke: color, "stroke-width": 2, opacity: 0.45 }));
+      // A refusal is a square so it reads differently from an attempt at a glance.
+      svg.appendChild(ev.kind === "error"
+        ? el("rect", { x: x - 8, y: axisY - 8, width: 16, height: 16, fill: color, rx: 2 })
+        : el("circle", { cx: x, cy: axisY, r: 8, fill: color }));
+
+      const text = (y, fill, size, content, weight) => {
+        const t = el("text", { x, y, "text-anchor": "middle", fill, "font-size": size });
+        if (weight) t.setAttribute("font-weight", weight);
+        t.textContent = content;
+        svg.appendChild(t);
+        return t;
+      };
+
+      text(axisY + 26, "var(--ink-faint)", 13, "@" + ev.at)
+        .setAttribute("font-family", "ui-monospace, monospace");
+      text(axisY - 42, "var(--ink)", 12.5, ev.action + "::" + ev.kind)
+        .setAttribute("font-family", "ui-monospace, monospace");
+      text(axisY - 58, "var(--ink-faint)", 12, note(ev));
+
+      if (ev.verdict) {
+        svg.appendChild(el("rect", { x: x - 46, y: axisY + 44, width: 92, height: 42,
+                                     rx: 6, fill: "none", stroke: "var(--deny)",
+                                     "stroke-width": 1.5 }));
+        text(axisY + 62, "var(--deny)", 14, ev.verdict, 700)
+          .setAttribute("font-family", "ui-monospace, monospace");
+        // No rule means the deny was by default, which is a different fact worth saying.
+        text(axisY + 78, "var(--ink-faint)", 11.5,
+             ev.rules.length ? "rule " + ev.rules.join(", ") : "by default");
+      }
+    });
+
+    // The point of the picture: the refusal is what fills the budget that blocks the next one.
+    const refusal = EVENTS.findIndex(e => e.kind === "error");
+    const blocked = EVENTS.findIndex((e, i) => i > refusal && e.verdict === "DENY");
+    if (refusal >= 0 && blocked > refusal) {
+      const x1 = L + refusal * step, x2 = L + blocked * step, arcY = axisY - 88;
+      svg.appendChild(el("path", {
+        d: `M ${x1} ${arcY} C ${x1} ${arcY - 34}, ${x2} ${arcY - 34}, ${x2} ${arcY}`,
+        fill: "none", stroke: "var(--deny)", "stroke-width": 1.5,
+        "stroke-dasharray": "4 4", opacity: 0.85 }));
+      const c = el("text", { x: (x1 + x2) / 2, y: arcY - 40, "text-anchor": "middle",
+                             fill: "var(--deny)", "font-size": 12.5, "font-weight": 600 });
+      c.textContent = "still counted";
+      svg.appendChild(c);
+    }
+  })(document.getElementById("timeline"));
+
+  // --- the two totals -------------------------------------------------------
+  const sumOf = kind => EVENTS
+    .filter(e => e.action === CONFIG.action && e.kind === kind && e.input.amount != null)
+    .reduce((s, e) => s + e.input.amount, 0);
+  const counted = sumOf("request"), moved = sumOf("response");
+
+  (function totals(svg) {
+    const L = 250, R = 790, max = Math.max(counted, CONFIG.cap) * 1.15;
+    const x = v => L + (v / max) * (R - L);
+    svg.setAttribute("aria-label",
+      `The policy counts ${money(counted)}; ${money(moved)} was actually transferred.`);
+
+    [{ label: "what rule " + (denied[0] ? denied[0].rules[0] : "?") + " counts",
+       sub: "sum of ::request", value: counted, color: "var(--counted)" },
+     { label: "what was transferred",
+       sub: "sum of ::response", value: moved, color: "var(--moved)" }
+    ].forEach((row, i) => {
+      const y = 42 + i * 74;
+      const put = (tx, ty, fill, size, weight, content, mono) => {
+        const t = el("text", { x: tx, y: ty, "text-anchor": "end", fill, "font-size": size });
+        if (weight) t.setAttribute("font-weight", weight);
+        if (mono) t.setAttribute("font-family", "ui-monospace, monospace");
+        t.textContent = content; svg.appendChild(t);
+      };
+      put(L - 16, y + 15, "var(--ink)", 14, 600, row.label);
+      put(L - 16, y + 33, "var(--ink-faint)", 12, null, row.sub, true);
+
+      svg.appendChild(el("rect", { x: L, y, width: R - L, height: 26, rx: 4,
+                                   fill: "var(--rule)", opacity: 0.4 }));
+      // Give zero a sliver, so it reads as measured rather than missing.
+      const w = Math.max(x(row.value) - L, row.value === 0 ? 3 : 0);
+      svg.appendChild(el("rect", { x: L, y, width: w, height: 26, rx: 4, fill: row.color }));
+
+      const v = el("text", { x: L + w + 12, y: y + 18, fill: row.color, "font-size": 14,
+                             "font-weight": 700, "font-family": "ui-monospace, monospace" });
+      v.textContent = money(row.value);
+      svg.appendChild(v);
+    });
+
+    const cx = x(CONFIG.cap);
+    svg.appendChild(el("line", { x1: cx, y1: 22, x2: cx, y2: 160, stroke: "var(--cap)",
+                                 "stroke-width": 1.5, "stroke-dasharray": "5 4" }));
+    const ct = el("text", { x: cx, y: 14, "text-anchor": "middle", fill: "var(--cap)",
+                            "font-size": 12, "font-weight": 600,
+                            "font-family": "ui-monospace, monospace" });
+    ct.textContent = "cap " + money(CONFIG.cap);
+    svg.appendChild(ct);
+
+    const n = el("text", { x: L, y: 195, fill: "var(--ink-soft)", "font-size": 13 });
+    n.textContent = "Same session. One total is over the cap; the other is zero.";
+    svg.appendChild(n);
+  })(document.getElementById("totals"));
+
+  // --- the prose, named from the data --------------------------------------
+  const decidingIndex = denied.length ? denied[0].rules[0] : null;
+  const deciding = decidingIndex !== null ? ruleAt[decidingIndex] : null;
+
+  document.getElementById("why-rule").innerHTML = deciding
+    ? `Rule&nbsp;${deciding.index} — <i>${deciding.label || deciding.action}</i> — sums ` +
+      `<code class="mono">${CONFIG.action}::request</code>, the <b>attempt</b>. Under ` +
+      `AgentCore's convention an attempt is recorded whatever its outcome, and the outcome ` +
+      `follows separately as <code class="mono">::response</code> when it completed or ` +
+      `<code class="mono">::error</code> when it was refused.`
+    : "";
+
+  const refused = EVENTS.find(e => e.kind === "error");
+  document.getElementById("why-consequence").innerHTML = (refused && smallest)
+    ? `So the ${money(refused.input.amount)} refused at ` +
+      `<span class="mono">@${refused.at}</span> moved no money and still fills the budget. ` +
+      `Every transfer for the next twelve hours is denied — including the ` +
+      `${money(smallest.input.amount)} at <span class="mono">@${smallest.at}</span>.`
+    : "";
+
+  document.getElementById("provenance").innerHTML =
+    `Trace generated by <code>src/checker/witness.py</code> from the TLC counterexample to ` +
+    `<code>${DATA.claim}</code>; this page's data by <code>${DATA.generatedBy}</code>. ` +
+    `Verdicts are the reference engine's, not ours:<br>` +
+    `<code>${DATA.source.replay}</code><br>→ ` +
+    decisions.map(d =>
+      `<code>@${d.at}: ${d.verdict} [rules: ${d.rules.join(", ")}]</code>`).join(" · ");
+})();
+</script>
+</body>
+</html>

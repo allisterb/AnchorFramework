@@ -36,6 +36,26 @@
     <RuntimeIdentifiers>linux-arm64;linux-x64</RuntimeIdentifiers>
   </PropertyGroup>
 
+  <!-- Package pruning drops transitive packages the target framework already provides. On net10.0
+       that is the whole .NET Core 1.x era of split System.* packages, and removing them takes 2826
+       lines out of five lock files.
+
+       WHY IT IS STATED RATHER THAN LEFT TO DEFAULT. It IS the .NET 10 SDK default, so a restore
+       here and a restore in CI agree today by coincidence rather than by instruction. CI installs
+       `dotnet-version: 10.0.x` and there is no global.json, so the SDK floats; a patch that flipped
+       the default would change the dependency GRAPH, and CI restores in locked mode, which fails
+       that with NU1004 and a message about the lock being out of date rather than about pruning.
+       Declared here, the graph is a property of the repository instead of the toolchain.
+
+       IT IS ALSO THE SECURITY POSTURE. A pruned package is not merely unpinned, it is absent: the
+       framework supplies the assembly and the NuGet package never loads. `System.Private.Uri`
+       4.3.0 sat in these locks transitively and carried an advisory; pinning 4.3.2 would have
+       pinned something nothing loads, while pruning removes the dependency. See the NOTICES for
+       what the image actually ships. -->
+  <PropertyGroup Label="Restore">
+    <RestoreEnablePackagePruning>true</RestoreEnablePackagePruning>
+  </PropertyGroup>
+
   <!-- Shared assembly version. Projects opt in by mapping their AssemblyVersion /
        FileVersion / Version to this property, so bumping the version here restamps them all on the next build. -->
   <PropertyGroup Label="Versioning">

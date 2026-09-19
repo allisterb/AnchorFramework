@@ -8,6 +8,7 @@
       server, check, explain, help, version    the .NET CLI, src/Anchor.CLI
       auto                                     Python, src/agent/pipeline.py
       hitl                                     Python, src/agent/hitl.py
+      timeline                                 Python, src/checker/timeline.py
 
     The split is deliberate rather than historical. `check`, `explain` and `server` are genuinely
     C#-fronted -- the checker is reached through them and the MCP server IS them. The two drafting
@@ -64,11 +65,12 @@ $RepoRoot = $PSScriptRoot
 
 # The routing table, and the only place a new Python verb needs adding.
 $PythonVerbs = @{
-    auto = 'src/agent/pipeline.py'
-    hitl = 'src/agent/hitl.py'
+    auto     = 'src/agent/pipeline.py'
+    hitl     = 'src/agent/hitl.py'
+    timeline = 'src/checker/timeline.py'
 }
 
-# The CLI's own help cannot mention the two verbs it does not have, so this script says them after.
+# The CLI's own help cannot mention the verbs it does not have, so this script says them after.
 $HelpTokens = @('help', '--help', '-h', '-?', '/?')
 
 # $IsWindows is a PowerShell 6+ automatic variable and does not exist at all under Windows
@@ -151,6 +153,8 @@ function Show-ExtraVerbs {
     Write-Output '  auto       Draft the property module from a natural language brief and check it, unattended'
     Write-Output ''
     Write-Output '  hitl       Draft the property module from a natural language brief with a human answering when a gate turns a draft away'
+    Write-Output ''
+    Write-Output '  timeline   Build the data a timeline visualisation draws, from a witness directory written by a check'
     Write-Output ''
 }
 

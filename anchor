@@ -36,8 +36,9 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # an associative array, which bash 3.2 -- still the /bin/bash on macOS -- does not have.
 python_entry_point() {
     case "$1" in
-        auto) echo "src/agent/pipeline.py" ;;
-        hitl) echo "src/agent/hitl.py" ;;
+        auto)     echo "src/agent/pipeline.py" ;;
+        hitl)     echo "src/agent/hitl.py" ;;
+        timeline) echo "src/checker/timeline.py" ;;
         *)    return 1 ;;
     esac
 }
@@ -125,12 +126,14 @@ EOF
     exit 1
 }
 
-# The CLI's own help cannot mention the two verbs it does not have, so this script says them after.
+# The CLI's own help cannot mention the verbs it does not have, so this script says them after.
 show_extra_verbs() {
     cat <<'EOF'
   auto       Draft the property module from a natural language brief and check it, unattended.
   
   hitl       Draft the property module from a natural language brief with a human answering when a gate turns a draft away.
+  
+  timeline   Build the data a timeline visualisation draws, from a witness directory written by a check.
 EOF
 }
 
