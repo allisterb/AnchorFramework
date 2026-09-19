@@ -2,6 +2,22 @@
 // Do not edit. Regenerate instead.
 window.ANCHOR_TIMELINE = {
   "generatedBy": "src/checker/timeline.py",
+  "chart": {
+    "rule": 4,
+    "effect": "forbid",
+    "actions": [
+      "initiate_transfer"
+    ],
+    "kind": "aggregate",
+    "aggregate": "sum",
+    "action": "initiate_transfer",
+    "eventKind": "request",
+    "field": "input.amount",
+    "window": 43200,
+    "windowText": "12h",
+    "cmp": ">",
+    "threshold": 50000
+  },
   "policy": "agent-policy.dw",
   "claim": "ARefusedAttemptDoesNotConsumeTheBudget",
   "source": {

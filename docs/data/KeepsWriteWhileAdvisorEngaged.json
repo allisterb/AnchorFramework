@@ -1,0 +1,41 @@
+{
+  "generatedBy": "src/checker/timeline.py",
+  "chart": null,
+  "policy": "07-trust-decay.dw",
+  "claim": "KeepsWriteWhileAdvisorEngaged",
+  "source": {
+    "witness": "examples/aws1/traces/07-trust-decay-TrustDecay/witness",
+    "trace": "KeepsWriteWhileAdvisorEngaged.log",
+    "replay": "dogwood replay --policy-schema generated.cedarschema --trace KeepsWriteWhileAdvisorEngaged.log 07-trust-decay.dw",
+    "verdictsMissing": null
+  },
+  "rules": [
+    {
+      "index": 0,
+      "effect": "",
+      "action": "execute_trade",
+      "label": "\"After 15 minutes without advisor interaction, the agent loses access to write operations.\"",
+      "line": 9
+    }
+  ],
+  "events": [
+    {
+      "at": 1,
+      "action": "interact_advisor",
+      "kind": "response",
+      "input": {},
+      "output": {},
+      "isDecision": false
+    },
+    {
+      "at": 2,
+      "action": "execute_trade",
+      "kind": "request",
+      "input": {},
+      "output": {},
+      "isDecision": true,
+      "verdict": "DENY",
+      "rules": []
+    }
+  ]
+}
