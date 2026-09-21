@@ -125,9 +125,29 @@ def chart_for(policy: Path, rule_index: int | None) -> dict | None:
     chart = {"rule": rule_index, "effect": rule.get("effect"),
              "actions": sorted(rule.get("actions") or []), "kind": None}
 
-    agg = find_op(rule.get("cond"), "agg")
+    cond = rule.get("cond")
+    agg = find_op(cond, "agg")
     if agg is None:
-        return chart | {"kind": "predicate"}
+        # A rule gated on something having happened, rather than on a total. The window and the
+        # event it looks for are the picture; the POLARITY is the finding, because `unless` and
+        # `when` are one word apart and decide opposite ways.
+        #
+        # Only the top-level negation is read. A `not` nested inside a conjunction would not be
+        # reported here, and saying so is better than implying this covers every shape.
+        formerly = find_op(cond, "formerly")
+        pred = find_op(formerly, "pred") if formerly else None
+        if formerly is None or pred is None:
+            return chart | {"kind": "predicate"}
+        return chart | {
+            "kind": "predicate",
+            "negated": (cond or {}).get("op") == "not",
+            "requires": {
+                "action": pred["pred"].get("action"),
+                "eventKind": pred["pred"].get("kind"),
+                "window": formerly.get("window"),
+                "windowText": fmt_window(formerly["window"]),
+            },
+        }
 
     inner = agg.get("agg", {})
     pred = find_op(inner.get("cond"), "pred")

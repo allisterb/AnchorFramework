@@ -8,7 +8,14 @@ window.ANCHOR_TIMELINE = {
     "actions": [
       "execute_trade"
     ],
-    "kind": "predicate"
+    "kind": "predicate",
+    "negated": false,
+    "requires": {
+      "action": "get_market_price",
+      "eventKind": "response",
+      "window": 30,
+      "windowText": "30s"
+    }
   },
   "policy": "agent-policy.dw",
   "claim": "FreshPriceAloneIsNotEnough",

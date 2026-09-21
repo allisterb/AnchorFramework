@@ -1,0 +1,61 @@
+/* Shared chrome for the witness-session pages. The drawing is in timeline.js; each page supplies
+   only its own prose. */
+:root {
+  --bg:#f7f7f5; --panel:#ffffff; --ink:#1a1a18; --ink-soft:#55554e;
+  --ink-faint:#8a8a80; --rule:#e0e0d8;
+
+  --request:#b7791f;   /* an attempt                    */
+  --response:#2f7d5d;  /* it completed                  */
+  --error:#b4342b;     /* it was refused                */
+
+  --deny:#b4342b; --allow:#2f7d5d;
+  --counted:#b4342b; --quiet:#8a8a80; --cap:#55554e;
+  --window:#4a6fa5;    /* the interval a rule looks back over */
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:#16161a; --panel:#1e1e23; --ink:#ecece7; --ink-soft:#a8a89e;
+    --ink-faint:#74746b; --rule:#32323a;
+    --request:#e0a94a; --response:#5fb98c; --error:#e8695c;
+    --deny:#e8695c; --allow:#5fb98c;
+    --counted:#e8695c; --quiet:#74746b; --cap:#a8a89e; --window:#7fa6dd;
+  }
+}
+:root[data-theme="dark"] {
+  --bg:#16161a; --panel:#1e1e23; --ink:#ecece7; --ink-soft:#a8a89e;
+  --ink-faint:#74746b; --rule:#32323a;
+  --request:#e0a94a; --response:#5fb98c; --error:#e8695c;
+  --deny:#e8695c; --allow:#5fb98c;
+  --counted:#e8695c; --quiet:#74746b; --cap:#a8a89e; --window:#7fa6dd;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin:0; padding:32px 16px 56px; background:var(--bg); color:var(--ink);
+  font:16px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+.wrap { max-width:900px; margin:0 auto; }
+h1 { font-size:1.5rem; line-height:1.25; margin:0 0 6px; letter-spacing:-0.01em; }
+.sub { color:var(--ink-soft); margin:0 0 28px; font-size:0.95rem; }
+.panel { background:var(--panel); border:1px solid var(--rule); border-radius:10px;
+         padding:20px 18px; margin-bottom:20px; }
+h2 { font-size:0.78rem; text-transform:uppercase; letter-spacing:0.09em;
+     color:var(--ink-faint); margin:0 0 16px; font-weight:600; }
+svg { display:block; width:100%; height:auto; overflow:visible; }
+code, .mono { font-family:ui-monospace, SFMono-Regular, "Cascadia Mono", Consolas, monospace;
+              font-size:0.92em; }
+.legend { display:flex; flex-wrap:wrap; gap:16px; margin-top:14px;
+          font-size:0.8rem; color:var(--ink-soft); }
+.legend span { display:inline-flex; align-items:center; gap:6px; }
+.dot { width:10px; height:10px; border-radius:50%; flex:none; }
+.swatch { width:14px; height:10px; flex:none; background:var(--window); opacity:0.35;
+          border-left:2px dashed var(--window); }
+.claim { border-left:3px solid var(--rule); padding:2px 0 2px 14px; margin:0 0 16px;
+         color:var(--ink-soft); font-size:0.95rem; }
+.claim b { color:var(--ink); }
+p { margin:0 0 12px; } p:last-child { margin-bottom:0; }
+footer { color:var(--ink-faint); font-size:0.8rem; line-height:1.6; margin-top:28px; }
+footer code { color:var(--ink-soft); word-break:break-all; }
+.missing { border:1px solid var(--error); color:var(--error); border-radius:8px; padding:16px; }
+nav { margin:0 0 24px; font-size:0.85rem; }
+nav a { color:var(--ink-soft); }

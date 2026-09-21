@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>A Refused Transfer Spends the Budget</title>
+<title>One Word Apart: unless, when</title>
 <link rel="stylesheet" href="timeline.css">
 </head>
 <body>
 <div class="wrap">
 
-  <h1>A refused transfer spends the budget</h1>
+  <h1>One word apart: <code>unless</code>, <code>when</code></h1>
   <p class="sub" id="subtitle"></p>
 
   <div id="content" hidden>
@@ -17,34 +17,30 @@
       <h2>The session</h2>
       <svg id="timeline" viewBox="0 0 860 280" role="img"></svg>
       <div class="legend">
-        <span><i class="dot" style="background:var(--request)"></i>::request — an attempt</span>
         <span><i class="dot" style="background:var(--response)"></i>::response — it completed</span>
-        <span><i class="dot" style="background:var(--error)"></i>::error — it was refused</span>
+        <span><i class="dot" style="background:var(--request)"></i>::request — an attempt</span>
+        <span><i class="swatch"></i>the window the rule looks back over</span>
       </div>
     </div>
 
-    <div class="panel" id="chart-panel">
+    <div class="panel" id="chart-panel" hidden>
       <h2 id="chart-heading"></h2>
-      <p class="claim">
-        The requirement says: block a transfer if the total amount <b>transferred</b> in the
-        past 12&nbsp;hours would exceed&nbsp;$50,000.
-      </p>
       <svg id="chart" viewBox="0 0 860 240" role="img"></svg>
     </div>
 
     <div class="panel">
       <h2>Why</h2>
-      <p id="why-rule"></p>
-      <p>
-        Under AgentCore's convention an attempt is recorded whatever its outcome, and the outcome
-        follows separately as <code>::response</code> when it completed or <code>::error</code>
-        when it was refused. So the refused transfer moved no money and still fills the budget,
-        and every transfer for the next twelve hours is denied.
+      <p class="claim">
+        The requirement says: after 15 minutes <b>without</b> advisor interaction, the agent
+        <b>loses</b> access to write operations.
       </p>
+      <p id="why-rule"></p>
       <p id="why-consequence"></p>
       <p>
-        Run the derived checks on this same file and every rule reports <b>live</b>.
-        The rule is live. It is also wrong.
+        So the permit fires <b>because</b> the advisor interaction fell outside the window, when
+        the requirement wanted it to fire only while one was <b>inside</b> it. The gate is
+        inverted: <code>unless</code> where <code>when</code> was meant. Nothing about the rule is
+        dead, unreachable or ill-typed, so no amount of validating one rule at a time finds it.
       </p>
     </div>
 
@@ -59,7 +55,7 @@
 
 </div>
 
-<script src="data/ARefusedAttemptDoesNotConsumeTheBudget.js"></script>
+<script src="data/LosesWriteAfter10m.js"></script>
 <script src="timeline.js"></script>
 </body>
 </html>

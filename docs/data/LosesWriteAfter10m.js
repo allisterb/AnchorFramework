@@ -8,7 +8,14 @@ window.ANCHOR_TIMELINE = {
     "actions": [
       "execute_trade"
     ],
-    "kind": "predicate"
+    "kind": "predicate",
+    "negated": true,
+    "requires": {
+      "action": "interact_advisor",
+      "eventKind": "response",
+      "window": 900,
+      "windowText": "15m"
+    }
   },
   "policy": "07-trust-decay.dw",
   "claim": "LosesWriteAfter10m",
