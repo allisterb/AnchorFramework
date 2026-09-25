@@ -121,17 +121,43 @@ nothing will pass having tested nothing.
 ## 4. A whole directory  — *minutes*
 
 ```bash
-docker run --rm -w /app allisterb/anchor:latest check examples/aws1
+docker run --rm -v "$PWD:/work" -w /app allisterb/anchor:latest \
+    check examples/aws1 --output-dir /work/aws1
 ```
 
 Every `.dw` paired with the `.tla` module whose header names it, writing `findings.md`,
-`results.json` and `traces/` beside them. `examples/aws1` and `examples/aws2` already contain the
-committed output of exactly this, so you can compare.
+`results.json` and `traces/` into `./aws1` on your machine. `--output-dir` is what brings them out:
+without it they are written inside the container, and go when it does. `examples/aws1` and
+`examples/aws2` already contain the committed output of exactly this, so you can compare.
+
+> **Newer than the published image.** A directory audit now also scans its inputs before anything
+> reads them, and writes `findings.html` beside `findings.md`. Both are in this repository but not
+> in `allisterb/anchor:0.1.0`. To try them, build the image from source (the README's "In a
+> container") and use `anchor:latest` in place of `allisterb/anchor:latest`.
+
+`findings.html` is the audit as one page: each broken claim drawn as the session that breaks it,
+with the reference engine's verdict on every decision and the rule that decided it. It is a single
+file that opens straight from disk. Because it quotes policy text, it runs nothing but its own inlined
+renderer: its Content-Security-Policy allows that one script by hash, and nothing else.
 
 ## 5 and 6. The agent modes  — *needs an API key*
 
 The first four modes are mechanical: no model is involved, and nothing a model said can change a
 verdict. The last two are where an agent writes the formal artifact.
+
+**Before either shows a model anything, it scans the inputs.** A policy under analysis is often one
+nobody trusts, and its comments and string literals reach the model. `anchor scan` is the same check
+on its own — instant, and no key:
+
+```bash
+docker run --rm -v "$PWD:/work" anchor:latest scan my-policies/
+```
+
+It reports, by severity, hidden and reordering characters, names spelled with look-alike letters,
+instructions aimed at a model, markup, terminal escapes and encoded payloads. A high finding stops
+`auto` and `hitl` with exit 2, before any model is called. `--allow-flagged-input` proceeds anyway
+for a finding you have read — a comment that *discusses* prompt injection, say — and the report
+records that it did. Like `findings.html`, this needs an image built from this repository.
 
 Put a settings file in a directory of its own and mount it read only — **it is never built into the
 image**, and `.dockerignore` excludes it by name, because a key baked into a layer is a key
@@ -172,8 +198,8 @@ asserted, and the reason mode 6 exists.
 | | |
 |---|---|
 | 0 | answered, and nothing to report |
-| 1 | a `--property` claim is BROKEN, or the audit has findings |
-| 2 | no verdict — and the reason is on stderr |
+| 1 | a `--property` claim is BROKEN, the audit has findings, or (`scan`) the inputs hold something at medium or high severity |
+| 2 | no verdict — and the reason is on stderr. `auto` and `hitl` also exit 2 when they refuse flagged input |
 | 3 | could not run |
 | 4 | (`explain`) a claim cannot fail; it would pass having tested nothing |
 

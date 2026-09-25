@@ -50,6 +50,7 @@ if str(REPO / "src") not in sys.path:
 
 CHECKER = REPO / "src" / "checker" / "properties.py"
 
+from checker import scan as screen  # noqa: E402
 from checker.explain import as_dict, explain_file  # noqa: E402
 from checker.witness import Confirmation, confirm  # noqa: E402
 
@@ -285,9 +286,14 @@ def findings_of(results: dict) -> list[str]:
     return out
 
 
-def report(plan: Plan, results: dict, findings: list[str], *, model_used: bool) -> str:
+def report(plan: Plan, results: dict, findings: list[str], *, model_used: bool,
+           scanned: list[str] | None = None) -> str:
     """The findings file. Written whether or not a model ran."""
     lines = [f"# Findings — `{plan.directory.name}`", ""]
+    # THE INPUT SCAN FIRST: whether a model was shown this directory's text, and whether that text
+    # held anything aimed at one, changes how every model-written word below should be read.
+    if scanned:
+        lines += scanned + [""]
 
     # A SMOKE SWEEP CANNOT ESTABLISH ABSENCE, so it must not be summarised as having found none.
     # `--smoke` explores a random sample of behaviours: a witness found that way is sound -- a
@@ -493,6 +499,33 @@ def ask_model(plan: Plan, results: dict, out: Path, provider: str, model: str | 
     return answered
 
 
+def scan_note(scan: screen.Report, *, withheld: bool, overridden: bool) -> dict[str, list[str]]:
+    """What the input scan means for this report, for findings.md and for findings.html."""
+    s = scan.summary()
+    if withheld:
+        md = ["> **The input scan found high-severity text in this directory's inputs, so the "
+              "model's questions were NOT asked.** The checks below ran in full: they are "
+              "deterministic and not at risk from text aimed at a model. Read the findings with "
+              "`anchor scan`, and if they are benign run again with `--allow-flagged-input`.",
+              ">", f"> {s}"]
+        html = ["The model's questions were not asked, because of the high-severity findings "
+                "below. The checks ran in full."]
+    elif overridden:
+        md = ["> **The input scan flagged this directory's inputs, and the model was asked its "
+              "questions anyway (`--allow-flagged-input`).** Everything a model wrote below was "
+              "written by one that read that text.", ">", f"> {s}"]
+        html = ["The model was asked its questions anyway, under --allow-flagged-input: "
+                "everything it wrote was written by one that read the text below."]
+    elif scan.high or scan.medium:
+        md = [f"**Input scan.** {s} -- no model read them, so nothing was withheld; "
+              f"`anchor scan` lists what was found."]
+        html = []
+    else:
+        md = [f"**Input scan.** {s}."]
+        html = []
+    return {"md": md, "html": html}
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("directory", type=Path, help="a directory of .dw policies")
@@ -515,6 +548,10 @@ def main() -> int:
                     help="refuse a policy reading more than N input/output fields (default 4). "
                          "The request space is the product of their domains, so raising this "
                          "trades runtime for reach rather than soundness")
+    ap.add_argument("--allow-flagged-input", action="store_true",
+                    help="ask the model its questions even when the input scan found "
+                         "high-severity text. For findings you have read and judged benign; the "
+                         "report records that it was used")
     args = ap.parse_args()
 
     if not args.directory.is_dir():
@@ -532,19 +569,46 @@ def main() -> int:
     print(f"{len(plan.policies)} polic(ies), {len(plan.properties)} stated intention(s), "
           f"{len(plan.questions)} question(s)\n", file=sys.stderr)
 
+    # THE INPUT SCAN, BEFORE ANYTHING READS THE INPUTS. The checks run in full whatever it finds:
+    # the parser, TLC and Dogwood are deterministic and not at risk from text aimed at a model.
+    # What a high finding withholds is the MODEL -- the one reader here that would follow it.
+    scan = screen.scan([args.directory], relative_to=args.directory)
+    asking = not args.no_model and bool(plan.questions)
+    withheld = bool(scan.high) and asking and not args.allow_flagged_input
+    if scan.high or scan.medium:
+        print(screen.render(scan, census=False) + "\n", file=sys.stderr)
+    if withheld:
+        print("The checks run in full; the model's questions are NOT asked, because the scan "
+              "found high-severity text above that it would read. If it is benign, run again "
+              "with --allow-flagged-input.\n", file=sys.stderr)
+
     results = check_all(plan, out, attempts=args.attempts,
                         smoke=args.smoke, max_fields=args.max_fields)
+    results["inputScan"] = scan.as_dict() | {"modelWithheld": withheld}
     findings = findings_of(results)
 
     answered = 0
-    if not args.no_model and plan.questions:
+    if asking and not withheld:
         print(f"\nasking the agent {len(plan.questions)} question(s) "
               f"(this makes live model calls)", file=sys.stderr)
         answered = ask_model(plan, results, out, args.provider, args.model)
 
+    note = scan_note(scan, withheld=withheld, overridden=bool(scan.high) and asking and not withheld)
     (out / "results.json").write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
     (out / "findings.md").write_text(
-        report(plan, results, findings, model_used=bool(answered)), encoding="utf-8")
+        report(plan, results, findings, model_used=bool(answered), scanned=note["md"]),
+        encoding="utf-8")
+
+    # THE PICTURE, beside the prose. Never allowed to fail the audit: every check has already run
+    # and been written up, and a report that could not be drawn is a missing convenience, not a
+    # missing finding -- so it is said, not raised.
+    try:
+        from checker.timeline import write_report                      # noqa: PLC0415
+        page = write_report(out, inputs=args.directory, findings=findings, notes=note["html"])
+        print(f"wrote {page}", file=sys.stderr)
+    except Exception as e:                                              # noqa: BLE001
+        print(f"findings.html was not written ({type(e).__name__}: {e}); findings.md is complete "
+              f"without it", file=sys.stderr)
 
     print(f"\n{len(findings)} finding(s); wrote {out / 'findings.md'}", file=sys.stderr)
     for f in findings:

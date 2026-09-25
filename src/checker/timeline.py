@@ -11,14 +11,20 @@ events come from the `.log` through the translator's own reader, and the verdict
 `dogwood replay`. What stays authored is the *interpretation* (which cap, which requirement),
 because that is a claim about what the policy was for and no tool can derive it.
 
+WHAT IT WRITES. findings.html beside the findings.md of every policy set it finds a witness in --
+one self-contained page per set. `anchor check <dir>` writes the same page as part of an audit; this
+redraws it from the witnesses already there, without re-running any check.
+
 Usage:
 
-    ./anchor timeline examples/aws2/traces/agent-policy-CumulativeCap/witness \\
-        --name aws2-timeline
+    ./anchor timeline examples      # findings.html in examples/aws1 and examples/aws2
 """
 from __future__ import annotations
 
 import argparse
+import base64
+import hashlib
+import html
 import json
 import os
 import re
@@ -31,6 +37,7 @@ if str(REPO / "src") not in sys.path:
     sys.path.insert(0, str(REPO / "src"))
 
 from checker.engine import DOGWOOD, available  # noqa: E402
+from checker import scan as screen  # noqa: E402
 from translator.parse import Unsupported, fmt_window, parse_policies  # noqa: E402
 from translator.trace import parse_trace  # noqa: E402
 
@@ -40,7 +47,11 @@ from translator.trace import parse_trace  # noqa: E402
 # "replay returned no verdicts" -- a missing verdict rather than the verdict it actually was.
 VERDICT = re.compile(r"@(\d+)\s*\(time point (\d+)\):\s*(\w+)(?:\s*\[rules:\s*([^\]]*)\])?")
 
-RULE = re.compile(r"^\s*(permit|forbid)\b", re.MULTILINE)
+# `[ \t]*`, NOT `\s*`: under MULTILINE, `\s` also matches the newline, so a rule preceded by a
+# blank line was matched FROM the blank line -- its line number, effect and label were then read
+# off the wrong line. The count stayed right (matches cannot overlap), which is why it went unseen
+# until a policy with blank lines between rules came through.
+RULE = re.compile(r"^[ \t]*(permit|forbid)\b", re.MULTILINE)
 SCOPE_ACTION = re.compile(r'action\s*==\s*\w+::Action::"([^"]+)"')
 
 
@@ -50,8 +61,10 @@ def rules_in(text: str) -> list[dict]:
     `replay` reports `[rules: N]` as a position in the policy set, so the index here has to be
     the position of the statement and nothing else -- not a line number, not a filtered subset.
 
-    The label is the comment directly above the rule, which in a policy written for people is
-    the one place its intent is stated in English. Absent, the action name carries it.
+    The label is the comment line nearest above the rule. It is the AUTHOR'S NOTE, not a
+    description: comments are a convention, and in a file whose comments head sections rather than
+    rules it can be a section title or the last line of a paragraph. What a rule actually does is
+    `shape`, read from the parse -- see `describe`.
     """
     lines = text.splitlines()
     starts = [text[:m.start()].count("\n") for m in RULE.finditer(text)]
@@ -66,7 +79,8 @@ def rules_in(text: str) -> list[dict]:
         while probe >= 0 and not lines[probe].strip():
             probe -= 1
         if probe >= 0 and lines[probe].lstrip().startswith("//"):
-            comment = lines[probe].lstrip().lstrip("/").lstrip().lstrip("-").strip()
+            # Section rulers (`// ---- the reads ----`) carry dashes on both ends.
+            comment = lines[probe].lstrip().lstrip("/").strip().strip("-").strip()
 
         action = SCOPE_ACTION.search(body)
         out.append({
@@ -98,74 +112,101 @@ def find_op(node, op: str):
     return None
 
 
-def chart_for(policy: Path, rule_index: int | None) -> dict | None:
-    """What KIND of picture the deciding rule calls for, and the numbers to draw it with.
+def describe(rule: dict) -> dict:
+    """What one parsed rule does, in the terms a picture needs, read by Anchor's own parser.
 
-    Everything here is read out of the policy by Anchor's own parser rather than typed next to
-    the drawing. For an aggregate rule that is the whole chart: which action, which event kind is
-    summed over which field, the window, and the threshold it is compared against.
+    Four kinds:
 
-    THE EVENT KIND IS THE POINT. A rule that sums `::request` counts attempts, and a requirement
-    that says "transferred" means `::response` -- so the field this returns is the one the finding
-    turns on, and a reader can see it without being told what the requirement said.
+      unconditional  the rule applies to its actions with no condition at all
+      aggregate      a total over past events against a threshold -- which action, which EVENT
+                     KIND is summed over which field, the window, the comparison
+      predicate      gated on some event having happened within a window, with its POLARITY
+      other          a condition this view does not take apart; said, rather than guessed at
 
-    Returns None when the policy is outside the parser's subset or the rule is not an aggregate;
-    the caller renders what it can rather than guessing.
+    THE EVENT KIND AND THE POLARITY ARE THE POINT. A rule that sums `::request` counts attempts
+    where a requirement saying "transferred" means `::response`; a rule gated `unless` where
+    `when` was meant decides every case the opposite way. Both are one token in the source and
+    both are read straight off the parse, so a reader sees them without being told the intent.
+
+    Only the top-level negation is read as polarity. A `not` nested inside a conjunction is not
+    reported, and saying so is better than implying this covers every shape.
     """
-    if rule_index is None:
-        return None
-    try:
-        rules = parse_policies(policy.read_text(encoding="utf-8"))
-    except (Unsupported, Exception):  # noqa: BLE001 -- a chart is never worth failing a run for
-        return None
-    if rule_index >= len(rules):
-        return None
+    base = {"effect": rule.get("effect"), "actions": sorted(rule.get("actions") or [])}
+    cond = rule.get("cond") or {}
+    if cond.get("op") == "true":
+        return base | {"kind": "unconditional"}
 
-    rule = rules[rule_index]
-    chart = {"rule": rule_index, "effect": rule.get("effect"),
-             "actions": sorted(rule.get("actions") or []), "kind": None}
-
-    cond = rule.get("cond")
     agg = find_op(cond, "agg")
-    if agg is None:
-        # A rule gated on something having happened, rather than on a total. The window and the
-        # event it looks for are the picture; the POLARITY is the finding, because `unless` and
-        # `when` are one word apart and decide opposite ways.
-        #
-        # Only the top-level negation is read. A `not` nested inside a conjunction would not be
-        # reported here, and saying so is better than implying this covers every shape.
-        formerly = find_op(cond, "formerly")
-        pred = find_op(formerly, "pred") if formerly else None
-        if formerly is None or pred is None:
-            return chart | {"kind": "predicate"}
-        return chart | {
+    if agg is not None:
+        inner = agg.get("agg", {})
+        pred = find_op(inner.get("cond"), "pred")
+        formerly = find_op(inner.get("cond"), "formerly")
+        bind = next((b for b in (pred or {}).get("pred", {}).get("binds", [])
+                     if b.get("kind") == "var"), None)
+        return base | {
+            "kind": "aggregate",
+            "aggregate": inner.get("kind"),
+            "action": (pred or {}).get("pred", {}).get("action"),
+            "eventKind": (pred or {}).get("pred", {}).get("kind"),
+            "field": f"{bind['side']}.{bind['field']}" if bind else None,
+            "window": (formerly or {}).get("window"),
+            "windowText": fmt_window(formerly["window"]) if formerly else None,
+            "cmp": agg.get("cmp"),
+            "threshold": agg.get("value"),
+        }
+
+    formerly = find_op(cond, "formerly")
+    pred = find_op(formerly, "pred") if formerly else None
+    if formerly is not None and pred is not None:
+        return base | {
             "kind": "predicate",
-            "negated": (cond or {}).get("op") == "not",
+            "negated": cond.get("op") == "not",
             "requires": {
                 "action": pred["pred"].get("action"),
                 "eventKind": pred["pred"].get("kind"),
+                "where": where(pred),
                 "window": formerly.get("window"),
                 "windowText": fmt_window(formerly["window"]),
             },
         }
+    return base | {"kind": "other"}
 
-    inner = agg.get("agg", {})
-    pred = find_op(inner.get("cond"), "pred")
-    formerly = find_op(inner.get("cond"), "formerly")
-    bind = next((b for b in (pred or {}).get("pred", {}).get("binds", [])
-                 if b.get("kind") == "var"), None)
 
-    return chart | {
-        "kind": "aggregate",
-        "aggregate": inner.get("kind"),
-        "action": (pred or {}).get("pred", {}).get("action"),
-        "eventKind": (pred or {}).get("pred", {}).get("kind"),
-        "field": f"{bind['side']}.{bind['field']}" if bind else None,
-        "window": (formerly or {}).get("window"),
-        "windowText": fmt_window(formerly["window"]) if formerly else None,
-        "cmp": agg.get("cmp"),
-        "threshold": agg.get("value"),
-    }
+def where(pred: dict) -> list[dict]:
+    """The constraints a predicate puts on the event it looks for, in the policy's own terms.
+
+    Without these a rule reads looser than it is. `formerly within 24h get_client_profile::response`
+    is satisfied by ANY profile load; with `{ input.profile_id: context.input.profile_id }` only by
+    the one this request names -- and that difference is the whole of an integrity check.
+
+      context   joined to a field of the deciding request (`ctx` in the parse)
+      literal   equal to a constant (`lit`)
+
+    A `var` bind names what an aggregate sums and constrains nothing, so it is not listed; `any`
+    matches everything and is not a constraint either.
+    """
+    out = []
+    for b in pred["pred"].get("binds", []):
+        field = f"{b['side']}.{b['field']}"
+        if b.get("kind") == "ctx":
+            out.append({"field": field, "context": b["name"]})
+        elif b.get("kind") == "lit":
+            out.append({"field": field, "literal": b["value"]})
+    return out
+
+
+def parsed(policy: Path) -> tuple[list[dict] | None, str | None]:
+    """The policy through Anchor's parser, or no parse and the reason.
+
+    A picture is never worth failing a run for: a policy outside the parser's subset still has a
+    trace and verdicts worth drawing, so this reports rather than raises.
+    """
+    try:
+        return parse_policies(policy.read_text(encoding="utf-8")), None
+    except Unsupported as e:
+        return None, f"outside the parser's subset: {e}"
+    except Exception as e:  # noqa: BLE001
+        return None, f"parse failed: {type(e).__name__}: {e}"
 
 
 def replay(witness: Path, log: Path, policy: Path, schema: Path) -> tuple[list[dict], str | None]:
@@ -198,6 +239,30 @@ def replay(witness: Path, log: Path, policy: Path, schema: Path) -> tuple[list[d
     return decisions, None
 
 
+def policy_set(witness: Path) -> Path:
+    """The policy directory a witness belongs to: `<set>/traces/<policy>-<Module>/witness`."""
+    return witness.resolve().parents[2]
+
+
+def located(p: Path) -> str:
+    """A path as a report should show it: from the repo root inside Anchor, else from the set.
+
+    NEVER `relative_to(REPO)` alone. That raised for every directory outside this checkout -- a
+    user's `~/policies`, or `/work` in the container -- which is exactly where reports are for.
+    Nor absolute: a report is meant to be sent to someone, and an absolute path puts the sender's
+    home directory in it.
+    """
+    p = p.resolve()
+    try:
+        return p.relative_to(REPO).as_posix()
+    except ValueError:
+        pass
+    for up in p.parents:
+        if (up / "traces").is_dir():                     # the set holding this witness
+            return p.relative_to(up.parent).as_posix()
+    return p.name
+
+
 def build(witness: Path) -> dict:
     log = next(iter(sorted(witness.glob("*.log"))), None)
     policy = next(iter(sorted(witness.glob("*.dw"))), None)
@@ -223,19 +288,41 @@ def build(witness: Path) -> dict:
     # rather than guessed at.
     deciding = next((d["rules"][0] for d in decisions if d["rules"]), None)
 
+    text = policy.read_text(encoding="utf-8")
+    rules = rules_in(text)
+    tree, why_unparsed = parsed(policy)
+
+    # THE TWO INDEXINGS MUST AGREE, OR NOTHING IS DESCRIBED. `rules` is positional over the text,
+    # which is how `replay` numbers `[rules: N]`; `tree` is the parser's list. Zipping two lists of
+    # different lengths would pin each description onto a neighbouring rule, which reads exactly
+    # like a correct answer -- the same failure as joining verdicts on the time point.
+    if tree is not None and len(tree) != len(rules):
+        why_unparsed = (f"the parser found {len(tree)} rules where the text has {len(rules)}, "
+                        f"so none were described rather than risk describing the wrong one")
+        tree = None
+    if tree is not None:
+        for r, p in zip(rules, tree):
+            r["shape"] = describe(p)
+
+    chart = ({"rule": deciding} | rules[deciding]["shape"]
+             if deciding is not None and deciding < len(rules) and "shape" in rules[deciding]
+             else None)
+
     return {
         "generatedBy": "src/checker/timeline.py",
-        "chart": chart_for(policy, deciding),
+        "chart": chart,
         "policy": policy.name,
         "claim": log.stem,
         "source": {
-            "witness": str(witness.relative_to(REPO)).replace("\\", "/"),
+            "witness": located(witness),
+            "set": located(policy_set(witness)),
             "trace": log.name,
             "replay": f"dogwood replay --policy-schema {schema.name} "
                       f"--trace {log.name} {policy.name}",
             "verdictsMissing": why_not,
+            "shapesMissing": why_unparsed,
         },
-        "rules": rules_in(policy.read_text(encoding="utf-8")),
+        "rules": rules,
         "events": [
             {
                 "at": e["time"],
@@ -275,18 +362,174 @@ def witnesses(target: Path) -> list[Path]:
     return sorted(d for d in target.rglob("*") if is_witness(d))
 
 
-def emit(data: dict, out: Path, stem: str) -> None:
-    body = json.dumps(data, indent=2)
-    out.mkdir(parents=True, exist_ok=True)
-    (out / f"{stem}.json").write_text(body + "\n", encoding="utf-8")
+# ------------------------------------------------------------------------------ the report ---
 
-    # A page opened from disk cannot fetch() a sibling file -- file:// origins are opaque, so
-    # the request fails CORS. Emitting the same data as a script that assigns a global keeps
-    # "open the .html and it works" true, which is most of why this artifact is useful at all.
-    (out / f"{stem}.js").write_text(
-        f"// GENERATED by src/checker/timeline.py from {data['source']['witness']}\n"
-        f"// Do not edit. Regenerate instead.\n"
-        f"window.ANCHOR_TIMELINE = {body};\n", encoding="utf-8")
+REPORT = Path(__file__).resolve().parent / "report"
+
+LEGEND = """      <div class="legend">
+        <span><i class="dot request"></i>::request &mdash; an attempt</span>
+        <span><i class="dot response"></i>::response &mdash; it completed</span>
+        <span><i class="dot error"></i>::error &mdash; it was refused</span>
+        <span><i class="swatch"></i>the window a predicate rule looks back over</span>
+      </div>"""
+
+SECTION = """
+<section class="finding" data-finding>
+  <h2 class="claim">{claim}</h2>
+  <p class="sub" data-part="subtitle"></p>
+  <div data-part="content" hidden>
+    <div class="panel">
+      <h3>The session</h3>
+      <svg data-part="timeline" viewBox="0 0 860 280" role="img"></svg>
+{legend}
+    </div>
+    <div class="panel" data-part="chart-panel">
+      <h3 data-part="chart-heading"></h3>
+      <svg data-part="chart" viewBox="0 0 860 240" role="img"></svg>
+    </div>
+    <div class="panel" data-part="rules-panel">
+      <h3 data-part="rules-heading"></h3>
+      <ul class="rules" data-part="rules"></ul>
+      <p class="footnote">Whether a rule matched is read off the verdict, not re-evaluated here:
+        the engine reports Cedar's determining set &mdash; the matching forbids when any forbid
+        matched, the matching permits otherwise, and nothing when a deny was by default.</p>
+    </div>
+    <div class="panel">
+      <h3>What decided it</h3>
+      <p data-part="why-rule"></p>
+      <p data-part="why-consequence"></p>
+    </div>
+    <footer data-part="provenance"></footer>
+  </div>
+  <div class="panel missing" data-part="missing">This finding could not be drawn: its script did
+    not run. Open the page in a browser with JavaScript enabled.</div>
+  <script type="application/json">{data}</script>
+</section>"""
+
+
+def asset(name: str) -> str:
+    """A renderer file, refused if it holds what would break it once inlined into a page.
+
+    Inside a <script> element the first closing script tag ends it whatever the JavaScript around
+    it meant, and an HTML comment opener changes how the rest is parsed; <style> has the same
+    trap. The renderer's own header says never to write either, and this is what enforces it.
+    """
+    text = (REPORT / name).read_text(encoding="utf-8")
+    closing = "</script" if name.endswith(".js") else "</style"
+    if closing in text.lower() or "<!--" in text:
+        raise SystemExit(f"{REPORT / name} contains {closing}> or <!--, so it cannot be inlined")
+    return text
+
+
+def csp_hash(text: str) -> str:
+    return "'sha256-" + base64.b64encode(hashlib.sha256(text.encode("utf-8")).digest()).decode() + "'"
+
+
+def json_block(data: dict) -> str:
+    """Data for a <script type="application/json"> block, which cannot be ended early.
+
+    The block is parsed as HTML first, and the HTML parser ends it at the first closing script tag
+    whatever JSON string that tag sits inside -- so a rule comment reading `</script><script>...`
+    would otherwise walk straight out of the data and into the page. `<`, `>` and `&` become
+    JSON unicode escapes, which JSON.parse turns back into the same characters; ensure_ascii escapes
+    U+2028/2029 and everything else outside ASCII.
+    """
+    return (json.dumps(data, ensure_ascii=True, separators=(",", ":"))
+            .replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026"))
+
+
+def scan_panel(report, notes: list[str]) -> str:
+    e = html.escape
+    flagged = bool(report.high or report.medium)
+    parts = [f'<div class="panel{" flagged" if flagged else ""}">', "  <h3>Input scan</h3>",
+             f"  <p>{e(report.summary())}.</p>"]
+    parts += [f"  <p><b>{e(n)}</b></p>" for n in notes]
+    if report.hits:
+        rows = "".join(
+            f'<tr><td><code>{e(h.path)}</code></td><td>{h.line}</td>'
+            f'<td class="sev-{e(h.severity)}">{e(h.severity)}</td><td>{e(h.kind)}</td>'
+            f'<td class="snippet">{e(h.what)}'
+            + (f"<br><code>{e(h.snippet)}</code>" if h.snippet else "") + "</td></tr>"
+            for h in report.hits)
+        parts += ['  <table class="findings"><thead><tr><th>file</th><th>line</th>'
+                  "<th>severity</th><th>kind</th><th>what</th></tr></thead>",
+                  f"  <tbody>{rows}</tbody></table>"]
+    parts += ['  <p class="footnote">What this looks for &mdash; hidden and reordering characters, '
+              "look-alike letters in names, instructions aimed at a model, markup, terminal "
+              "escapes and encoded payloads &mdash; is in <code>src/checker/scan.py</code>; "
+              "<code>anchor scan</code> prints it.</p>", "</div>"]
+    return "\n".join(parts)
+
+
+def write_report(out: Path, *, inputs: Path | None = None, datas: list[dict] | None = None,
+                 findings: list[str] | None = None, notes: list[str] | None = None) -> Path:
+    """findings.html beside findings.md: one page, needing nothing beside it.
+
+    ONE FILE, so it can be attached to a ticket or sent to someone, and opens the same from disk as
+    from a server. Everything is inline: the renderer and its stylesheet, and each finding's data
+    as a JSON block the renderer parses and never executes.
+
+    The Content-Security-Policy allows exactly the SHA-256 of the inlined renderer and stylesheet
+    and nothing else -- no other script, no inline handler, no style attribute, no network. The
+    page quotes a policy someone chose to analyse, often because they do not trust it; escaping is
+    the first layer, and this is the one that holds if escaping ever misses.
+
+    `inputs` is where the policies are, for the input scan -- the same place as `out` unless the
+    audit was pointed elsewhere with --output-dir.
+    """
+    inputs = inputs or out
+    if datas is None:
+        found = witnesses(out / "traces") if (out / "traces").is_dir() else []
+        datas = [build(w) for w in found]
+    screen_report = screen.scan([inputs], relative_to=inputs)
+    js, css = asset("timeline.js"), asset("timeline.css")
+    e = html.escape
+
+    checked = ""
+    if findings is not None:
+        items = "".join(f"<li>{e(f)}</li>" for f in findings)
+        checked = ('<div class="panel">\n  <h3>What the checks found</h3>\n'
+                   + (f'  <ol class="checked">{items}</ol>' if findings else
+                      "  <p>Nothing to look at, within the bounds each check reports.</p>")
+                   + "\n  <p class=\"footnote\">The reasoning behind each is in findings.md.</p>\n</div>")
+
+    sections = "".join(SECTION.format(claim=e(d["claim"]), legend=LEGEND, data=json_block(d))
+                       for d in datas)
+    if not datas:
+        sections = ('\n<div class="panel">\n  <h3>Sessions</h3>\n  <p>No claim was found broken, '
+                    "so there is no session to draw. A broken claim leaves a witness under "
+                    "<code>traces/</code>, and this page draws each one.</p>\n</div>")
+
+    csp = (f"default-src 'none'; script-src {csp_hash(js)}; style-src {csp_hash(css)}; "
+           f"img-src 'none'; base-uri 'none'; form-action 'none'")
+    name = inputs.resolve().name
+    page = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="{csp}">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Findings &mdash; {e(name)}</title>
+<style>{css}</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Findings &mdash; <code>{e(name)}</code></h1>
+  <p class="sub">{len(datas)} broken claim{"" if len(datas) == 1 else "s"} drawn below, each with
+    the session that breaks it and the reference engine&rsquo;s verdict on that session. The
+    written report is <code>findings.md</code>, beside this file.</p>
+{scan_panel(screen_report, notes or [])}
+{checked}
+{sections}
+</div>
+<script>{js}</script>
+</body>
+</html>
+"""
+    path = out / "findings.html"
+    with path.open("w", encoding="utf-8", newline="\n") as f:
+        f.write(page)
+    return path
 
 
 def main() -> int:
@@ -295,12 +538,8 @@ def main() -> int:
     ap = argparse.ArgumentParser(prog=os.environ.get("ANCHOR_VERB") or None,
                                  description=__doc__.splitlines()[0])
     ap.add_argument("target", type=Path,
-                    help="a witness directory, or any directory containing them "
-                         "(e.g. examples/aws1)")
-    ap.add_argument("--name", help="basename for the output; only with a single witness "
-                                   "(default: the claim)")
-    ap.add_argument("--out", type=Path, default=REPO / "docs" / "data",
-                    help="directory to write into (default: docs/data)")
+                    help="a policy directory a check has run on, a witness directory, or any "
+                         "directory containing them (e.g. examples)")
     args = ap.parse_args()
 
     target = args.target.resolve()
@@ -310,24 +549,27 @@ def main() -> int:
               f"A witness holds a .log, a .dw and a .cedarschema, and is written by a check that "
               f"found a claim BROKEN -- run `anchor check` with a --property first.", file=sys.stderr)
         return 2
-    if args.name and len(found) > 1:
-        print(f"--name names one output, but {len(found)} witnesses matched. Point at one of "
-              f"them, or drop --name and they are named by their claims.", file=sys.stderr)
-        return 2
+    built = {w: build(w) for w in found}
+    for data in built.values():
+        for gap in ("verdictsMissing", "shapesMissing"):
+            if data["source"][gap]:
+                print(f"  {data['claim']} {gap}: {data['source'][gap]}", file=sys.stderr)
 
-    for witness in found:
-        data = build(witness)
-        stem = args.name or data["claim"]
-        emit(data, args.out, stem)
-        print(f"{stem}.json + {stem}.js -> {args.out.relative_to(REPO)}")
-        chart = data["chart"]
-        print(f"  {len(data['events'])} events, "
-              f"{sum('verdict' in e for e in data['events'])} with a verdict, "
-              f"{len(data['rules'])} rules, "
-              f"chart: {chart['kind'] if chart else 'none'}")
-        if data["source"]["verdictsMissing"]:
-            print(f"  NO VERDICTS: {data['source']['verdictsMissing']}", file=sys.stderr)
+    # One report per policy set, beside the findings.md a check wrote there.
+    for s in sorted({policy_set(w) for w in found}):
+        mine = [built[w] for w in found if policy_set(w) == s]
+        path = write_report(s, datas=mine)
+        print(f"{shown(path)}  ({len(mine)} finding{'' if len(mine) == 1 else 's'} drawn)")
+
     return 0
+
+
+def shown(p: Path) -> Path:
+    """`p` relative to the repo where it can be, and as given where it cannot."""
+    try:
+        return p.resolve().relative_to(REPO)
+    except ValueError:
+        return p
 
 
 if __name__ == "__main__":

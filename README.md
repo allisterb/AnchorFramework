@@ -12,6 +12,8 @@ Anchor provides:
 * A [model property checker](https://github.com/allisterb/Anchor/tree/master/src/checker) that checks:
      * *derivable* property checks, which can be mechanically derived from all policies e.g. "is this policy vacuous or redundant?"
      * *intentional* property checks where a human or agent authors a check to explicitly capture the intent or requirements of a policy or workflow e.g. "Does this firewall policy block all inbound connections from external addresses?"
+* An [input scanner](src/checker/scan.py) that reads a policy's inputs for hidden characters, look-alike names, instructions aimed at a model and markup, before an agent, a browser or a terminal is shown them.
+* A self-contained [HTML report](#auditing-a-directory), `findings.html`, that draws each broken claim as the session that breaks it, with the reference engine's verdict on every decision.
 * An [MCP server](https://github.com/allisterb/Anchor/tree/master/src/Anchor.MCPServer) that provides the following tools to agents:
     * The TLA+ SANY parser and a TLA+ evaluator to assist in code generation
     * The Dogwood translator and model property checker 
@@ -153,13 +155,14 @@ or from a container:
 docker run --rm -v "$PWD:/work" allisterb/anchor:latest check my-policy.dw
 ```
 
-```
 | verb | action| 
 |---|---|
-| `check` | check a policy against a property module you wrote, or audit a directory of them |
+| `check` | check a policy against a property module you wrote, or audit a directory of them — writing `findings.md` and `findings.html` |
 | `auto` | draft the property module from a natural-language brief and check it, unattended |
 | `hitl` | draft the property module from a natural-language brief and check it, with a human answering when a gate turns a draft away |
 | `explain` | say in English what a property module forbids |
+| `scan` | read a policy's inputs for hidden text, look-alike names, instructions aimed at a model and markup |
+| `timeline` | redraw `findings.html` from the witnesses a check left, without re-running the checks |
 | `server` | the MCP server, over stdio or HTTP. The default verb |
 | `help [verb]` | get command-line help |
 
@@ -253,6 +256,49 @@ anything that is not an answer — a parse error, an unsupported construct — r
 reporting vacuous. Constructs outside the modelled subset are refused with a reason, never
 approximated.
 
+### Auditing a directory
+
+```bash
+[./]anchor check examples/aws1
+```
+
+Every `.dw` in the directory, each paired with the `.tla` module whose header names it. Beside them
+it writes `findings.md` — the written report — plus `results.json`, a `traces/` directory holding a
+re-runnable witness for every broken claim, and **`findings.html`**: one page for the policy set that
+draws each broken claim as the session that breaks it, with the reference engine's verdict on every
+decision, the rule that decided it, and the window or total that rule looks at.
+
+`findings.html` is a single file with nothing beside it, so it can be attached to a ticket and opens
+the same from disk as from a server. It quotes policy text, and a policy under analysis is often one
+nobody trusts, so everything it shows is escaped, and its Content-Security-Policy allows exactly its
+own inlined renderer and stylesheet, by hash — nothing else runs, loads or connects.
+`anchor timeline <dir>` redraws it from the witnesses already there, without re-running the checks.
+
+### Scanning the inputs
+
+```bash
+[./]anchor scan examples/aws1
+```
+
+A policy's text reaches a model in `auto`, `hitl` and an audit's questions, a browser in
+`findings.html`, and a terminal in every verb. `anchor scan` reads it first, for anything that would
+act on one of those, or that makes the policy say something other than what it shows:
+
+| severity | what |
+|---|---|
+| high | bidi overrides and other invisible characters; the Unicode Tag block; control characters and terminal escapes; a name that mixes scripts, such as an action name spelled with one Cyrillic letter that looks Latin; any of those written as a string escape so the file looks clean; instructions aimed at a model; HTML or script markup; an encoded blob that decodes to either |
+| medium | non-ASCII in a name, private-use characters, a remote image in markdown, a file that is not well-formed UTF-8, an encoded blob of readable text |
+
+It knows where comments, strings and code are in each language, and it matches phrases against what
+a line *looks like* rather than its bytes, so a look-alike letter or a zero-width space inside a word
+does not get an instruction past it. Accented names, typography and box drawing are not findings.
+
+The agentic modes run it before a model is shown anything. A high finding stops `auto` and `hitl`
+with exit 2. In a directory audit the checks still run in full — they are deterministic, and not at
+risk from text aimed at a model — and only the model's questions are withheld. It is a heuristic, and
+says so: a comment that *discusses* prompt injection will trip it, so `--allow-flagged-input`
+proceeds anyway, for findings you have read, and every report records that it was used.
+
 
 
 
@@ -267,6 +313,7 @@ approximated.
 | `src/Anchor.Runtime` | base types for every other project — `Runtime` and its logging, `Result<T>`, process helpers |
 | `src/Anchor.Verifiers.Dafny` | parse, resolve and verify Dafny via the DafnyPipeline assembly |
 | `src/Anchor.Verifiers.TLAPlus` | SANY in-process via IKVM; TLC out-of-process via `TLCProcess` |
+| `src/checker` | the policy checker, the input scanner (`scan.py`), and the report renderer (`report/`) that `findings.html` inlines |
 | `tests/Anchor.Tests.Verifier` | tests for both verifiers, and for the Python harnesses below |
 | `tests/strands/` | the graph translator, the differential tests and the policy tool, run against the real SDK |
 | `tests/policies/` | `.dw` policy fixtures the harnesses are pointed at — inputs, not models |

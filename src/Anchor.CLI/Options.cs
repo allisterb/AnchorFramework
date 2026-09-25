@@ -81,7 +81,8 @@ public class ExplainOptions : Options
     "Model-check a Dogwood policy, rule by rule: is each one load-bearing, or is it VACUOUS, " +
     "REDUNDANT or DEAD? Runs TLC once per rule, so expect seconds. GIVE IT A DIRECTORY instead " +
     "and it audits every .dw in it, pairing each with the .tla module whose header names it, and " +
-    "writes findings.md, results.json and traces/ beside them. Exit: 0 answered or nothing to " +
+    "writes findings.md, findings.html, results.json and traces/ beside them, after scanning " +
+    "the inputs for hidden text and instructions aimed at a model. Exit: 0 answered or nothing to " +
     "look at, 1 a --property claim is BROKEN or there are findings, 2 no verdict, 3 could not run.")]
 public class CheckOptions : Options
 {
@@ -150,7 +151,7 @@ public class CheckOptions : Options
     // that silently does nothing is worse than one that is not there.
 
     [Option("output-dir", Required = false, MetaValue = "DIR",
-        HelpText = "DIRECTORY ONLY. Where to write findings.md, results.json and traces/ " +
+        HelpText = "DIRECTORY ONLY. Where to write findings.md, findings.html, results.json and traces/ " +
                    "(default: the directory itself).")]
     public string OutputDir { get; set; } = string.Empty;
 
@@ -158,6 +159,13 @@ public class CheckOptions : Options
         HelpText = "DIRECTORY ONLY. Run the checks and write the report without asking a model " +
                    "anything. Most of the value, none of the cost, and the part that belongs in CI.")]
     public bool NoModel { get; set; }
+
+    [Option("allow-flagged-input", Required = false,
+        HelpText = "DIRECTORY ONLY. Ask the model its questions even when the input scan found " +
+                   "high-severity text in the policies — hidden characters, instructions aimed at " +
+                   "a model, markup. For findings you have read and judged benign; the report " +
+                   "records that it was used. The checks themselves always run.")]
+    public bool AllowFlaggedInput { get; set; }
 
     [Option("provider", Required = false, HelpText = "DIRECTORY ONLY. auto, bedrock or gemini.")]
     public string Provider { get; set; } = string.Empty;

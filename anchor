@@ -39,6 +39,7 @@ python_entry_point() {
         auto)     echo "src/agent/pipeline.py" ;;
         hitl)     echo "src/agent/hitl.py" ;;
         timeline) echo "src/checker/timeline.py" ;;
+        scan)     echo "src/checker/scan.py" ;;
         *)    return 1 ;;
     esac
 }
@@ -134,6 +135,8 @@ show_extra_verbs() {
   hitl       Draft the property module from a natural language brief with a human answering when a gate turns a draft away.
   
   timeline   Build the data a timeline visualisation draws, from a witness directory written by a check.
+  
+  scan       Look for hidden text, adversarial prompts and markup in a policy's inputs before a model sees them.
 EOF
 }
 

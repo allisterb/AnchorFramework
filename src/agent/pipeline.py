@@ -261,6 +261,13 @@ class Run:
     clarifications: list[tuple[str, str]] = field(default_factory=list)
     confirmed: bool = False
 
+    # WHAT THE INPUT SCAN SAID, when it said anything. Empty for clean input. Set when a finding
+    # was let through -- a medium one always, a high one only under --allow-flagged-input -- because
+    # every verdict below was produced by a model that read that text, and a findings.md that does
+    # not say so is overstating what ran. See src/checker/scan.py.
+    input_scan: str = ""
+    input_scan_overridden: bool = False
+
     decision: str = ""           # varies / constant / skipped, from the decision probe
     review: str = ""             # match / mismatch / no answer / skipped
     review_said: str = ""
@@ -677,6 +684,16 @@ def stage_report(run: Run, said: str) -> str:
     run.findings = run.out / "findings.md"
 
     lines = [f"# {run.policy.name}", "", f"**Stated intention.** {run.intent}", ""]
+    # THE INPUT SCAN, before anything a model produced -- because what it found is text the model
+    # read, and every verdict below is read differently if that text was an instruction to it.
+    if run.input_scan:
+        lines += ([f"> **The input scan flagged this policy's inputs, and they were shown to the "
+                   f"model anyway (`--allow-flagged-input`):** {run.input_scan}. Every result below "
+                   f"was produced by a model that read that text. Run `anchor scan` for the "
+                   f"findings.", ""]
+                  if run.input_scan_overridden else
+                  [f"**Input scan.** {run.input_scan} -- nothing high enough to refuse on; run "
+                   f"`anchor scan` for what was found.", ""])
     # WHAT A PERSON PUT IN, before any verdict. Every claim below is read differently depending on
     # whether the requirement arrived whole or was assembled over four rounds of being told what
     # was wrong with the last one -- and only this section can tell the two apart. In `auto` it is
@@ -1055,6 +1072,31 @@ def sweep(target: Path, intents: dict[str, str], *, out: Path | None = None,
     return runs
 
 
+def screen_inputs(policy: Path, *, intents: Path | None, event_schema: Path | None,
+                  intent: str | None, allow: bool) -> tuple[int | None, dict]:
+    """Scan everything a model is about to be shown, BEFORE it is shown any of it.
+
+    Returns an exit code to stop with, or None and the `Run` fields that put the scan on the
+    record. Shared by `auto` and `hitl` so the two cannot disagree about what gets through.
+
+    What is scanned is what the run will read: the policy (or every input in a directory), the
+    intents.md a single policy falls back to, a named --intents file, the event schema, and the
+    --intent text itself -- a requirement typed on the command line reaches the drafter exactly as
+    a file would, so it is screened exactly as one. See src/checker/scan.py for what is looked for.
+    """
+    from checker import scan as screen                              # noqa: PLC0415
+
+    root = policy if policy.is_dir() else policy.parent
+    paths = [policy, None if policy.is_dir() else root / "intents.md", intents, event_schema]
+    report = screen.scan([p for p in paths if p is not None], {"--intent": intent or ""},
+                         relative_to=root)
+    code = screen.gate(report, allow=allow, who="the model")
+    if code is not None:
+        return code, {}
+    return None, ({"input_scan": report.summary(), "input_scan_overridden": bool(report.high)}
+                  if report.high or report.medium else {})
+
+
 def _one(policy: Path, intent: str, out: Path, module: str, build_graph, kw) -> Run:
     run = Run(policy=policy, intent=intent, out=out, module_name=module, **kw)
     graph = (build_graph or build)(run)
@@ -1185,10 +1227,22 @@ def main() -> int:
                         "`score` runs TLC per mutant and is the one that would hit it")
     p.add_argument("--verbose", action="store_true",
                    help="leave third-party logging alone; see the note below")
+    p.add_argument("--allow-flagged-input", action="store_true",
+                   help="show the model inputs the scan flagged as high severity anyway. For a "
+                        "finding you have READ and judged benign -- a comment that discusses "
+                        "prompt injection, say. findings.md records that it was used")
     args = p.parse_args()
 
     # Before anything is read from them, and before the sweep globs children off `policy`.
     absolute(args, "policy", "intents", "out", "event_schema")
+
+    # BEFORE ANY MODEL IS SHOWN ANYTHING. The policy is often under analysis precisely because it
+    # is not trusted, and everything past this point hands its text to a model.
+    blocked, scanned = screen_inputs(args.policy, intents=args.intents,
+                                     event_schema=args.event_schema, intent=args.intent,
+                                     allow=args.allow_flagged_input)
+    if blocked is not None:
+        return blocked
 
     # BEFORE anything builds a model, and before the graph is built at all: every read of this
     # file happens inside policy_agent, lazily, so setting it here reaches all of them.
@@ -1209,7 +1263,8 @@ def main() -> int:
                   rounds=args.rounds, max_fields=args.max_fields,
                   limits={k: v for k, v in (("turns", args.turns),
                                             ("total_tokens", args.total_tokens),
-                                            ("output_tokens", args.output_tokens)) if v})
+                                            ("output_tokens", args.output_tokens)) if v},
+                  **scanned)
 
     if args.policy.is_dir() or args.intents:
         intents_file = args.intents or args.policy / "intents.md"

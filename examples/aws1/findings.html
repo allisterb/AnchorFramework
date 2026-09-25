@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-7Zb7As+CdEGML/omqpOxchKd7+qsoJLxd0lgHq/OrZw='; style-src 'sha256-LM5zIcMgLyo4g7Eye0lO4zApnz3zjDwWvxRXbLqFvmw='; img-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Findings &mdash; aws1</title>
+<style>/* The stylesheet findings.html inlines. The drawing is in timeline.js. */
+:root {
+  --bg:#f7f7f5; --panel:#ffffff; --ink:#1a1a18; --ink-soft:#55554e;
+  --ink-faint:#8a8a80; --rule:#e0e0d8;
+
+  --request:#b7791f;   /* an attempt                    */
+  --response:#2f7d5d;  /* it completed                  */
+  --error:#b4342b;     /* it was refused                */
+
+  --deny:#b4342b; --allow:#2f7d5d;
+  --counted:#b4342b; --quiet:#8a8a80; --cap:#55554e;
+  --window:#4a6fa5;    /* the interval a rule looks back over */
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:#16161a; --panel:#1e1e23; --ink:#ecece7; --ink-soft:#a8a89e;
+    --ink-faint:#74746b; --rule:#32323a;
+    --request:#e0a94a; --response:#5fb98c; --error:#e8695c;
+    --deny:#e8695c; --allow:#5fb98c;
+    --counted:#e8695c; --quiet:#74746b; --cap:#a8a89e; --window:#7fa6dd;
+  }
+}
+:root[data-theme="dark"] {
+  --bg:#16161a; --panel:#1e1e23; --ink:#ecece7; --ink-soft:#a8a89e;
+  --ink-faint:#74746b; --rule:#32323a;
+  --request:#e0a94a; --response:#5fb98c; --error:#e8695c;
+  --deny:#e8695c; --allow:#5fb98c;
+  --counted:#e8695c; --quiet:#74746b; --cap:#a8a89e; --window:#7fa6dd;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin:0; padding:32px 16px 56px; background:var(--bg); color:var(--ink);
+  font:16px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+.wrap { max-width:900px; margin:0 auto; }
+h1 { font-size:1.5rem; line-height:1.25; margin:0 0 6px; letter-spacing:-0.01em; }
+.sub { color:var(--ink-soft); margin:0 0 28px; font-size:0.95rem; }
+.panel { background:var(--panel); border:1px solid var(--rule); border-radius:10px;
+         padding:20px 18px; margin-bottom:20px; }
+h2 { font-size:0.78rem; text-transform:uppercase; letter-spacing:0.09em;
+     color:var(--ink-faint); margin:0 0 16px; font-weight:600; }
+svg { display:block; width:100%; height:auto; overflow:visible; }
+code { font-family:ui-monospace, SFMono-Regular, "Cascadia Mono", Consolas, monospace;
+       font-size:0.92em; }
+.legend { display:flex; flex-wrap:wrap; gap:16px; margin-top:14px;
+          font-size:0.8rem; color:var(--ink-soft); }
+.legend span { display:inline-flex; align-items:center; gap:6px; }
+.dot { width:10px; height:10px; border-radius:50%; flex:none; }
+/* Classes rather than style="" attributes: the page's Content-Security-Policy allows only this
+   stylesheet, by hash, so a colour set in the markup would simply not apply. */
+.dot.request  { background:var(--request); }
+.dot.response { background:var(--response); }
+.dot.error    { background:var(--error); }
+.swatch { width:14px; height:10px; flex:none; background:var(--window); opacity:0.35;
+          border-left:2px dashed var(--window); }
+p { margin:0 0 12px; } p:last-child { margin-bottom:0; }
+footer { color:var(--ink-faint); font-size:0.8rem; line-height:1.6; margin-top:28px; }
+footer code { color:var(--ink-soft); word-break:break-all; }
+.missing { border:1px solid var(--error); color:var(--error); border-radius:8px; padding:16px; }
+
+/* the rules on the decided action, and what the verdict says about each */
+ul.rules { list-style:none; margin:0; padding:0; }
+li.rule { padding:10px 12px; border-left:3px solid var(--rule); margin-bottom:8px;
+          background:color-mix(in srgb, var(--rule) 18%, transparent); border-radius:0 6px 6px 0; }
+li.rule > div:first-child { display:flex; flex-wrap:wrap; gap:4px 8px; align-items:baseline; }
+li.rule code { font-weight:600; }
+li.rule .status { margin-left:auto; font-size:0.85rem; font-weight:600; }
+li.rule.matched { border-left-color:var(--allow); }
+li.rule.matched .status { color:var(--allow); }
+li.rule.unmatched { opacity:0.8; }
+li.rule.unmatched .status { color:var(--ink-faint); }
+li.rule.unknown .status { color:var(--request); }
+li.rule .reading { margin-top:4px; font-size:0.85rem; color:var(--ink-soft); }
+li.rule .aside { margin-top:4px; font-size:0.8rem; color:var(--ink-faint); font-style:italic; }
+.footnote { margin-top:12px; font-size:0.8rem; color:var(--ink-faint); }
+
+/* a report over a policy set: a finding per broken claim, each in its own section */
+section.finding { margin:40px 0 0; padding-top:28px; border-top:2px solid var(--rule); }
+section.finding > h2.claim { font-size:1.15rem; text-transform:none; letter-spacing:0;
+                             color:var(--ink); margin:0 0 4px; font-weight:700; }
+.panel h3 { font-size:0.78rem; text-transform:uppercase; letter-spacing:0.09em;
+            color:var(--ink-faint); margin:0 0 16px; font-weight:600; }
+.panel.flagged { border-color:var(--error); }
+.panel.flagged h3 { color:var(--error); }
+.panel ol.checked { margin:0; padding-left:1.4em; }
+.panel ol.checked li { margin-bottom:6px; }
+.sev-high { color:var(--error); font-weight:700; }
+.sev-medium { color:var(--request); font-weight:700; }
+td.snippet code { word-break:break-all; }
+
+/* the input scan's table of findings */
+table.findings { width:100%; border-collapse:collapse; font-size:0.9rem; }
+table.findings th { text-align:left; font-size:0.72rem; text-transform:uppercase;
+                    letter-spacing:0.08em; color:var(--ink-faint); font-weight:600;
+                    padding:0 10px 8px 0; border-bottom:1px solid var(--rule); }
+table.findings td { padding:10px 10px 10px 0; border-bottom:1px solid var(--rule);
+                    vertical-align:top; }
+table.findings tr:last-child td { border-bottom:none; }
+@media (max-width:640px) {
+  table.findings thead { display:none; }
+  table.findings td { display:block; padding:2px 0; border:none; }
+  table.findings tr { display:block; padding:10px 0; border-bottom:1px solid var(--rule); }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Findings &mdash; <code>aws1</code></h1>
+  <p class="sub">3 broken claims drawn below, each with
+    the session that breaks it and the reference engine&rsquo;s verdict on that session. The
+    written report is <code>findings.md</code>, beside this file.</p>
+<div class="panel">
+  <h3>Input scan</h3>
+  <p>15 input files scanned: clean.</p>
+  <p class="footnote">What this looks for &mdash; hidden and reordering characters, look-alike letters in names, instructions aimed at a model, markup, terminal escapes and encoded payloads &mdash; is in <code>src/checker/scan.py</code>; <code>anchor scan</code> prints it.</p>
+</div>
+
+
+<section class="finding" data-finding>
+  <h2 class="claim">KeepsWriteWhileAdvisorEngaged</h2>
+  <p class="sub" data-part="subtitle"></p>
+  <div data-part="content" hidden>
+    <div class="panel">
+      <h3>The session</h3>
+      <svg data-part="timeline" viewBox="0 0 860 280" role="img"></svg>
+      <div class="legend">
+        <span><i class="dot request"></i>::request &mdash; an attempt</span>
+        <span><i class="dot response"></i>::response &mdash; it completed</span>
+        <span><i class="dot error"></i>::error &mdash; it was refused</span>
+        <span><i class="swatch"></i>the window a predicate rule looks back over</span>
+      </div>
+    </div>
+    <div class="panel" data-part="chart-panel">
+      <h3 data-part="chart-heading"></h3>
+      <svg data-part="chart" viewBox="0 0 860 240" role="img"></svg>
+    </div>
+    <div class="panel" data-part="rules-panel">
+      <h3 data-part="rules-heading"></h3>
+      <ul class="rules" data-part="rules"></ul>
+      <p class="footnote">Whether a rule matched is read off the verdict, not re-evaluated here:
+        the engine reports Cedar's determining set &mdash; the matching forbids when any forbid
+        matched, the matching permits otherwise, and nothing when a deny was by default.</p>
+    </div>
+    <div class="panel">
+      <h3>What decided it</h3>
+      <p data-part="why-rule"></p>
+      <p data-part="why-consequence"></p>
+    </div>
+    <footer data-part="provenance"></footer>
+  </div>
+  <div class="panel missing" data-part="missing">This finding could not be drawn: its script did
+    not run. Open the page in a browser with JavaScript enabled.</div>
+  <script type="application/json">{"generatedBy":"src/checker/timeline.py","chart":null,"policy":"07-trust-decay.dw","claim":"KeepsWriteWhileAdvisorEngaged","source":{"witness":"examples/aws1/traces/07-trust-decay-TrustDecay/witness","set":"examples/aws1","trace":"KeepsWriteWhileAdvisorEngaged.log","replay":"dogwood replay --policy-schema generated.cedarschema --trace KeepsWriteWhileAdvisorEngaged.log 07-trust-decay.dw","verdictsMissing":null,"shapesMissing":null},"rules":[{"index":0,"effect":"permit","action":"execute_trade","label":"\"After 15 minutes without advisor interaction, the agent loses access to write operations.\"","line":10,"shape":{"effect":"permit","actions":["execute_trade"],"kind":"predicate","negated":true,"requires":{"action":"interact_advisor","eventKind":"response","where":[],"window":900,"windowText":"15m"}}}],"events":[{"at":1,"action":"interact_advisor","kind":"response","input":{},"output":{},"isDecision":false},{"at":2,"action":"execute_trade","kind":"request","input":{},"output":{},"isDecision":true,"verdict":"DENY","rules":[]}]}</script>
+</section>
+<section class="finding" data-finding>
+  <h2 class="claim">LosesWriteAfter10m</h2>
+  <p class="sub" data-part="subtitle"></p>
+  <div data-part="content" hidden>
+    <div class="panel">
+      <h3>The session</h3>
+      <svg data-part="timeline" viewBox="0 0 860 280" role="img"></svg>
+      <div class="legend">
+        <span><i class="dot request"></i>::request &mdash; an attempt</span>
+        <span><i class="dot response"></i>::response &mdash; it completed</span>
+        <span><i class="dot error"></i>::error &mdash; it was refused</span>
+        <span><i class="swatch"></i>the window a predicate rule looks back over</span>
+      </div>
+    </div>
+    <div class="panel" data-part="chart-panel">
+      <h3 data-part="chart-heading"></h3>
+      <svg data-part="chart" viewBox="0 0 860 240" role="img"></svg>
+    </div>
+    <div class="panel" data-part="rules-panel">
+      <h3 data-part="rules-heading"></h3>
+      <ul class="rules" data-part="rules"></ul>
+      <p class="footnote">Whether a rule matched is read off the verdict, not re-evaluated here:
+        the engine reports Cedar's determining set &mdash; the matching forbids when any forbid
+        matched, the matching permits otherwise, and nothing when a deny was by default.</p>
+    </div>
+    <div class="panel">
+      <h3>What decided it</h3>
+      <p data-part="why-rule"></p>
+      <p data-part="why-consequence"></p>
+    </div>
+    <footer data-part="provenance"></footer>
+  </div>
+  <div class="panel missing" data-part="missing">This finding could not be drawn: its script did
+    not run. Open the page in a browser with JavaScript enabled.</div>
+  <script type="application/json">{"generatedBy":"src/checker/timeline.py","chart":{"rule":0,"effect":"permit","actions":["execute_trade"],"kind":"predicate","negated":true,"requires":{"action":"interact_advisor","eventKind":"response","where":[],"window":900,"windowText":"15m"}},"policy":"07-trust-decay.dw","claim":"LosesWriteAfter10m","source":{"witness":"examples/aws1/traces/07-trust-decay-TrustDecay10/witness","set":"examples/aws1","trace":"LosesWriteAfter10m.log","replay":"dogwood replay --policy-schema generated.cedarschema --trace LosesWriteAfter10m.log 07-trust-decay.dw","verdictsMissing":null,"shapesMissing":null},"rules":[{"index":0,"effect":"permit","action":"execute_trade","label":"\"After 15 minutes without advisor interaction, the agent loses access to write operations.\"","line":10,"shape":{"effect":"permit","actions":["execute_trade"],"kind":"predicate","negated":true,"requires":{"action":"interact_advisor","eventKind":"response","where":[],"window":900,"windowText":"15m"}}}],"events":[{"at":1,"action":"interact_advisor","kind":"response","input":{},"output":{},"isDecision":false},{"at":961,"action":"execute_trade","kind":"request","input":{},"output":{},"isDecision":true,"verdict":"ALLOW","rules":[0]}]}</script>
+</section>
+<section class="finding" data-finding>
+  <h2 class="claim">FreshPriceAloneIsNotEnough</h2>
+  <p class="sub" data-part="subtitle"></p>
+  <div data-part="content" hidden>
+    <div class="panel">
+      <h3>The session</h3>
+      <svg data-part="timeline" viewBox="0 0 860 280" role="img"></svg>
+      <div class="legend">
+        <span><i class="dot request"></i>::request &mdash; an attempt</span>
+        <span><i class="dot response"></i>::response &mdash; it completed</span>
+        <span><i class="dot error"></i>::error &mdash; it was refused</span>
+        <span><i class="swatch"></i>the window a predicate rule looks back over</span>
+      </div>
+    </div>
+    <div class="panel" data-part="chart-panel">
+      <h3 data-part="chart-heading"></h3>
+      <svg data-part="chart" viewBox="0 0 860 240" role="img"></svg>
+    </div>
+    <div class="panel" data-part="rules-panel">
+      <h3 data-part="rules-heading"></h3>
+      <ul class="rules" data-part="rules"></ul>
+      <p class="footnote">Whether a rule matched is read off the verdict, not re-evaluated here:
+        the engine reports Cedar's determining set &mdash; the matching forbids when any forbid
+        matched, the matching permits otherwise, and nothing when a deny was by default.</p>
+    </div>
+    <div class="panel">
+      <h3>What decided it</h3>
+      <p data-part="why-rule"></p>
+      <p data-part="why-consequence"></p>
+    </div>
+    <footer data-part="provenance"></footer>
+  </div>
+  <div class="panel missing" data-part="missing">This finding could not be drawn: its script did
+    not run. Open the page in a browser with JavaScript enabled.</div>
+  <script type="application/json">{"generatedBy":"src/checker/timeline.py","chart":{"rule":6,"effect":"permit","actions":["execute_trade"],"kind":"predicate","negated":false,"requires":{"action":"get_market_price","eventKind":"response","where":[],"window":30,"windowText":"30s"}},"policy":"agent-policy.dw","claim":"FreshPriceAloneIsNotEnough","source":{"witness":"examples/aws1/traces/agent-policy-TradeGate/witness","set":"examples/aws1","trace":"FreshPriceAloneIsNotEnough.log","replay":"dogwood replay --policy-schema generated.cedarschema --trace FreshPriceAloneIsNotEnough.log agent-policy.dw","verdictsMissing":null,"shapesMissing":null},"rules":[{"index":0,"effect":"permit","action":"get_client_profile","label":"the reads, which the article's snippets assume exist","line":22,"shape":{"effect":"permit","actions":["get_client_profile"],"kind":"unconditional"}},{"index":1,"effect":"permit","action":"get_market_price","label":"","line":28,"shape":{"effect":"permit","actions":["get_market_price"],"kind":"unconditional"}},{"index":2,"effect":"permit","action":"interact_advisor","label":"","line":34,"shape":{"effect":"permit","actions":["interact_advisor"],"kind":"unconditional"}},{"index":3,"effect":"permit","action":"load_portfolio","label":"policy 1: workflow sequencing","line":41,"shape":{"effect":"permit","actions":["load_portfolio"],"kind":"predicate","negated":false,"requires":{"action":"get_client_profile","eventKind":"response","where":[],"window":300,"windowText":"5m"}}},{"index":4,"effect":"permit","action":"rebalance_portfolio","label":"","line":50,"shape":{"effect":"permit","actions":["rebalance_portfolio"],"kind":"predicate","negated":false,"requires":{"action":"load_portfolio","eventKind":"response","where":[],"window":300,"windowText":"5m"}}},{"index":5,"effect":"permit","action":"execute_trade","label":"because read as a list of requirements they look like a conjunction.","line":63,"shape":{"effect":"permit","actions":["execute_trade"],"kind":"predicate","negated":false,"requires":{"action":"get_client_profile","eventKind":"response","where":[{"field":"input.profile_id","context":"profile_id"}],"window":86400,"windowText":"24h"}}},{"index":6,"effect":"permit","action":"execute_trade","label":"","line":74,"shape":{"effect":"permit","actions":["execute_trade"],"kind":"predicate","negated":false,"requires":{"action":"get_market_price","eventKind":"response","where":[],"window":30,"windowText":"30s"}}}],"events":[{"at":11,"action":"get_market_price","kind":"response","input":{},"output":{},"isDecision":false},{"at":40,"action":"execute_trade","kind":"request","input":{"profile_id":1},"output":{},"isDecision":true,"verdict":"ALLOW","rules":[6]}]}</script>
+</section>
+</div>
+<script>// Draw a witness session, from the data `src/checker/timeline.py` generates.
+//
+// findings.html inlines this file whole -- the page `anchor check <dir>` and `anchor timeline`
+// write beside findings.md. One renderer, inlined into one self-contained page per policy set.
+//
+// ONE PAGE, MANY FINDINGS. Every lookup is scoped to a root element carrying `data-finding`, and
+// the parts inside it are named with `data-part` rather than `id` -- ids are page-wide, and a report
+// for a policy set holds a finding per broken claim. Parts are filled if present:
+//   content missing subtitle timeline chart-panel chart-heading chart
+//   rules-panel rules-heading rules why-rule why-consequence provenance
+//
+// The data is a `<script type="application/json">` block inside each root: parsed, never executed.
+//
+// Numbers are shown plain. `data-unit="$"` on the root or an ancestor would name their unit, but
+// nothing in a policy says a field is money, so a generated page never sets it.
+//
+// WHY THE PAGE CARRIES A CONTENT-SECURITY-POLICY. It renders a policy someone chose to analyse --
+// often because they do not trust it -- and that policy's comments and names reach the page. The
+// `html` tag below escapes all of it, which is one layer, and one a future edit could bypass by
+// adding a new sink. The CSP is the second, independent layer: it allows exactly the SHA-256 of this
+// file as inlined, so an injected <script> or onerror= does not run even if escaping failed.
+//
+// So: no style="" attributes, no eval. And never a closing script tag, nor an HTML comment opener,
+// anywhere in this file -- comments included. The page inlines it inside a script element, where
+// the first would end it early and the second changes how the parser reads the rest. timeline.py
+// refuses to inline a renderer containing either. A colour goes in timeline.css as a class.
+(function () {
+  function render(DATA, root) {
+    // Every lookup is scoped to `root`, so one page can hold many findings.
+    const part = name => root.querySelector(`[data-part="${name}"]`);
+
+
+    const show = (id, on) => { const e = part(id); if (e) e.hidden = !on; };
+    show("missing", false);
+    show("content", true);
+
+    // EVERY innerHTML IN THIS FILE GOES THROUGH `html`, which escapes what it interpolates. It
+    // matters because the prose quotes the POLICY: rule labels are lifted from `.dw` comments, which
+    // are third-party text, and a comment holding `<img onerror=...>` would otherwise run in the
+    // reader's browser. `set` accepts only what `html` produced -- a plain string is shown as text,
+    // so a future slip renders markup literally instead of executing it.
+    class Raw { constructor(s) { this.s = s; } }
+    const esc = v => String(v).replace(/[&<>"']/g, c =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+    const piece = v => v instanceof Raw ? v.s : (v == null ? "" : esc(v));
+    const html = (strings, ...vals) =>
+      new Raw(strings.reduce((acc, s, i) => acc + s + (i < vals.length ? piece(vals[i]) : ""), ""));
+    const join = (frags, sep) => new Raw(frags.map(piece).join(piece(sep)));
+    // Fragments are objects, so `+` would stringify them to "[object Object]"; join them with this.
+    const cat = (...frags) => join(frags, "");
+    const set = (id, frag) => {
+      const e = part(id);
+      if (!e) return;
+      if (frag instanceof Raw) e.innerHTML = frag.s; else e.textContent = frag ?? "";
+    };
+
+    // Dogwood's complete decision-event vocabulary. Listing it is a fact about the LANGUAGE, not a
+    // claim about any policy: showing every kind is what lets a reader see that the one meaning
+    // "the action actually completed" never occurs, without the page asserting what was intended.
+    const KINDS = ["request", "response", "error"];
+    const KIND_COLOR = { request: "var(--request)", response: "var(--response)", error: "var(--error)" };
+
+    const NS = "http://www.w3.org/2000/svg";
+    const el = (n, a = {}) => {
+      const e = document.createElementNS(NS, n);
+      for (const k in a) e.setAttribute(k, a[k]);
+      return e;
+    };
+    const MONO = { "font-family": "ui-monospace, monospace" };
+    const text = (svg, a, content) => {
+      const t = el("text", a); t.textContent = content; svg.appendChild(t); return t;
+    };
+    const UNIT = (root.closest("[data-unit]") || { dataset: {} }).dataset.unit || "";
+    const money = n => UNIT + Number(n).toLocaleString("en-US");
+
+    // Trace timestamps are seconds, and a gap stated as a bare number invites the reader to compare
+    // it against a window they are also reading as a bare number. Both are durations; say so.
+    const dur = s =>
+      (s >= 3600 && s % 3600 === 0) ? (s / 3600) + "h" :
+      (s >= 60 && s % 60 === 0) ? (s / 60) + "m" : s + "s";
+
+    const EVENTS = DATA.events;
+    const CHART = DATA.chart;
+    const ruleAt = Object.fromEntries(DATA.rules.map(r => [r.index, r]));
+    const decisions = EVENTS.filter(e => e.verdict);
+    const deciding = CHART ? ruleAt[CHART.rule] : null;
+
+    // The author's comment, when there is one, as an aside -- never as the description of the rule.
+    const labelled = () => deciding && deciding.label
+      ? html` &mdash; <i>${deciding.label}</i> &mdash;` : html``;
+
+    // The window a predicate rule looks back over, anchored at the decision it was evaluated for.
+    const decisionAt = decisions.length ? decisions[decisions.length - 1].at : null;
+    const band = (CHART && CHART.kind === "predicate" && CHART.requires && decisionAt !== null)
+      ? { from: decisionAt - CHART.requires.window, to: decisionAt }
+      : null;
+
+    function readField(ev) {
+      const [side, name] = ((CHART && CHART.field) || "input.amount").split(".");
+      return (ev[side] || {})[name];
+    }
+
+    function note(ev) {
+      if (ev.kind === "error") return "refused, nothing happened";
+      if (ev.kind === "request") {
+        return readField(ev) != null ? "attempt " + money(readField(ev)) : "attempt";
+      }
+      if (ev.kind === "response") return "completed";
+      return ev.kind;
+    }
+
+    // The event a predicate rule looks for, WITH its constraints, in the policy's own syntax. Leaving
+    // `{ input.profile_id: context.input.profile_id }` off would describe the rule as satisfied by any
+    // profile load, when it is satisfied only by the one the request names.
+    function eventText(q) {
+      const w = (q.where || []).map(c =>
+        `${c.field}: ${"context" in c ? "context.input." + c.context : JSON.stringify(c.literal)}`);
+      return `${q.action}::${q.eventKind}${w.length ? "{ " + w.join(", ") + " }" : ""}`;
+    }
+
+    // Whether an event satisfies what a predicate looks for, constraints included, against the
+    // request being decided. This is the page's own reading; the engine's verdict stays the authority.
+    function satisfies(ev, q, decision) {
+      if (ev.action !== q.action || ev.kind !== q.eventKind) return false;
+      return (q.where || []).every(c => {
+        const [side, name] = c.field.split(".");
+        const got = (ev[side] || {})[name];
+        return "context" in c ? got === (decision.input || {})[c.context] : got === c.literal;
+      });
+    }
+
+    // What a rule does, in words, from its parsed shape. The parse is always right about this;
+    // the comment above a rule is only as right as the file's commenting convention.
+    function shapeText(s) {
+      if (!s) return "not described: " + (DATA.source.shapesMissing || "no parse");
+      switch (s.kind) {
+        case "unconditional": return "unconditionally";
+        case "predicate":
+          return `${s.negated ? "unless" : "when"} ${eventText(s.requires)} within ${s.requires.windowText}`;
+        case "aggregate":
+          return `when the ${s.aggregate} of ${s.field} over ${s.action}::${s.eventKind}` +
+                 ` within ${s.windowText} is ${s.cmp} ${money(s.threshold)}`;
+        default: return "on a condition this view does not take apart";
+      }
+    }
+
+    // --- subtitle -------------------------------------------------------------
+    set("subtitle", cat(
+      html`<code>${DATA.source.witness}/${DATA.policy}</code> &mdash; `,
+      html`${EVENTS.length} events, ${decisions.length} decision${decisions.length === 1 ? "" : "s"}, `,
+      html`claim <code>${DATA.claim}</code>.`));
+
+    // --- the timeline ---------------------------------------------------------
+    (function timeline() {
+      const svg = part("timeline");
+      if (!svg) return;
+      const L = 70, R = 790, axisY = 130;
+
+      // POSITION BY TIMESTAMP, NOT BY INDEX. For a session whose events are one tick apart the two
+      // are the same, but a rule about a window is a claim ABOUT the gap: drawing `@1` and `@961`
+      // the same distance apart as `@1` and `@2` hides the only thing under test. Even spacing is
+      // kept as a fallback for a degenerate span, and for one so lopsided that markers would
+      // collide, and the page says which it used rather than leaving the reader to assume.
+      const ats = EVENTS.map(e => e.at);
+      const lo = Math.min(...ats, band ? band.from : Infinity);
+      const hi = Math.max(...ats);
+      const span = hi - lo;
+      let proportional = span > 0;
+      const byTime = at => L + ((at - lo) / span) * (R - L);
+      if (proportional) {
+        const xs = ats.map(byTime).sort((a, b) => a - b);
+        const tightest = Math.min(...xs.slice(1).map((x, i) => x - xs[i]));
+        if (xs.length > 1 && tightest < 64) proportional = false;   // would overlap; be readable
+      }
+      const step = (R - L) / Math.max(EVENTS.length - 1, 1);
+      const xOf = (ev, i) => proportional ? byTime(ev.at) : L + i * step;
+
+      svg.setAttribute("aria-label",
+        `Session of ${EVENTS.length} events; ` +
+        decisions.map(d => `@${d.at} ${d.verdict}`).join(", ") + ".");
+
+      // the window band, drawn first so markers sit on top of it
+      if (band && proportional) {
+        const x1 = byTime(Math.max(band.from, lo)), x2 = byTime(band.to);
+        svg.appendChild(el("rect", { x: x1, y: axisY - 26, width: Math.max(x2 - x1, 1), height: 52,
+                                     fill: "var(--window)", opacity: 0.16 }));
+        svg.appendChild(el("line", { x1: x1, y1: axisY - 26, x2: x1, y2: axisY + 26,
+                                     stroke: "var(--window)", "stroke-width": 1.5,
+                                     "stroke-dasharray": "4 3" }));
+        text(svg, { x: (x1 + x2) / 2, y: axisY - 34, "text-anchor": "middle",
+                    fill: "var(--window)", "font-size": 12, "font-weight": 600 },
+             `${CHART.requires.windowText} window`);
+      }
+
+      svg.appendChild(el("line", { x1: L - 26, y1: axisY, x2: R + 30, y2: axisY,
+                                   stroke: "var(--rule)", "stroke-width": 2 }));
+
+      EVENTS.forEach((ev, i) => {
+        const x = xOf(ev, i), color = KIND_COLOR[ev.kind] || "var(--ink-faint)";
+        svg.appendChild(el("line", { x1: x, y1: axisY - 26, x2: x, y2: axisY,
+                                     stroke: color, "stroke-width": 2, opacity: 0.45 }));
+        // A refusal is a square, so it reads differently from an attempt at a glance.
+        svg.appendChild(ev.kind === "error"
+          ? el("rect", { x: x - 8, y: axisY - 8, width: 16, height: 16, fill: color, rx: 2 })
+          : el("circle", { cx: x, cy: axisY, r: 8, fill: color }));
+
+        text(svg, { x, y: axisY + 26, "text-anchor": "middle", fill: "var(--ink-faint)",
+                    "font-size": 13, ...MONO }, "@" + ev.at);
+        text(svg, { x, y: axisY - 40, "text-anchor": "middle", fill: "var(--ink)",
+                    "font-size": 12.5, ...MONO }, ev.action + "::" + ev.kind);
+        text(svg, { x, y: axisY - 56, "text-anchor": "middle", fill: "var(--ink-faint)",
+                    "font-size": 12 }, note(ev));
+
+        if (ev.verdict) {
+          const bad = ev.verdict === "DENY" ? "var(--deny)" : "var(--allow)";
+          svg.appendChild(el("rect", { x: x - 48, y: axisY + 44, width: 96, height: 42, rx: 6,
+                                       fill: "none", stroke: bad, "stroke-width": 1.5 }));
+          text(svg, { x, y: axisY + 62, "text-anchor": "middle", fill: bad,
+                      "font-size": 14, "font-weight": 700, ...MONO }, ev.verdict);
+          // No rule means the deny was by default, which is a different fact worth saying.
+          text(svg, { x, y: axisY + 78, "text-anchor": "middle", fill: "var(--ink-faint)",
+                      "font-size": 11.5 },
+               ev.rules.length ? "rule " + ev.rules.join(", ") : "by default");
+        }
+      });
+
+      text(svg, { x: L - 26, y: axisY + 112, fill: "var(--ink-faint)", "font-size": 11.5 },
+           proportional ? "Events are placed by timestamp."
+                        : "Events are evenly spaced; timestamps would overlap at this scale.");
+    })();
+
+    // --- the aggregate chart: one bar per event kind --------------------------
+    // The rule names ONE kind. Summing the same field over each kind and letting the reader compare
+    // is mechanical; saying which kind the requirement meant would not be.
+    if (CHART && CHART.kind === "aggregate" && part("chart")) {
+      const svg = part("chart");
+      set("chart-heading", `what rule ${CHART.rule} sums, by event kind, within ${CHART.windowText}`);
+
+      const L = 250, R = 790;
+      const rows = KINDS.map(k => ({
+        kind: k,
+        value: EVENTS.filter(e => e.action === CHART.action && e.kind === k)
+                     .reduce((s, e) => s + (readField(e) ?? 0), 0)
+      }));
+      const max = Math.max(...rows.map(r => r.value), CHART.threshold) * 1.15;
+      const x = v => L + (v / max) * (R - L);
+      svg.setAttribute("aria-label", rows.map(r => `${r.kind} ${money(r.value)}`).join("; "));
+
+      rows.forEach((row, i) => {
+        const y = 42 + i * 56;
+        const counted = row.kind === CHART.eventKind;
+        const color = counted ? "var(--counted)" : "var(--quiet)";
+        text(svg, { x: L - 16, y: y + 14, "text-anchor": "end", fill: "var(--ink)",
+                    "font-size": 14, "font-weight": 600, ...MONO }, "::" + row.kind);
+        if (counted) {
+          text(svg, { x: L - 16, y: y + 31, "text-anchor": "end", fill: "var(--counted)",
+                      "font-size": 11.5, "font-weight": 600 }, `counted by rule ${CHART.rule}`);
+        }
+        svg.appendChild(el("rect", { x: L, y, width: R - L, height: 24, rx: 4,
+                                     fill: "var(--rule)", opacity: 0.4 }));
+        // Give zero a sliver, so it reads as measured rather than missing.
+        const w = Math.max(x(row.value) - L, row.value === 0 ? 3 : 0);
+        svg.appendChild(el("rect", { x: L, y, width: w, height: 24, rx: 4, fill: color,
+                                     opacity: counted ? 1 : 0.55 }));
+        text(svg, { x: L + w + 12, y: y + 17, fill: color, "font-size": 14,
+                    "font-weight": 700, ...MONO }, money(row.value));
+      });
+
+      const cx = x(CHART.threshold);
+      svg.appendChild(el("line", { x1: cx, y1: 22, x2: cx, y2: 42 + rows.length * 56 - 14,
+                                   stroke: "var(--cap)", "stroke-width": 1.5,
+                                   "stroke-dasharray": "5 4" }));
+      text(svg, { x: cx, y: 14, "text-anchor": "middle", fill: "var(--cap)", "font-size": 12,
+                  "font-weight": 600, ...MONO },
+           `forbids ${CHART.cmp} ${money(CHART.threshold)}`);
+      text(svg, { x: L, y: 42 + rows.length * 56 + 14, fill: "var(--ink-soft)", "font-size": 13 },
+           "Same session, same field. Only ::response means it completed.");
+    } else {
+      show("chart-panel", false);
+    }
+
+    // --- the rules that could have decided it ---------------------------------
+    // Every rule on the decided action, and whether it matched -- READ OFF THE VERDICT, not
+    // re-evaluated here. `[rules: N]` is Cedar's determining set: the matching forbids when any
+    // forbid matched, the matching permits otherwise, and nothing when the deny was by default. So:
+    //   ALLOW           every permit that matched is listed, and no forbid matched
+    //   deny by default nothing matched
+    //   DENY by forbid  every forbid that matched is listed; a permit may have matched and been
+    //                   overridden, and the verdict cannot say which
+    // That last case is reported as unknowable rather than guessed, because it is.
+    (function rulesPanel() {
+      const list = part("rules");
+      if (!list) return;
+      const last = decisions[decisions.length - 1];
+      const on = last ? DATA.rules.filter(r =>
+        (r.shape ? r.shape.actions : [r.action]).includes(last.action)) : [];
+      if (!on.length) { show("rules-panel", false); return; }
+      set("rules-heading", `rules on ${last.action}, at the decision @${last.at}`);
+
+      const determined = new Set(last.rules);
+      const status = r => {
+        if (determined.has(r.index)) return ["matched", `matched: determined the ${last.verdict}`];
+        if (last.verdict === "DENY" && last.rules.length && r.effect === "permit") {
+          return ["unknown", "overridden if it matched; the verdict cannot say"];
+        }
+        return ["unmatched", "did not match"];
+      };
+
+      // Why a predicate rule did or did not match, read off the trace by this page. It must agree
+      // with what the verdict says about the rule; where it cannot be checked it is labelled as the
+      // page's own reading, and where it disagrees the page says so and defers to the verdict.
+      const reading = (r, cls) => {
+        const s = r.shape;
+        if (!s || s.kind !== "predicate") return null;
+        const q = s.requires;
+        const prior = EVENTS.filter(e => e.at < last.at && satisfies(e, q, last));
+        const pre = prior.length ? prior[prior.length - 1] : null;
+        const gap = pre ? last.at - pre.at : null;
+        const inside = gap !== null && gap <= q.window;
+        const matches = s.negated ? !inside : inside;
+        const seen = pre
+          ? `${eventText(q)} at @${pre.at}, ${dur(gap)} earlier: ${inside ? "inside" : "outside"} the ${q.windowText} window`
+          : `no ${eventText(q)} before it`;
+        const so = `so, gated ${s.negated ? "unless" : "when"}, it ${matches ? "matches" : "does not match"}`;
+        if ((cls === "matched" && !matches) || (cls === "unmatched" && matches)) {
+          return `this page's reading (${seen}) disagrees with the verdict; trust the verdict`;
+        }
+        return cls === "unknown" ? `this page's reading: ${seen}, ${so}` : `${seen}, ${so}`;
+      };
+
+      list.replaceChildren(...on.map(r => {
+        const [cls, said] = status(r);
+        const li = document.createElement("li");
+        li.className = "rule " + cls;
+        const head = document.createElement("div");
+        const id = document.createElement("code");
+        id.textContent = `rule ${r.index}`;
+        const what = document.createElement("span");
+        what.textContent = ` ${r.effect} ${shapeText(r.shape)}`;
+        const verdict = document.createElement("span");
+        verdict.className = "status";
+        verdict.textContent = said;
+        head.append(id, what, verdict);
+        li.append(head);
+        const why = reading(r, cls);
+        if (why) {
+          const line = document.createElement("div");
+          line.className = "reading";
+          line.textContent = why;
+          li.append(line);
+        }
+        if (r.label) {
+          const aside = document.createElement("div");
+          aside.className = "aside";
+          aside.textContent = `comment above, line ${r.line}: ${r.label}`;
+          li.append(aside);
+        }
+        return li;
+      }));
+    })();
+
+    // --- the prose, named from the data --------------------------------------
+    if (CHART && CHART.kind === "aggregate") {
+      set("why-rule", cat(
+        html`Rule&nbsp;${CHART.rule}${labelled()} takes the `,
+        html`<code>${CHART.aggregate}</code> of <code>${CHART.field}</code> over `,
+        html`<code>${CHART.action}::${CHART.eventKind}</code> within `,
+        html`<code>${CHART.windowText}</code>, and forbids when that total is `,
+        html`<code>${CHART.cmp} ${money(CHART.threshold)}</code>.`));
+    } else if (CHART && CHART.kind === "predicate" && CHART.requires) {
+      const r = CHART.requires;
+      const gate = CHART.negated ? "unless" : "when";
+      set("why-rule", cat(
+        html`Rule&nbsp;${CHART.rule}${labelled()} is a <code>${CHART.effect}</code> `,
+        html`on <code>${(CHART.actions || []).join(", ")}</code> gated <b>${gate}</b> `,
+        html`<code>${eventText(r)}</code> occurred within <code>${r.windowText}</code>.`));
+
+      // The prerequisite is the LATEST event before the decision that satisfies the predicate,
+      // constraints included -- not simply the first event of the session, which is only the same
+      // thing in a two-event trace, and not any event of the right kind, which ignores the join.
+      const decision = decisions[decisions.length - 1];
+      const prior = decisionAt === null ? [] : EVENTS.filter(e =>
+        e.at < decisionAt && satisfies(e, r, decision));
+      const pre = prior.length ? prior[prior.length - 1] : null;
+      const gap = pre ? decisionAt - pre.at : null;
+      const inside = gap !== null && gap <= r.window;
+      const fires = CHART.negated ? !inside : inside;
+
+      // The ENGINE says whether it fired: `CHART.rule` is in the determining set, so it matched.
+      // `inside` is this page's own reading of the window. If they disagree the page says so,
+      // rather than print an explanation that contradicts the verdict drawn beside it.
+      set("why-consequence",
+        !fires
+          ? cat(html`<b>This page's reading of the window disagrees with the engine</b>, which `,
+                html`lists rule ${CHART.rule} as determining the verdict. Trust the verdict.`)
+        : pre === null
+          ? cat(html`No <code>${eventText(r)}</code> occurs before the decision at `,
+                html`all, so the condition is <b>false</b> &mdash; and because the rule is gated `,
+                html`<b>${gate}</b>, that makes the ${CHART.effect} <b>fire</b>.`)
+          : cat(html`Here the <code>${eventText(r)}</code> at <code>@${pre.at}</code> `,
+                html`is <code>${dur(gap)}</code> before the decision, against a window of `,
+                html`<code>${r.windowText}</code>, so the condition is `,
+                html`<b>${inside ? "true" : "false"}</b> &mdash; and because the rule is gated `,
+                html`<b>${gate}</b>, that makes the ${CHART.effect} <b>fire</b>.`));
+    } else if (CHART) {
+      // A deciding rule that is unconditional, or whose condition this view does not take apart.
+      set("why-rule", cat(html`Rule&nbsp;${CHART.rule}${labelled()} is a <code>${CHART.effect}</code> `,
+        html`on <code>${(CHART.actions || []).join(", ")}</code>, ${shapeText(CHART)}.`));
+    } else if (decisions.length) {
+      // No deciding rule to describe. A deny by default is the common reason, and it is a finding in
+      // its own right: every rule on the action failed to match, and the rules panel says why.
+      const last = decisions[decisions.length - 1];
+      set("why-rule", !last.rules.length
+        ? `No rule determined the ${last.verdict}. It was a deny by default: no permit on ` +
+          `${last.action} matched, and each one on it is listed with the reason it did not.`
+        : `The deciding rule was not described: ${DATA.source.shapesMissing || "no parse"}.`);
+    }
+
+    // --- provenance -----------------------------------------------------------
+    set("provenance", cat(
+      html`Trace generated by <code>src/checker/witness.py</code> from the TLC counterexample to `,
+      html`<code>${DATA.claim}</code>; this page's data by <code>${DATA.generatedBy}</code>, `,
+      html`which reads the rule out of the policy rather than restating it. Verdicts are the `,
+      html`reference engine's, not ours:<br><code>${DATA.source.replay}</code><br>&rarr; `,
+      join(decisions.map(d => html`<code>@${d.at}: ${d.verdict}${
+        d.rules.length ? " [rules: " + d.rules.join(", ") + "]" : ""}</code>`), html` &middot; `)));
+  }
+
+  // Draw every finding on the page. A block that is missing or will not parse is SAID, not taken
+  // for "no data": the missing panel says what went wrong, so an unreadable finding cannot pass for
+  // one that was never generated.
+  document.querySelectorAll("[data-finding]").forEach(root => {
+    const say = text => {
+      const missing = root.querySelector('[data-part="missing"]');
+      if (missing) missing.textContent = text;
+    };
+    const block = root.querySelector('script[type="application/json"]');
+    if (!block) return say("This finding carries no data block.");
+    let data;
+    try {
+      data = JSON.parse(block.textContent);
+    } catch (e) {
+      return say("This finding's data could not be read: " + e.message);
+    }
+    // Outside the try: a fault in the drawing is a bug here, not unreadable data, and must not
+    // be reported as the second.
+    render(data, root);
+  });
+})();
+</script>
+</body>
+</html>

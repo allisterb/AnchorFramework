@@ -256,6 +256,7 @@ public static class Program
         if (opts.Smoke is int sm) args.AddRange(["--smoke", sm.ToString()]);
         if (opts.MaxFields is int mf) args.AddRange(["--max-fields", mf.ToString()]);
         if (opts.NoModel) args.Add("--no-model");
+        if (opts.AllowFlaggedInput) args.Add("--allow-flagged-input");
 
         // No timeout of our own: a directory of policies is minutes of TLC per policy, and a cap
         // here would kill a run that was working. The script bounds each check itself.

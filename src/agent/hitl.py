@@ -832,10 +832,20 @@ def main() -> int:
     p.add_argument("--total-tokens", type=int, default=None)
     p.add_argument("--output-tokens", type=int, default=None)
     p.add_argument("--verbose", action="store_true")
+    p.add_argument("--allow-flagged-input", action="store_true",
+                   help="show the model inputs the scan flagged as high severity anyway, after "
+                        "reading the findings. The session record says it was used")
     args = p.parse_args()
 
     # Before anything is read from them, and before the sweep globs children off `policy`.
     pipeline.absolute(args, "policy", "intents", "out", "event_schema")
+
+    # BEFORE ANY MODEL IS SHOWN ANYTHING -- the same gate `auto` uses, so the two cannot disagree.
+    blocked, scanned = pipeline.screen_inputs(args.policy, intents=args.intents,
+                                              event_schema=args.event_schema, intent=args.intent,
+                                              allow=args.allow_flagged_input)
+    if blocked is not None:
+        return blocked
 
     # BEFORE anything builds a model, and before the graph is built at all: every read of this
     # file happens inside policy_agent, lazily, so setting it here reaches all of them.
@@ -865,6 +875,21 @@ def main() -> int:
         print("no requirement given", file=sys.stderr)
         return 2
 
+    # A requirement typed at the prompt reaches the drafter too, and pasted text is where a
+    # payload would come from. From --intent or intents.md it was screened above already; saying
+    # so twice costs nothing, and letting a pasted one through unscreened would.
+    if not args.intent:
+        from checker import scan as screen                              # noqa: PLC0415
+        typed = screen.scan([], {"the requirement": brief})
+        if screen.gate(typed, allow=args.allow_flagged_input, who="the model") is not None:
+            return 2
+        if typed.high or typed.medium:
+            # Joined to what the files said, not in place of it.
+            scanned = {"input_scan": "; ".join(filter(None, [scanned.get("input_scan"),
+                                                             f"the typed requirement: {typed.summary()}"])),
+                       "input_scan_overridden": scanned.get("input_scan_overridden", False)
+                                                or bool(typed.high)}
+
     session = refine(
         args.policy, brief, console,
         out=args.out, refinements=args.refinements,
@@ -873,7 +898,8 @@ def main() -> int:
         rounds=args.rounds, max_fields=args.max_fields,
         limits={k: v for k, v in (("turns", args.turns),
                                   ("total_tokens", args.total_tokens),
-                                  ("output_tokens", args.output_tokens)) if v})
+                                  ("output_tokens", args.output_tokens)) if v},
+        **scanned)
 
     session.out.mkdir(parents=True, exist_ok=True)
     where = session.out / "session.md"

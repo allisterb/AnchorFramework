@@ -9,6 +9,7 @@
       auto                                     Python, src/agent/pipeline.py
       hitl                                     Python, src/agent/hitl.py
       timeline                                 Python, src/checker/timeline.py
+      scan                                     Python, src/checker/scan.py
 
     The split is deliberate rather than historical. `check`, `explain` and `server` are genuinely
     C#-fronted -- the checker is reached through them and the MCP server IS them. The two drafting
@@ -68,6 +69,7 @@ $PythonVerbs = @{
     auto     = 'src/agent/pipeline.py'
     hitl     = 'src/agent/hitl.py'
     timeline = 'src/checker/timeline.py'
+    scan     = 'src/checker/scan.py'
 }
 
 # The CLI's own help cannot mention the verbs it does not have, so this script says them after.
@@ -155,6 +157,8 @@ function Show-ExtraVerbs {
     Write-Output '  hitl       Draft the property module from a natural language brief with a human answering when a gate turns a draft away'
     Write-Output ''
     Write-Output '  timeline   Build the data a timeline visualisation draws, from a witness directory written by a check'
+    Write-Output ''
+    Write-Output '  scan       Look for hidden text, adversarial prompts and markup in a policy''s inputs before a model sees them'
     Write-Output ''
 }
 
