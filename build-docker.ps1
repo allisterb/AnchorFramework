@@ -98,10 +98,12 @@ function Invoke-Git { & git -C $RepoRoot @args }
 # Whether a native command succeeds, output discarded. EAP is lowered for the call because Windows
 # PowerShell turns redirected native stderr into ErrorRecords, which 'Stop' then makes fatal.
 # No param block on purpose: a named parameter would capture a flag meant for the command, as
-# 'git -C' once bound to it.
+# 'git -C' once bound to it. And @() around the rest, because splatting a lone STRING passes its
+# characters: `docker info` ran as `docker i n f o`, failed, and read as "the daemon is down".
 function Test-Native {
     $ErrorActionPreference = 'Continue'
-    $command, $rest = $args
+    $command = $args[0]
+    $rest = @($args | Select-Object -Skip 1)
     & $command @rest *> $null
     $LASTEXITCODE -eq 0
 }
@@ -132,6 +134,11 @@ if (-not $Version) {
 $canonical = $Repository.ToLowerInvariant() -replace '^(docker\.io|index\.docker\.io|registry-1\.docker\.io)/', ''
 if ($FrozenRepositories -contains $canonical) {
     Stop-Build "$Repository is frozen: it holds the image submitted for judging and must stay as submitted. Tag another repository with -Repository."
+}
+# ECR Public repositories are public.ecr.aws/<alias>/<repository>. The alias alone tags an image
+# that builds and then cannot be pushed, which is a slow way to find out.
+if ($canonical -match '^public\.ecr\.aws/[^/]+$') {
+    Stop-Build "$Repository is an ECR Public registry alias, not a repository. Name the repository too: $Repository/anchor, or whatever you called it." 2
 }
 
 #endregion

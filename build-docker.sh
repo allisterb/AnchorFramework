@@ -120,6 +120,12 @@ for frozen in "${frozen_repositories[@]}"; do
     [ "$canonical" != "$frozen" ] \
         || die "$repository is frozen: it holds the image submitted for judging and must stay as submitted. Tag another repository with -r."
 done
+# ECR Public repositories are public.ecr.aws/<alias>/<repository>. The alias alone tags an image
+# that builds and then cannot be pushed, which is a slow way to find out.
+if [[ "$canonical" =~ ^public\.ecr\.aws/[^/]+$ ]]; then
+    echo "$repository is an ECR Public registry alias, not a repository. Name the repository too: $repository/anchor, or whatever you called it." >&2
+    exit 2
+fi
 
 case "$platform" in
     ""|linux/amd64|linux/arm64) ;;
