@@ -1,11 +1,11 @@
 # Deploying to Bedrock AgentCore Runtime
 
-The agent packaged as a container and run by AWS. [`Dockerfile`](Dockerfile) is the image,
+The agent packaged as a container and run by AWS. [`Dockerfile.agentcore`](Dockerfile.agentcore) is the image,
 [`iam/`](iam) is the execution role, [`render.py`](render.py) fills in the account-specific parts.
 
-**There are two images and this page is about one of them.** [`Dockerfile`](Dockerfile) is a
+**There are two images and this page is about one of them.** [`Dockerfile.agentcore`](Dockerfile.agentcore) is a
 SERVICE: it answers `POST /invocations` on 8080 and its entry point is `src/agent/server.py`.
-[`Dockerfile.cli`](Dockerfile.cli) is a COMMAND — its entry point is the `anchor` launcher, so
+[`Dockerfile`](Dockerfile) is a COMMAND — its entry point is the `anchor` launcher, so
 `docker run anchor check policy.dw` works and nothing is installed on the host. They are separate
 rather than one image with two entry points because a CLI image wants a small surface and a service
 image wants a fixed one. See the repository README for the CLI one.
@@ -38,11 +38,11 @@ says about a counterexample we produced.
 So what this image actually gives up is those two answers. `engine.available()` is false in it,
 both paths degrade to "not available" and say so, and nothing reports a wrong verdict as a result.
 That is a real trade rather than a free one: it buys not running an emulated Rust build, which was
-measured as the slowest and least predictable part of the arm64 image. `Dockerfile.cli` does carry
+measured as the slowest and least predictable part of the arm64 image. `Dockerfile` does carry
 Dogwood, cross-linked on the build host instead of emulated, so the same trade is available here if
 the missing answers turn out to matter — **not yet decided**.
 
-Two things in the Dockerfile look like overhead and are not. `libicu72` is required: a slim Python
+Two things in `Dockerfile.agentcore` look like overhead and are not. `libicu72` is required: a slim Python
 image has no ICU and the self-contained binary dies at startup without it. The alternative,
 `InvariantGlobalization`, is smaller and *wrong* — it silently changes culture-sensitive string
 behaviour, so the container would differ from every developer machine in ways nothing reports.
@@ -53,7 +53,7 @@ AgentCore requires `linux/arm64`. The .NET stage runs on `$BUILDPLATFORM` and cr
 only the Python layers are emulated.
 
 ```bash
-docker buildx build --platform linux/arm64 -f deploy/Dockerfile \
+docker buildx build --platform linux/arm64 -f deploy/Dockerfile.agentcore \
   -t $ACCOUNT.dkr.ecr.$REGION.amazonaws.com/$REPO:latest --load .
 ```
 

@@ -17,7 +17,7 @@
 # `ext/dogwood` IS in the context now, and the comment that used to sit here saying the runtime path
 # never touches it was wrong: src/checker/engine.py shells out to `dogwood` to tell a policy that is
 # outside our subset from one that is simply broken, and witness.py replays a counterexample against
-# the real engine. deploy/Dockerfile.cli builds it. What stays out is its cargo output -- a local
+# the real engine. deploy/Dockerfile builds it. What stays out is its cargo output -- a local
 # build for the wrong platform -- and its git metadata.
 reference/
 ext/**

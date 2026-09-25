@@ -94,7 +94,7 @@ same pinned versions agree: no vulnerabilities, one informational *unmaintained*
 
 ## 4. The container image
 
-`deploy/Dockerfile.cli` publishes an image that redistributes third-party binaries, so they are
+`deploy/Dockerfile` publishes an image that redistributes third-party binaries, so they are
 disclosed here too:
 
 * **Debian bookworm** base (via `python:3.13-slim-bookworm`) with `default-jre-headless` and

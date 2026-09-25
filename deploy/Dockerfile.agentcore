@@ -1,0 +1,125 @@
+# syntax=docker/dockerfile:1
+#
+# Anchor, packaged for Bedrock AgentCore Runtime.
+#
+#   docker buildx build --platform linux/arm64 -f deploy/Dockerfile.agentcore -t anchor:arm64 --load .
+#   docker run --platform linux/arm64 -p 8080:8080 -e GEMINI_API_KEY=... anchor:arm64
+#
+# AgentCore's contract is small and non-negotiable: linux/arm64, port 8080, `POST /invocations` and
+# `GET /ping`. `src/agent/server.py` is the whole of our side of it.
+#
+# WHAT HAS TO BE IN HERE, which is more than an agent image usually carries:
+#
+#   the anchor CLI   the MCP server the agent talks to, self-contained so no .NET runtime is needed
+#   a JVM            TLC is the model checker, and it is a real JVM -- IKVM cannot run it in-process
+#   tla2tools.jar    the TLA+ tools; architecture-neutral bytecode
+#   CPython          the translator, the checker and the agent itself
+#
+# What is NOT in here, contrary to the first plan: Rust and the Dogwood binary. The runtime path
+# (`translator` + `checker`) references Dogwood only in comments -- it is the differential TEST
+# oracle, and tests do not ship. That removed the slowest and least predictable part of an
+# emulated arm64 build.
+
+# ---- stage 1: the .NET side ---------------------------------------------------------------------
+#
+# BUILDPLATFORM, not TARGETPLATFORM. The SDK runs natively on the build host and cross-compiles to
+# linux-arm64, so the C# build never goes through QEMU. `RuntimeIdentifiers` in Directory.Build.props
+# is what makes this restorable in locked mode: the lock files carry a `net10.0/linux-arm64` section
+# because IKVM and System.Data.Odbc resolve per-RID.
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+
+# The jar is not in the repository -- `lib/` is gitignored and build.sh downloads it. Fetched here
+# with the same digest so the image build is self-contained. SOURCE OF TRUTH: build.sh, where
+# `tlatools_version` and `tlatools_sha256` live. If you bump one, bump both.
+ARG TLATOOLS_VERSION=1.7.4
+ARG TLATOOLS_SHA256=936a262061c914694dfd669a543be24573c45d5aa0ff20a8b96b23d01e050e88
+
+WORKDIR /src
+COPY . .
+
+# Locked restore, as everywhere else: the image must not silently re-resolve a dependency graph.
+# A drift fails the build with NU1004 rather than shipping something nobody reviewed.
+ENV CI=true
+
+RUN dotnet publish src/Anchor.CLI/Anchor.CLI.csproj \
+        -c Release -r linux-arm64 --self-contained true \
+        -o /out/cli
+
+RUN set -eux; \
+    curl -fsSL -o /out/tla2tools.jar \
+        "https://github.com/tlaplus/tlaplus/releases/download/v${TLATOOLS_VERSION}/tla2tools.jar"; \
+    echo "${TLATOOLS_SHA256}  /out/tla2tools.jar" | sha256sum -c -
+
+# ---- stage 2: the image that runs ---------------------------------------------------------------
+#
+# Python 3.13 to match the interpreter requirements.txt was compiled against: the lock is hash-
+# pinned per wheel, and a different minor version wants different wheels than the recorded digests
+# cover.
+FROM python:3.13-slim-bookworm AS runtime
+
+# A headless JRE for TLC -- it needs no display, fonts or browser -- and ICU for .NET.
+#
+# libicu is not optional and not obvious: a slim Python image has no ICU, and the self-contained
+# `Anchor.CLI` binary then dies at startup with "Couldn't find a valid ICU package installed on the
+# system". The alternative is InvariantGlobalization, which is smaller and WRONG for us: it silently
+# changes culture-sensitive string behaviour, so the container would differ from every developer
+# machine in ways nothing reports. Pay the ~30 MB and keep the two the same.
+RUN set -eux; \
+    apt-get update; \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        default-jre-headless \
+        libicu72; \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# The same two flags install.cmd passes, for the same two reasons:
+#   --require-hashes   every package, transitive ones included, matches its recorded digest
+#   --only-binary      no source distribution runs its setup.py during the build
+COPY requirements/strands/requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir --require-hashes --only-binary=:all: -r /tmp/requirements.txt \
+    && rm /tmp/requirements.txt
+
+# The publish OUTPUT DIRECTORY, not a file: a self-contained publish emits 363 of them and the
+# executable is one. Copied to /app/cli so that /app/cli/Anchor.CLI is unambiguously the binary --
+# `COPY /out/cli /app/cli` naming a directory after the binary made ANCHOR_CLI point at a directory,
+# which fails as "is a directory: permission denied" at the agent's first MCP call.
+COPY --from=build /out/cli               /app/cli
+COPY --from=build /out/tla2tools.jar     /app/lib/tla2tools-1.7.4.jar
+
+# Only what the runtime path reads. `specs/policy/TemporalPolicy` holds Vacuity.tla and
+# DogwoodSemantics.tla, which the checker copies into each scratch directory beside the generated
+# PolicyUnderTest.tla.
+COPY src/translator                     /app/src/translator
+COPY src/checker                        /app/src/checker
+COPY src/agent                          /app/src/agent
+# NOT optional, and the omission is silent until something reaches the drafting pipeline:
+# pipeline.py does `from annotations import VERDICT_PASS, verdict` at import. server.py only
+# imports policy_agent today, so nothing has tripped over it -- which is exactly why it would
+# have gone unnoticed until the first attempt to serve `auto` or `hitl` from here.
+COPY src/annotations                    /app/src/annotations
+COPY specs/policy/TemporalPolicy        /app/specs/policy/TemporalPolicy
+COPY tests/policies                     /app/tests/policies
+
+# ANCHOR_ROOT is how PythonProcess finds the tree when there is no Anchor.sln to walk up to -- which
+# is exactly the case in an image. ANCHOR_CLI names the self-contained binary, which the agent runs
+# directly rather than through `dotnet`.
+ENV ANCHOR_ROOT=/app \
+    ANCHOR_CLI=/app/cli/Anchor.CLI \
+    ANCHOR_PROJECT_DIR=/app \
+    PYTHONPATH=/app/src \
+    PYTHONUNBUFFERED=1 \
+    PORT=8080
+
+RUN chmod +x /app/cli/Anchor.CLI
+
+# Not root. The agent runs model-authored requests against a checker that spawns processes; there is
+# no reason for any of that to hold root in the bargain.
+RUN useradd --create-home --uid 10001 anchor && chown -R anchor:anchor /app
+USER anchor
+
+EXPOSE 8080
+
+# The AgentCore contract. `server.py` binds 0.0.0.0 because a container binding the loopback accepts
+# nothing from outside itself.
+CMD ["python", "/app/src/agent/server.py"]

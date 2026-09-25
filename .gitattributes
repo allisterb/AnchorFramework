@@ -19,6 +19,7 @@
 #
 #   anchor                            the launcher, which dispatches the verb
 #   build.sh                          the build entry point
+#   build-docker.sh                   builds and smoke-tests the container image
 #   requirements/strands/install.sh   invoked by .github/workflows/build.yml
 #
 # CI invokes install.sh as ./requirements/strands/install.sh rather than `bash <path>` deliberately:

@@ -172,12 +172,26 @@ takes the venv at `python/`, and a Release build before a Debug one under `src/A
 ### In a container, with nothing installed
 
 Four runtimes is a lot to ask of somebody who wants to check one policy.
-[`deploy/Dockerfile.cli`](deploy/Dockerfile.cli) carries all of them — .NET, a JVM, CPython, and the
+[`deploy/Dockerfile`](deploy/Dockerfile) carries all of them — .NET, a JVM, CPython, and the
 Rust-built `dogwood` binary — and its entry point is the launcher, so the container *is* the command.
 
 ```bash
-docker buildx build -f deploy/Dockerfile.cli --platform linux/amd64 -t anchor:latest --load .
+./build-docker.sh          # or ./build-docker.ps1
 docker run --rm -v "$PWD:/work" anchor check tests/policies/firewall.dw
+```
+
+The script tags `anchor:<version>` and `anchor:latest`, where the version is `Directory.Build.props`'
+unless you name one: `./build-docker.sh 0.1.1` tags `0.1.1`, and `anchor version` inside the image
+reports it. Before the build context leaves your machine it checks that `.dockerignore` still keeps
+`appsettings.json` out, and that `ext/dogwood` is checked out, unmodified, at the commit that was
+audited. Afterwards it runs `version`, `scan` and `check` inside the new image.
+
+It **pushes nothing**. `-r` names the repository to tag, e.g. `-r ghcr.io/you/anchor`, and the push
+commands are printed at the end for you to run. `-p` picks the architecture, and `-n` (`-DryRun`)
+runs the checks and prints the build command without building. The same build by hand:
+
+```bash
+docker buildx build -f deploy/Dockerfile --platform linux/amd64 -t anchor:latest --load .
 ```
 
 Your working directory is mounted at `/work`, which is the container's working directory, so paths
@@ -207,7 +221,7 @@ if a key is all you need. A path that is not there is refused with exit 2 rather
 falling back, so a typo fails loudly instead of running with no key.
 
 Dafny and z3 are **not** in it: neither is on the Dogwood policy path, so no verb reaches the
-solver. [`deploy/Dockerfile`](deploy/Dockerfile) is a different image and a different shape — the
+solver. [`deploy/Dockerfile.agentcore`](deploy/Dockerfile.agentcore) is a different image and a different shape — the
 Bedrock AgentCore service, which answers `POST /invocations` rather than taking a verb.
 
 ## Verifying a Dogwood  policy
