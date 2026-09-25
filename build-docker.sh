@@ -227,7 +227,9 @@ if [ "$skip_smoke" -eq 0 ]; then
 
     # The version the tag claims, not merely a version.
     step "smoke: version"
-    out="$("${run[@]}" "$image" version)" || die "version exited $?."
+    # 2>&1: the banner is on STDERR, because under `server` stdout carries MCP frames. Reading
+    # stdout alone compared an empty string and reported a mismatch that was not there.
+    out="$("${run[@]}" "$image" version 2>&1)" || die "version exited $?."
     printf '%s\n' "$out"
     # A string comparison, not a regex: the dots in a version are literal.
     banner="$(printf '%s\n' "$out" | head -n 1)"

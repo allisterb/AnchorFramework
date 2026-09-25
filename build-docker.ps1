@@ -246,7 +246,14 @@ if (-not $SkipSmoke) {
 
     # The version the tag claims, not merely a version.
     Write-Step 'smoke: version'
-    $out = & docker @run $Image version | Out-String
+    # 2>&1: the banner is on STDERR, because under `server` stdout carries MCP frames. Reading
+    # stdout alone compared an empty string and reported a mismatch that was not there. EAP is
+    # lowered for the call because Windows PowerShell makes redirected native stderr an ErrorRecord,
+    # which 'Stop' would turn fatal; each record is turned back into its text.
+    $out = & {
+        $ErrorActionPreference = 'Continue'
+        & docker @run $Image version 2>&1 | ForEach-Object { "$_" } | Out-String
+    }
     if ($LASTEXITCODE -ne 0) { Stop-Build "version exited $LASTEXITCODE." }
     Write-Host $out.TrimEnd()
     if ($out -notmatch "(?m)^Anchor $([regex]::Escape($Version))(\+|\s*$)") {
