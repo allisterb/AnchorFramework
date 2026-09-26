@@ -43,27 +43,32 @@ Easiest way to get started is to use Docker:
 
 
 ```bash
-docker pull allisterb/anchor:latest
-docker run --rm allisterb/anchor:latest version
+docker pull public.ecr.aws/v4q7x8t1/anchor:latest
+docker run --rm public.ecr.aws/v4q7x8t1/anchor:latest version
 ```
 
-On Apple Silicon, add `--platform linux/amd64` to the `pull` and to every `run`; it works under
-emulation and is slower.
+The image is on Amazon ECR Public, and pulling it needs no AWS account or login. `latest` is
+currently `0.1.1`; pin `public.ecr.aws/v4q7x8t1/anchor:0.1.1` for a fixed version. Docker Hub's
+`allisterb/anchor:0.1.0` is the image submitted to the hackathon, kept unchanged while judging runs;
+it predates the input scanner and `findings.html`.
+
+It is built for both `linux/amd64` and `linux/arm64` under the same tag, so Docker pulls the one
+that matches your machine and Apple Silicon runs it natively, with no `--platform` flag.
 
 The entry point is the `anchor` launcher, so arguments after the image name are the verb and its
 options — the container behaves like the command.
 
 ```bash
-docker run --rm allisterb/anchor:latest help
+docker run --rm public.ecr.aws/v4q7x8t1/anchor:latest help
 ```
 ```bash
-docker run --rm -v "$PWD:/work" allisterb/anchor:latest check my-policy.dw
+docker run --rm -v "$PWD:/work" public.ecr.aws/v4q7x8t1/anchor:latest check my-policy.dw
 ```
 
  or Windows:
 
 ```bash
-docker run --rm -v ".:/work" allisterb/anchor:latest check my-policy.dw
+docker run --rm -v ".:/work" public.ecr.aws/v4q7x8t1/anchor:latest check my-policy.dw
 ```
 
 Your working directory is mounted at `/work`, which is the container's working directory, so paths
@@ -152,7 +157,7 @@ Use the launcher scripts in the repo root:
 
 or from a container:
 ```bash
-docker run --rm -v "$PWD:/work" allisterb/anchor:latest check my-policy.dw
+docker run --rm -v "$PWD:/work" public.ecr.aws/v4q7x8t1/anchor:latest check my-policy.dw
 ```
 
 | verb | action| 
@@ -184,21 +189,26 @@ The script tags `anchor:<version>` and `anchor:latest`, where the version is `Di
 unless you name one: `./build-docker.sh 0.1.1` tags `0.1.1`, and `anchor version` inside the image
 reports it. Before the build context leaves your machine it checks that `.dockerignore` still keeps
 `appsettings.json` out, and that `ext/dogwood` is checked out, unmodified, at the commit that was
-audited. Afterwards it runs `version`, `scan` and `check` inside the new image.
+audited. Afterwards it runs `version`, `scan` and `check` inside the new image, once per platform.
+
+It builds `linux/amd64` and `linux/arm64` as **one multi-platform image**, which needs Docker's
+containerd image store (Docker Desktop's default for new installs, under Settings > General). `-p`
+(`-Platform`) builds just one, e.g. `-p linux/amd64`, and needs no containerd store.
 
 It **pushes nothing**. `-r` names the repository to tag, e.g. `-r ghcr.io/you/anchor`, and the push
-commands are printed at the end for you to run. `-p` picks the architecture, and `-n` (`-DryRun`)
-runs the checks and prints the build command without building. The same build by hand:
+commands are printed at the end for you to run; each push carries both platforms under the one tag.
+`-n` (`-DryRun`) runs the checks and prints the build command without building. The same build by
+hand:
 
 ```bash
-docker buildx build -f deploy/Dockerfile --platform linux/amd64 -t anchor:latest --load .
+docker buildx build -f deploy/Dockerfile --platform linux/amd64,linux/arm64 -t anchor:latest --load .
 ```
 
 Your working directory is mounted at `/work`, which is the container's working directory, so paths
 read the way they do on the host and output written beside a policy lands back on the host. On Linux
 add `--user "$(id -u):$(id -g)"` so that output is owned by you rather than by the image's user.
 
-`--platform linux/arm64` builds the other architecture. The two **compile** stages always run on the
+Building the platform your machine is not is where the time goes. The two **compile** stages always run on the
 build host and cross-compile — `dotnet publish` per RID, `cargo build` per target with the matching
 cross linker — so neither an emulated .NET nor an emulated Rust build ever happens. The runtime
 stage is not pinned that way, so an arm64 build on an x64 host does run its `apt-get` and its

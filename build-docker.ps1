@@ -29,8 +29,10 @@
     listed as frozen in this script is refused.
 
 .PARAMETER Platform
-    linux/amd64 or linux/arm64. Default: the Docker daemon's own. A foreign platform builds by
-    cross-compiling; only the runtime stage runs under emulation.
+    linux/amd64, linux/arm64, or both comma-separated. Default: both, as one multi-platform image,
+    so Apple Silicon runs it natively and neither kind of host needs --platform. A foreign platform
+    cross-compiles; only its runtime stage runs under emulation, which is most of the wall time.
+    Both at once needs Docker's containerd image store.
 
 .PARAMETER DryRun
     Run every check, print the build command, build nothing.
@@ -58,8 +60,7 @@ param(
     [Parameter(Position = 0)]
     [string] $Version = '',
     [string] $Repository = 'anchor',
-    [ValidateSet('', 'linux/amd64', 'linux/arm64')]
-    [string] $Platform = '',
+    [string] $Platform = 'linux/amd64,linux/arm64',
     [switch] $DryRun,
     [switch] $SkipSmoke,
     # -h binds here by prefix match, since no other parameter starts with an h.
@@ -141,6 +142,14 @@ if ($canonical -match '^public\.ecr\.aws/[^/]+$') {
     Stop-Build "$Repository is an ECR Public registry alias, not a repository. Name the repository too: $Repository/anchor, or whatever you called it." 2
 }
 
+$Platforms = @($Platform.Split(',') | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+if ($Platforms.Count -eq 0) { Stop-Build '-Platform needs at least one platform.' 2 }
+foreach ($p in $Platforms) {
+    if ($p -cnotin 'linux/amd64', 'linux/arm64') { Stop-Build "each platform must be linux/amd64 or linux/arm64; got '$p'." 2 }
+}
+if (@($Platforms | Select-Object -Unique).Count -ne $Platforms.Count) { Stop-Build "-Platform names a platform twice: $Platform." 2 }
+$Platform = $Platforms -join ','
+
 #endregion
 
 #region Checks, all before the build context leaves this machine
@@ -152,6 +161,12 @@ if (-not (Test-Native docker buildx version)) { Stop-Build 'docker buildx is not
 if (-not (Test-Native docker info)) {
     if ($DryRun) { Write-Warn 'the Docker daemon is not reachable; carrying on because this is a dry run' }
     else { Stop-Build 'the Docker daemon is not reachable. Is Docker running?' }
+} elseif ($Platforms.Count -gt 1) {
+    # The classic image store holds one platform per tag, so `--load` of several fails -- after the
+    # whole emulated build has run. Find out now instead.
+    if ((& docker info --format '{{json .DriverStatus}}' | Out-String) -notmatch 'io\.containerd\.snapshotter') {
+        Stop-Build "building $Platform as one image needs Docker's containerd image store (Docker Desktop: Settings > General > Use containerd for pulling and storing images). Or build one platform with -Platform."
+    }
 }
 
 # An exact line, not a substring: a commented-out or negated pattern must not pass. Trimmed of CR
@@ -214,11 +229,10 @@ $cmd = @('buildx', 'build', '-f', (Join-Path $RepoRoot 'deploy/Dockerfile'),
          '--label', "org.opencontainers.image.version=$Version",
          '--label', "org.opencontainers.image.revision=$Revision",
          '--label', "org.opencontainers.image.created=$([DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ'))",
-         '--load')
-if ($Platform) { $cmd += '--platform', $Platform }
-$cmd += $RepoRoot
+         '--platform', $Platform,
+         '--load', $RepoRoot)
 
-Write-Step "building $Image$(if ($Platform) { " for $Platform" })"
+Write-Step "building $Image for $Platform"
 Write-Host "    docker $($cmd -join ' ')"
 if ($DryRun) {
     Write-Host
@@ -228,24 +242,27 @@ if ($DryRun) {
 & docker @cmd
 if ($LASTEXITCODE -ne 0) { Stop-Build "docker buildx build exited $LASTEXITCODE." }
 
-# An image built for the wrong platform runs anyway under emulation, slowly, so check it rather
-# than trust the flag.
-if ($Platform) {
-    $got = (& docker image inspect -f '{{.Os}}/{{.Architecture}}' $Image | Out-String).Trim()
-    if ($got -ne $Platform) { Stop-Build "$Image is $got, expected $Platform." }
-    Write-Step "$Image is $got"
+# An image built for the wrong platform runs anyway under emulation, slowly, so check each one is
+# really there rather than trust the flag.
+foreach ($p in $Platforms) {
+    $got = (& docker image inspect --platform $p -f '{{.Os}}/{{.Architecture}}' $Image | Out-String).Trim()
+    if ($LASTEXITCODE -ne 0) { Stop-Build "$Image has no $p variant." }
+    if ($got -ne $p) { Stop-Build "${Image}'s $p variant is $got." }
+    Write-Step "$Image has $got"
 }
 
 #endregion
 
 #region Smoke test
 
-if (-not $SkipSmoke) {
-    $run = @('run', '--rm')
-    if ($Platform) { $run += '--platform', $Platform }
+# Every platform, because each is its own set of binaries: the arm64 .NET publish and the
+# cross-linked dogwood are exactly what an amd64-only test would never exercise. The foreign one
+# runs under emulation, so its `check` is slow; that is the price of testing what a Mac will run.
+foreach ($p in $(if ($SkipSmoke) { @() } else { $Platforms })) {
+    $run = @('run', '--rm', '--platform', $p)
 
     # The version the tag claims, not merely a version.
-    Write-Step 'smoke: version'
+    Write-Step "smoke (${p}): version"
     # 2>&1: the banner is on STDERR, because under `server` stdout carries MCP frames. Reading
     # stdout alone compared an empty string and reported a mismatch that was not there. EAP is
     # lowered for the call because Windows PowerShell makes redirected native stderr an ErrorRecord,
@@ -261,12 +278,12 @@ if (-not $SkipSmoke) {
     }
 
     # The scanner and the sample policies are both in the image, and the samples are clean.
-    Write-Step 'smoke: scan'
+    Write-Step "smoke (${p}): scan"
     & docker @run -w /app $Image scan examples tests/policies
     if ($LASTEXITCODE -ne 0) { Stop-Build "scan flagged the image's own sample policies, or could not run." }
 
     # A real check: translator, TLC on the JVM, and the checker's reading of the answer.
-    Write-Step 'smoke: check'
+    Write-Step "smoke (${p}): check"
     $out = & docker @run -w /app $Image check tests/policies/dead_forbid.dw | Out-String
     $code = $LASTEXITCODE
     Write-Host $out.TrimEnd()
@@ -279,11 +296,11 @@ if (-not $SkipSmoke) {
 #endregion
 
 Write-Host
-Write-Step "built $Image and ${Repository}:latest from $($Head.Substring(0, 12))$Dirty. Nothing was pushed."
+Write-Step "built $Image and ${Repository}:latest for $Platform from $($Head.Substring(0, 12))$Dirty. Nothing was pushed."
 if ($Dirty) { Write-Warn 'this image contains uncommitted changes; commit first if it is going to be published' }
 # A name with no '/' is local: pushing it would mean Docker Hub's official-images namespace.
 if ($Repository.Contains('/')) {
-    Write-Host 'To publish, when you mean to:'
+    Write-Host 'To publish, when you mean to (each push carries every platform above under the one tag):'
     Write-Host "    docker push $Image"
     Write-Host "    docker push ${Repository}:latest"
 } else {

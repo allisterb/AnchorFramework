@@ -27,7 +27,10 @@ frozen_repositories=("allisterb/anchor")
 
 version=""
 repository="anchor"
-platform=""
+# Both, by default, as ONE multi-platform image: a Mac pulls arm64 and runs it natively, an x64
+# host pulls amd64, and neither needs --platform. The compile stages cross-compile on the build
+# host either way; only the foreign platform's runtime stage (apt-get, pip) runs under emulation.
+platforms="linux/amd64,linux/arm64"
 dry_run=0
 skip_smoke=0
 
@@ -35,7 +38,7 @@ usage() {
     cat <<EOF
 Build Anchor's container image, and smoke-test it.
 
-Usage: ./build-docker.sh [version] [-r <repository>] [-p <platform>] [-n] [-s] [-h]
+Usage: ./build-docker.sh [version] [-r <repository>] [-p <platforms>] [-n] [-s] [-h]
 
   version
       The tag, e.g. 0.1.1, given as major.minor.patch. The image is tagged with it and
@@ -46,9 +49,11 @@ Usage: ./build-docker.sh [version] [-r <repository>] [-p <platform>] [-n] [-s] [
       What to tag, e.g. ghcr.io/you/anchor or an ECR repository URI. Default: anchor.
       A repository listed as frozen in this script is refused.
 
-  -p <platform>
-      linux/amd64 or linux/arm64. Default: the Docker daemon's own. A foreign platform
-      builds by cross-compiling; only the runtime stage runs under emulation.
+  -p <platforms>
+      linux/amd64, linux/arm64, or both comma-separated. Default: both, as one
+      multi-platform image, so Apple Silicon runs it natively. A foreign platform
+      cross-compiles; only its runtime stage runs under emulation, which is most of the
+      wall time. Both at once needs Docker's containerd image store.
 
   -n
       Dry run: run every check, print the build command, build nothing.
@@ -66,7 +71,8 @@ Before the build context is sent to the daemon, it checks:
   * ext/dogwood is checked out, unmodified, at the audited commit
     $audited_dogwood.
 
-After the build, it runs \`version\`, \`scan\` and \`check\` inside the image.
+After the build, it runs \`version\`, \`scan\` and \`check\` inside the image, once per
+platform.
 
 Nothing is pushed; the push commands are printed at the end.
 EOF
@@ -76,7 +82,7 @@ while [ "$#" -gt 0 ]; do
     case "$1" in
         -r|-p)
             [ "$#" -ge 2 ] || { echo "Option $1 requires an argument." >&2; exit 2; }
-            if [ "$1" = "-r" ]; then repository="$2"; else platform="$2"; fi
+            if [ "$1" = "-r" ]; then repository="$2"; else platforms="$2"; fi
             shift 2 ;;
         -n) dry_run=1; shift ;;
         -s) skip_smoke=1; shift ;;
@@ -127,10 +133,16 @@ if [[ "$canonical" =~ ^public\.ecr\.aws/[^/]+$ ]]; then
     exit 2
 fi
 
-case "$platform" in
-    ""|linux/amd64|linux/arm64) ;;
-    *) echo "The platform must be linux/amd64 or linux/arm64; got '$platform'." >&2; exit 2 ;;
-esac
+IFS=',' read -r -a platform_list <<< "$platforms"
+[ "${#platform_list[@]}" -gt 0 ] || { echo "-p needs at least one platform." >&2; exit 2; }
+for p in "${platform_list[@]}"; do
+    case "$p" in
+        linux/amd64|linux/arm64) ;;
+        *) echo "Each platform must be linux/amd64 or linux/arm64; got '$p'." >&2; exit 2 ;;
+    esac
+done
+[ "$(printf '%s\n' "${platform_list[@]}" | sort -u | wc -l)" -eq "${#platform_list[@]}" ] \
+    || { echo "-p names a platform twice: $platforms." >&2; exit 2; }
 
 # ---- checks, all before the build context leaves this machine ----------------------------------
 
@@ -142,6 +154,11 @@ if ! docker info >/dev/null 2>&1; then
     else
         die "the Docker daemon is not reachable. Is Docker running?"
     fi
+elif [ "${#platform_list[@]}" -gt 1 ]; then
+    # The classic image store holds one platform per tag, so `--load` of several fails -- after
+    # the whole emulated build has run. Find out now instead.
+    docker info --format '{{json .DriverStatus}}' | grep -q 'io.containerd.snapshotter' \
+        || die "building $platforms as one image needs Docker's containerd image store (Docker Desktop: Settings > General > Use containerd for pulling and storing images). Or build one platform with -p."
 fi
 
 # An exact line, not a substring: a commented-out or negated pattern must not pass. CRs are
@@ -198,11 +215,10 @@ cmd=(docker buildx build -f deploy/Dockerfile
      --label "org.opencontainers.image.version=$version"
      --label "org.opencontainers.image.revision=$revision"
      --label "org.opencontainers.image.created=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-     --load)
-[ -z "$platform" ] || cmd+=(--platform "$platform")
-cmd+=(.)
+     --platform "$platforms"
+     --load .)
 
-step "building $image${platform:+ for $platform}"
+step "building $image for $platforms"
 printf '   '; printf ' %q' "${cmd[@]}"; echo
 if [ "$dry_run" -eq 1 ]; then
     echo
@@ -211,22 +227,26 @@ if [ "$dry_run" -eq 1 ]; then
 fi
 "${cmd[@]}"
 
-# An image built for the wrong platform runs anyway under emulation, slowly, so check it rather
-# than trust the flag.
-if [ -n "$platform" ]; then
-    got="$(docker image inspect -f '{{.Os}}/{{.Architecture}}' "$image")"
-    [ "$got" = "$platform" ] || die "$image is $got, expected $platform."
-    step "$image is $got"
-fi
+# An image built for the wrong platform runs anyway under emulation, slowly, so check each one is
+# really there rather than trust the flag.
+for p in "${platform_list[@]}"; do
+    got="$(docker image inspect --platform "$p" -f '{{.Os}}/{{.Architecture}}' "$image")" \
+        || die "$image has no $p variant."
+    [ "$got" = "$p" ] || die "$image's $p variant is $got."
+    step "$image has $got"
+done
 
 # ---- smoke test ---------------------------------------------------------------------------------
 
-if [ "$skip_smoke" -eq 0 ]; then
-    run=(docker run --rm)
-    [ -z "$platform" ] || run+=(--platform "$platform")
+# Every platform, because each is its own set of binaries: the arm64 .NET publish and the
+# cross-linked dogwood are exactly what an amd64-only test would never exercise. The foreign one
+# runs under emulation, so its `check` is slow; that is the price of testing what a Mac will run.
+for p in "${platform_list[@]}"; do
+    [ "$skip_smoke" -eq 0 ] || break
+    run=(docker run --rm --platform "$p")
 
     # The version the tag claims, not merely a version.
-    step "smoke: version"
+    step "smoke ($p): version"
     # 2>&1: the banner is on STDERR, because under `server` stdout carries MCP frames. Reading
     # stdout alone compared an empty string and reported a mismatch that was not there.
     out="$("${run[@]}" "$image" version 2>&1)" || die "version exited $?."
@@ -237,25 +257,25 @@ if [ "$skip_smoke" -eq 0 ]; then
         || die "the image reports a different version than its tag, $version."
 
     # The scanner and the sample policies are both in the image, and the samples are clean.
-    step "smoke: scan"
+    step "smoke ($p): scan"
     "${run[@]}" -w /app "$image" scan examples tests/policies \
         || die "scan flagged the image's own sample policies, or could not run."
 
     # A real check: translator, TLC on the JVM, and the checker's reading of the answer.
-    step "smoke: check"
+    step "smoke ($p): check"
     out="$("${run[@]}" -w /app "$image" check tests/policies/dead_forbid.dw)" \
         || die "check exited $? on tests/policies/dead_forbid.dw."
     printf '%s\n' "$out"
     printf '%s' "$out" | grep -q 'forbid #2 .*DEAD' \
         || die "check ran but did not find the dead forbid it always finds. The image is broken."
-fi
+done
 
 echo
-step "built $image and $repository:latest from ${head:0:12}$dirty. Nothing was pushed."
+step "built $image and $repository:latest for $platforms from ${head:0:12}$dirty. Nothing was pushed."
 [ -z "$dirty" ] || warn "this image contains uncommitted changes; commit first if it is going to be published"
 # A name with no '/' is local: pushing it would mean Docker Hub's official-images namespace.
 if [[ "$repository" == */* ]]; then
-    echo "To publish, when you mean to:"
+    echo "To publish, when you mean to (each push carries every platform above under the one tag):"
     echo "    docker push $image"
     echo "    docker push $repository:latest"
 else
