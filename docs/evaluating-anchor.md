@@ -10,7 +10,7 @@ docker pull public.ecr.aws/v4q7x8t1/anchor:latest
 docker run --rm public.ecr.aws/v4q7x8t1/anchor:latest version
 ```
 
-The image is on Amazon ECR Public, so pulling it needs no AWS account or login. `public.ecr.aws/v4q7x8t1/anchor:0.1.1`
+The image is on Amazon ECR Public, so pulling it needs no AWS account or login. `public.ecr.aws/v4q7x8t1/anchor:0.1.2`
 pins the version this page describes. It is about **350 MB** to download, and it ships the worked
 examples described below, so every command on this page runs with no other setup.
 
@@ -141,7 +141,8 @@ the agent modes below; with no key, each question fails and the rest of the audi
 `examples/aws1` and `examples/aws2` already contain the committed output of this audit, so you can
 compare. Expect three differences: the committed reports predate the input scan, so they have no
 **Input scan** line; they were written with the questions answered; and each `Run it yourself`
-names wherever your copy was written.
+names wherever your copy was written, which from inside the container is `/work/aws1`, i.e. `./aws1`
+on your machine.
 
 A directory audit scans its inputs before anything reads them; see the agent modes below.
 
