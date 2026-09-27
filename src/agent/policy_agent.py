@@ -507,7 +507,7 @@ REFUSALS = (
      "Rate limited. Wait and retry -- this is throughput, not quota."),
     ("Model use case details have not been submitted",
      "This model is not enabled for the account. Submit use case details in the Bedrock console, "
-     "or pass --model with one that is."),
+     "or pass --llm with one that is."),
     # Matched without the contraction: the message is "doesn't" for one model and "don't" for
     # another, and the first version of this line caught neither of them.
     ("support tool use in streaming mode",
@@ -558,8 +558,8 @@ def main() -> int:
                     choices=("auto", "bedrock", "gemini"),
                     help="which model provider. `auto` picks gemini when GEMINI_API_KEY or "
                          "GOOGLE_API_KEY is set, and bedrock otherwise")
-    ap.add_argument("--model", type=str, default=None,
-                    help="model id; defaults to the provider's own default")
+    ap.add_argument("--llm", type=str, default=None,
+                    help="the LLM's model id; defaults to the provider's own default")
     ap.add_argument("--no-stream", action="store_true",
                     help="disable streaming. Some Bedrock models accept tools only outside "
                          "streaming mode -- ai21.jamba answers 'This model doesn't support tool "
@@ -606,7 +606,7 @@ def main() -> int:
           file=sys.stderr)
 
     try:
-        print(review(request, args.project_dir, args.model, args.provider,
+        print(review(request, args.project_dir, args.llm, args.provider,
                      streaming=False if args.no_stream else None,
                      transcript=args.transcript, heading=args.heading,
                      limits={k: v for k, v in (("turns", args.turns),

@@ -48,7 +48,7 @@ docker run --rm public.ecr.aws/v4q7x8t1/anchor:latest version
 ```
 
 The image is on Amazon ECR Public, and pulling it needs no AWS account or login. `latest` is
-currently `0.1.2`; pin `public.ecr.aws/v4q7x8t1/anchor:0.1.2` for a fixed version. Docker Hub's
+currently `0.1.3`; pin `public.ecr.aws/v4q7x8t1/anchor:0.1.3` for a fixed version. Docker Hub's
 `allisterb/anchor:0.1.0` is the image submitted to the hackathon, kept unchanged while judging runs;
 it predates the input scanner and `findings.html`.
 

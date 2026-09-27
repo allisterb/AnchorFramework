@@ -352,7 +352,7 @@ def ask(agent, prompt: str, run: Run, who: str) -> tuple[str, bool]:
         # THE MODEL COULD NOT BE REACHED, which is NOT a defect in Anchor -- a wrong model id, a
         # missing key, a region that does not carry the model, a quota. Caught here rather than by
         # the stage's generic handler because that one says "a stage of Anchor itself failed" and
-        # sends the reader to the wrong place: a run with `--model gemini-3.7-flash` reported five
+        # sends the reader to the wrong place: a run with `--llm gemini-3.7-flash` reported five
         # Anchor bugs for what was a 404 on the model name.
         run.unreachable.append(f"{who}: {e}")
         run.calls.append(Call(who, seconds=time.monotonic() - started, capped=True))
@@ -1203,8 +1203,8 @@ def main() -> int:
                         "to appsettings.json beside src/agent/ or at the repo root; in a container "
                         "this is how a mounted one is named")
     p.add_argument("--provider", default="auto", help="auto, bedrock or gemini")
-    p.add_argument("--model", default=None,
-                   help="model id. Defaults to the provider's own default (gemini-2.5-flash for "
+    p.add_argument("--llm", default=None,
+                   help="the LLM's model id. Defaults to the provider's own default (gemini-2.5-flash for "
                         "Gemini), which is a small model for a hard task")
     p.add_argument("--rounds", type=int, default=3,
                    help="drafting attempts. A round costs one model call plus ~1s of SANY; "
@@ -1291,7 +1291,7 @@ def main() -> int:
                   file=sys.stderr, flush=True)
 
         runs = sweep(args.policy, intents, out=out, report=progress,
-                     build_graph=lambda r: build(r, provider=args.provider, model=args.model),
+                     build_graph=lambda r: build(r, provider=args.provider, model=args.llm),
                      **per_run)
 
         out.mkdir(parents=True, exist_ok=True)
@@ -1328,7 +1328,7 @@ def main() -> int:
     run = Run(policy=args.policy, intent=args.intent,
               out=args.out or args.policy.parent / "anchor", **shared)
 
-    graph = build(run, provider=args.provider, model=args.model,
+    graph = build(run, provider=args.provider, model=args.llm,
                   max_node_executions=args.max_node_executions, node_timeout=args.node_timeout)
     result = graph(f"State and check the intention for {args.policy.name}.")
 

@@ -10,7 +10,7 @@ docker pull public.ecr.aws/v4q7x8t1/anchor:latest
 docker run --rm public.ecr.aws/v4q7x8t1/anchor:latest version
 ```
 
-The image is on Amazon ECR Public, so pulling it needs no AWS account or login. `public.ecr.aws/v4q7x8t1/anchor:0.1.2`
+The image is on Amazon ECR Public, so pulling it needs no AWS account or login. `public.ecr.aws/v4q7x8t1/anchor:0.1.3`
 pins the version this page describes. It is about **350 MB** to download, and it ships the worked
 examples described below, so every command on this page runs with no other setup.
 
@@ -126,7 +126,7 @@ nothing will pass having tested nothing.
 
 ```bash
 docker run --rm -v "$PWD:/work" -w /app public.ecr.aws/v4q7x8t1/anchor:latest \
-    check examples/aws1 --no-model --output-dir /work/aws1
+    check examples/aws1 --no-llm --output-dir /work/aws1
 ```
 
 Every `.dw` paired with the `.tla` module whose header names it, writing `findings.md`,
@@ -134,8 +134,8 @@ Every `.dw` paired with the `.tla` module whose header names it, writing `findin
 brings them out: without it they are written inside the container, and go when it does. It exits 1,
 because the audit has findings.
 
-`--no-model` is what keeps this mode mechanical. `examples/aws1` also holds a `questions.md`, and
-without the flag the audit asks a model those questions as well, which needs the key set up under
+`--no-llm` is what keeps this mode mechanical. `examples/aws1` also holds a `questions.md`, and
+without the flag the audit asks an LLM those questions as well, which needs the key set up under
 the agent modes below; with no key, each question fails and the rest of the audit is unaffected.
 
 `examples/aws1` and `examples/aws2` already contain the committed output of this audit, so you can
@@ -153,7 +153,7 @@ renderer: its Content-Security-Policy allows that one script by hash, and nothin
 
 ## 5 and 6. The agent modes  — *needs an API key*
 
-The first four modes are mechanical (the fourth with `--no-model`, as shown): no model is involved,
+The first four modes are mechanical (the fourth with `--no-llm`, as shown): no model is involved,
 and nothing a model said can change a verdict. The last two are where an agent writes the formal artifact.
 
 **Before either shows a model anything, it scans the inputs.** A policy under analysis is often one

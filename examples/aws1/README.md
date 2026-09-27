@@ -219,7 +219,7 @@ check, then puts the questions in [`questions.md`](questions.md) to the agent. W
 Exits **1** when there is something to look at, so it can gate a pipeline; **2** when the run could
 not happen at all.
 
-`--no-model` does the checks and the report without asking a model anything — most of the value,
+`--no-llm` does the checks and the report without asking an LLM anything — most of the value,
 none of the cost, and the part that belongs in CI. `--output-dir findings` writes elsewhere.
 
 **What is automated and what is not.** Running every check is automated. Deciding what a policy was

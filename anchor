@@ -5,6 +5,8 @@
 #   server, check, explain, help, version    the .NET CLI, src/Anchor.CLI
 #   auto                                     Python, src/agent/pipeline.py
 #   hitl                                     Python, src/agent/hitl.py
+#   timeline                                 Python, src/checker/timeline.py
+#   scan                                     Python, src/checker/scan.py
 #
 # The split is deliberate rather than historical. `check`, `explain` and `server` are genuinely
 # C#-fronted -- the checker is reached through them and the MCP server IS them. The two drafting
@@ -127,17 +129,77 @@ EOF
     exit 1
 }
 
-# The CLI's own help cannot mention the verbs it does not have, so this script says them after.
-show_extra_verbs() {
-    cat <<'EOF'
-  auto       Draft the property module from a natural language brief and check it, unattended.
-  
-  hitl       Draft the property module from a natural language brief with a human answering when a gate turns a draft away.
-  
-  timeline   Build the data a timeline visualisation draws, from a witness directory written by a check.
-  
-  scan       Look for hidden text, adversarial prompts and markup in a policy's inputs before a model sees them.
-EOF
+# The order `anchor help` lists the verbs in: related ones together, whichever runtime they live in.
+# A verb not named here -- `version`, or one added to the CLI later -- is listed after these, never
+# dropped. Keep in step with $HelpOrder in anchor.ps1.
+help_order="help check auto hitl explain timeline scan server"
+
+# The Python verbs' help lines, verb and description separated by a tab. The CLI's own help cannot
+# mention verbs it does not have, so this script merges these into it.
+python_verb_help() {
+    printf '%s\t%s\n' \
+        auto     "Draft the property module from a natural language brief and check it, unattended." \
+        hitl     "Draft the property module from a natural language brief, with a human answering when a gate turns a draft away." \
+        timeline "Redraw findings.html from the witnesses a check left, without re-running the checks." \
+        scan     "Look for hidden text, instructions aimed at an LLM and markup in a policy's inputs, before an LLM reads them."
+}
+
+# `anchor help`: the CLI's verb list and the Python verbs as one list, in help_order. The CLI's help
+# is split into one block per verb -- a block starts with a verb at column 3 -- and the Python verbs
+# are wrapped to the same layout, so the two halves cannot be told apart. If no block can be found,
+# the CLI's text is printed as it came and the Python verbs after it: a changed help format costs
+# the ordering, never a verb.
+show_help() {
+    local text code=0
+    text="$("${cli[@]}" "$@" 2>&1)" || code=$?
+    # ENVIRON rather than -v: some awks reject a newline inside a -v value.
+    printf '%s\n' "$text" | HELP_ORDER="$help_order" HELP_EXTRA="$(python_verb_help)" awk '
+        function wrap(verb, desc,    n, words, i, line, out) {
+            n = split(desc, words, " ")
+            line = sprintf("  %-11s", verb) words[1]
+            for (i = 2; i <= n; i++) {
+                if (length(line) + 1 + length(words[i]) > 80) {
+                    out = out line "\n"; line = sprintf("%13s", "") words[i]
+                } else line = line " " words[i]
+            }
+            return out line
+        }
+        BEGIN {
+            norder = split(ENVIRON["HELP_ORDER"], order, " ")
+            nextra = split(ENVIRON["HELP_EXTRA"], rows, "\n")
+            for (i = 1; i <= nextra; i++) {
+                if (rows[i] == "") continue
+                tab = index(rows[i], "\t")
+                v = substr(rows[i], 1, tab - 1)
+                pyblock[v] = wrap(v, substr(rows[i], tab + 1)); pyorder[++npy] = v
+            }
+        }
+        /^  [A-Za-z][A-Za-z0-9-]*  / {
+            cur = $1; clorder[++ncli] = cur; block[cur] = $0; next
+        }
+        {
+            all[++nall] = $0
+            if (cur == "") header[++nhead] = $0
+            else if ($0 !~ /^[ \t]*$/) block[cur] = block[cur] "\n" $0
+        }
+        END {
+            if (ncli == 0) {
+                for (i = 1; i <= nall; i++) print all[i]
+                for (i = 1; i <= npy; i++) { print ""; print pyblock[pyorder[i]] }
+                exit
+            }
+            for (v in pyblock) block[v] = pyblock[v]
+            while (nhead > 0 && header[nhead] ~ /^[ \t]*$/) nhead--
+            for (i = 1; i <= nhead; i++) print header[i]
+            print ""
+            for (i = 1; i <= norder; i++)
+                if (order[i] in block) { print block[order[i]]; print ""; done[order[i]] = 1 }
+            for (i = 1; i <= ncli; i++)
+                if (!(clorder[i] in done)) { print block[clorder[i]]; print ""; done[clorder[i]] = 1 }
+            for (i = 1; i <= npy; i++)
+                if (!(pyorder[i] in done)) { print pyblock[pyorder[i]]; print "" }
+        }'
+    exit "$code"
 }
 
 run_python() {
@@ -171,11 +233,10 @@ cli_line="$(find_cli)"
 cli=()
 while IFS= read -r part; do cli+=("$part"); done <<< "$cli_line"
 
-if is_help_token "$verb"; then
-    code=0
-    "${cli[@]}" "$@" || code=$?
-    show_extra_verbs
-    exit "$code"
+# Only a bare `anchor help`: `anchor help check` is the CLI's help for one verb, and has no list to
+# merge anything into.
+if is_help_token "$verb" && [ "$#" -le 1 ]; then
+    show_help "$@"
 fi
 
 exec "${cli[@]}" "$@"

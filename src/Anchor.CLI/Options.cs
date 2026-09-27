@@ -22,68 +22,14 @@ public class Options
     #endregion
 }
 
-/// <summary>
-/// Start the MCP server. The default verb, because that is how an MCP host launches this binary.
-/// </summary>
-/// <remarks>
-/// Default in the <c>CommandLineParser</c> sense — a host invoking <c>anchor server</c> gets here,
-/// and so would a host passing only flags. A completely bare invocation is turned into
-/// <c>--help</c> by <c>Program</c>; see the note there for why.
-/// </remarks>
-[Verb("server", isDefault: true, HelpText = "Start the Anchor MCP server in stdio or HTTP mode.")]
-public class ServerOptions : Options
-{
-    #region Properties
-
-    [Option("http", Required = false, HelpText = "Serve over HTTP instead of the default stdio.")]
-    public bool Http { get; set; }
-
-    [Option("port", Required = false, HelpText = "HTTP listening port (default: 8080).")]
-    public int? Port { get; set; }
-
-    #endregion
-}
-
-/// <summary>Check a whole directory of policies, unattended.</summary>
-/// <summary>Say in English what a property module forbids, before anything is checked.</summary>
-/// <remarks>
-/// Its own verb rather than a flag on <c>check</c> because it is used at a different moment and by
-/// a different person. <c>check</c> answers "is this policy what the property says"; this answers
-/// "is the property what I meant", which is the one question in the pipeline nothing downstream
-/// verifies — and the moment to ask it is before a run, when disagreeing is still free.
-/// </remarks>
-[Verb("explain", HelpText =
-    "Read a property module and say, per claim, what it FORBIDS, which states it will be checked " +
-    "in, and how many of those its condition even applies to. Runs no model checker. Exit 4 when " +
-    "a claim cannot fail — it would pass having tested nothing.")]
-public class ExplainOptions : Options
-{
-    #region Properties
-
-    [Value(0, MetaName = "module", Required = true, HelpText = "A property module (.tla).")]
-    public string Module { get; set; } = string.Empty;
-
-    [Option("cfg", Required = false, MetaValue = "FILE.cfg",
-        HelpText = "Its .cfg, if not the module's own name. The .cfg is what decides which claims " +
-                   "are checked at all, so it is read alongside rather than assumed.")]
-    public string Config { get; set; } = string.Empty;
-
-    [Option("json", Required = false,
-        HelpText = "Emit the explanation as JSON — the claims, what each forbids, and the states " +
-                   "its condition applies to. For an agent, or a report generator.")]
-    public bool Json { get; set; }
-
-    #endregion
-}
-
 /// <summary>Model-check a Dogwood policy.</summary>
 [Verb("check", HelpText =
-    "Model-check a Dogwood policy, rule by rule: is each one load-bearing, or is it VACUOUS, " +
-    "REDUNDANT or DEAD? Runs TLC once per rule, so expect seconds. GIVE IT A DIRECTORY instead " +
-    "and it audits every .dw in it, pairing each with the .tla module whose header names it, and " +
+    "Model-check a Dogwood policy, rule by rule: is each one effective, or is it VACUOUS, " +
+    "REDUNDANT or DEAD? Runs TLC once per rule, so can take seconds to complete. Given a directory path " +
+    "it will audit every .dw in it, pairing each with the .tla module whose header names it, and " +
     "writes findings.md, findings.html, results.json and traces/ beside them, after scanning " +
-    "the inputs for hidden text and instructions aimed at a model. Exit: 0 answered or nothing to " +
-    "look at, 1 a --property claim is BROKEN or there are findings, 2 no verdict, 3 could not run.")]
+    "the inputs for hidden text and instructions aimed at an LLM. Exit codes: \n" +
+    "0: answered or nothing to look at.\n1: a --property claim is BROKEN or there are findings.\n2: no verdict.\n3: could not run.")]
 public class CheckOptions : Options
 {
     #region Properties
@@ -155,24 +101,24 @@ public class CheckOptions : Options
                    "(default: the directory itself).")]
     public string OutputDir { get; set; } = string.Empty;
 
-    [Option("no-model", Required = false,
-        HelpText = "DIRECTORY ONLY. Run the checks and write the report without asking a model " +
+    [Option("no-llm", Required = false,
+        HelpText = "DIRECTORY ONLY. Run the checks and write the report without asking an LLM " +
                    "anything. Most of the value, none of the cost, and the part that belongs in CI.")]
-    public bool NoModel { get; set; }
+    public bool NoLlm { get; set; }
 
     [Option("allow-flagged-input", Required = false,
-        HelpText = "DIRECTORY ONLY. Ask the model its questions even when the input scan found " +
+        HelpText = "DIRECTORY ONLY. Ask the LLM its questions even when the input scan found " +
                    "high-severity text in the policies — hidden characters, instructions aimed at " +
-                   "a model, markup. For findings you have read and judged benign; the report " +
+                   "an LLM, markup. For findings you have read and judged benign; the report " +
                    "records that it was used. The checks themselves always run.")]
     public bool AllowFlaggedInput { get; set; }
 
     [Option("provider", Required = false, HelpText = "DIRECTORY ONLY. auto, bedrock or gemini.")]
     public string Provider { get; set; } = string.Empty;
 
-    [Option("model", Required = false,
-        HelpText = "DIRECTORY ONLY. Model id; defaults to the provider's own.")]
-    public string Model { get; set; } = string.Empty;
+    [Option("llm", Required = false,
+        HelpText = "DIRECTORY ONLY. The LLM's model id; defaults to the provider's own.")]
+    public string Llm { get; set; } = string.Empty;
 
     [Option("syntax", Required = false,
         HelpText = "Put the policy to the reference implementation (`dogwood check-parse`) before " +
@@ -208,6 +154,60 @@ public class CheckOptions : Options
 
     [Option("timeout", Required = false, HelpText = "Seconds before giving up (default 600).")]
     public int? Timeout { get; set; }
+
+    #endregion
+}
+
+/// <summary>Check a whole directory of policies, unattended.</summary>
+/// <summary>Say in English what a property module forbids, before anything is checked.</summary>
+/// <remarks>
+/// Its own verb rather than a flag on <c>check</c> because it is used at a different moment and by
+/// a different person. <c>check</c> answers "is this policy what the property says"; this answers
+/// "is the property what I meant", which is the one question in the pipeline nothing downstream
+/// verifies — and the moment to ask it is before a run, when disagreeing is still free.
+/// </remarks>
+[Verb("explain", HelpText =
+    "Read a property module and say, per claim, what it FORBIDS, which states it will be checked " +
+    "in, and how many of those its condition even applies to. Runs no model checker. Exit 4 when " +
+    "a claim cannot fail — it would pass having tested nothing.")]
+public class ExplainOptions : Options
+{
+    #region Properties
+
+    [Value(0, MetaName = "module", Required = true, HelpText = "A property module (.tla).")]
+    public string Module { get; set; } = string.Empty;
+
+    [Option("cfg", Required = false, MetaValue = "FILE.cfg",
+        HelpText = "Its .cfg fie, if different to the module's own name. The .cfg is what decides which claims " +
+                   "are checked at all, so it is read alongside rather than assumed.")]
+    public string Config { get; set; } = string.Empty;
+
+    [Option("json", Required = false,
+        HelpText = "Emit the explanation as JSON — the claims, what each forbids, and the states " +
+                   "its condition applies to. For an agent, or a report generator.")]
+    public bool Json { get; set; }
+
+    #endregion
+}
+
+/// <summary>
+/// Start the MCP server. The default verb, because that is how an MCP host launches this binary.
+/// </summary>
+/// <remarks>
+/// Default in the <c>CommandLineParser</c> sense — a host invoking <c>anchor server</c> gets here,
+/// and so would a host passing only flags. A completely bare invocation is turned into
+/// <c>--help</c> by <c>Program</c>; see the note there for why.
+/// </remarks>
+[Verb("server", isDefault: true, HelpText = "Start the Anchor MCP server in stdio or HTTP mode.")]
+public class ServerOptions : Options
+{
+    #region Properties
+
+    [Option("http", Required = false, HelpText = "Serve over HTTP instead of the default stdio.")]
+    public bool Http { get; set; }
+
+    [Option("port", Required = false, HelpText = "HTTP listening port (default: 8080).")]
+    public int? Port { get; set; }
 
     #endregion
 }

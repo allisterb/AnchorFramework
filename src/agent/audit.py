@@ -1,7 +1,7 @@
 """Audit a whole directory of policies against the intentions somebody else wrote down.
 
     python src/agent/audit.py examples/aws1
-    python src/agent/audit.py policies/ --output-dir findings --no-model
+    python src/agent/audit.py policies/ --output-dir findings --no-llm
 
 AUDIT, AND IT USED TO BE CALLED `auto`. That name claimed the wrong thing. In this field "auto"
 means AUTOFORMALIZATION -- the agent doing the formalizing -- and nothing here formalizes anything:
@@ -29,7 +29,7 @@ before the model is asked anything. A model deciding which files to check is a m
 one, and a skipped policy in a clean-looking report is worse than no report. The model's job here
 is triage and prose: it receives results it did not choose and cannot alter.
 
-IT RUNS WITHOUT A MODEL AT ALL. `--no-model`, or simply no API key, still produces `findings.md`
+IT RUNS WITHOUT AN LLM AT ALL. `--no-llm`, or simply no API key, still produces `findings.md`
 and `results.json` from the checks themselves -- which is most of the value and all of the part
 that belongs in CI.
 """
@@ -532,11 +532,12 @@ def main() -> int:
     ap.add_argument("--output-dir", type=Path, default=None,
                     help="where to write findings.md, results.json and traces/ "
                          "(default: the directory itself)")
-    ap.add_argument("--no-model", action="store_true",
-                    help="run the checks and write the report without asking a model anything. "
+    ap.add_argument("--no-llm", action="store_true",
+                    help="run the checks and write the report without asking an LLM anything. "
                          "Most of the value, none of the cost, and the part that belongs in CI")
     ap.add_argument("--provider", type=str, default="auto", choices=("auto", "bedrock", "gemini"))
-    ap.add_argument("--model", type=str, default=None)
+    ap.add_argument("--llm", type=str, default=None,
+                    help="the LLM's model id; defaults to the provider's own")
     ap.add_argument("--attempts", type=int, default=None, help="session length bound")
     ap.add_argument("--smoke", type=int, nargs="?", const=1000, default=None, metavar="N",
                     help="explore each policy as a random walk of N behaviours (default 1000) "
@@ -549,7 +550,7 @@ def main() -> int:
                          "The request space is the product of their domains, so raising this "
                          "trades runtime for reach rather than soundness")
     ap.add_argument("--allow-flagged-input", action="store_true",
-                    help="ask the model its questions even when the input scan found "
+                    help="ask the LLM its questions even when the input scan found "
                          "high-severity text. For findings you have read and judged benign; the "
                          "report records that it was used")
     args = ap.parse_args()
@@ -573,7 +574,7 @@ def main() -> int:
     # the parser, TLC and Dogwood are deterministic and not at risk from text aimed at a model.
     # What a high finding withholds is the MODEL -- the one reader here that would follow it.
     scan = screen.scan([args.directory], relative_to=args.directory)
-    asking = not args.no_model and bool(plan.questions)
+    asking = not args.no_llm and bool(plan.questions)
     withheld = bool(scan.high) and asking and not args.allow_flagged_input
     if scan.high or scan.medium:
         print(screen.render(scan, census=False) + "\n", file=sys.stderr)
@@ -591,7 +592,7 @@ def main() -> int:
     if asking and not withheld:
         print(f"\nasking the agent {len(plan.questions)} question(s) "
               f"(this makes live model calls)", file=sys.stderr)
-        answered = ask_model(plan, results, out, args.provider, args.model)
+        answered = ask_model(plan, results, out, args.provider, args.llm)
 
     note = scan_note(scan, withheld=withheld, overridden=bool(scan.high) and asking and not withheld)
     (out / "results.json").write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")

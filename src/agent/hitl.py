@@ -823,7 +823,7 @@ def main() -> int:
                         "to appsettings.json beside src/agent/ or at the repo root; in a container "
                         "this is how a mounted one is named")
     p.add_argument("--provider", default="auto", help="auto, bedrock or gemini")
-    p.add_argument("--model", default=None)
+    p.add_argument("--llm", default=None, help="the LLM's model id; defaults to the provider's own")
     p.add_argument("--rounds", type=int, default=3,
                    help="drafting attempts WITHIN one pass, before the person is asked")
     p.add_argument("--refinements", type=int, default=4,
@@ -893,7 +893,7 @@ def main() -> int:
     session = refine(
         args.policy, brief, console,
         out=args.out, refinements=args.refinements,
-        build_graph=lambda r: build_hitl(r, console, provider=args.provider, model=args.model),
+        build_graph=lambda r: build_hitl(r, console, provider=args.provider, model=args.llm),
         event_schema=args.event_schema, module_name=args.name, mutants=args.mutants,
         rounds=args.rounds, max_fields=args.max_fields,
         limits={k: v for k, v in (("turns", args.turns),

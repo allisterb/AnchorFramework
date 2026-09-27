@@ -72,8 +72,21 @@ $PythonVerbs = @{
     scan     = 'src/checker/scan.py'
 }
 
-# The CLI's own help cannot mention the verbs it does not have, so this script says them after.
 $HelpTokens = @('help', '--help', '-h', '-?', '/?')
+
+# The order `anchor help` lists the verbs in: related ones together, whichever runtime they live in.
+# A verb not named here -- `version`, or one added to the CLI later -- is listed after these, never
+# dropped. Keep in step with help_order in the bash `anchor`.
+$HelpOrder = @('help', 'check', 'auto', 'hitl', 'explain', 'timeline', 'scan', 'server')
+
+# The Python verbs' help lines. The CLI's own help cannot mention verbs it does not have, so this
+# script merges these into it.
+$PythonVerbHelp = [ordered]@{
+    auto     = 'Draft the property module from a natural language brief and check it, unattended.'
+    hitl     = 'Draft the property module from a natural language brief, with a human answering when a gate turns a draft away.'
+    timeline = 'Redraw findings.html from the witnesses a check left, without re-running the checks.'
+    scan     = "Look for hidden text, instructions aimed at an LLM and markup in a policy's inputs, before an LLM reads them."
+}
 
 # $IsWindows is a PowerShell 6+ automatic variable and does not exist at all under Windows
 # PowerShell 5.1, where Set-StrictMode makes reading it an error. Resolve the platform once.
@@ -151,14 +164,76 @@ function Invoke-Python([string] $Verb, [string] $Script, [string[]] $Rest) {
     exit $LASTEXITCODE
 }
 
-function Show-ExtraVerbs {
-    Write-Output '  auto       Draft the property module from a natural language brief and check it, unattended'
-    Write-Output ''
-    Write-Output '  hitl       Draft the property module from a natural language brief with a human answering when a gate turns a draft away'
-    Write-Output ''
-    Write-Output '  timeline   Build the data a timeline visualisation draws, from a witness directory written by a check'
-    Write-Output ''
-    Write-Output '  scan       Look for hidden text, adversarial prompts and markup in a policy''s inputs before a model sees them'
+# A verb and its description in the CLI's own help layout: the verb at column 3, the text at column
+# 14, wrapped at 80.
+function Format-VerbBlock([string] $Verb, [string] $Description) {
+    $lines = [Collections.Generic.List[string]]::new()
+    $line = '  ' + $Verb.PadRight(11)
+    $first = $true
+    foreach ($word in $Description -split ' ') {
+        if (-not $first -and ($line.Length + 1 + $word.Length) -gt 80) {
+            $lines.Add($line)
+            $line = (' ' * 13) + $word
+        } else {
+            $line = if ($first) { $line + $word } else { "$line $word" }
+        }
+        $first = $false
+    }
+    $lines.Add($line)
+    $lines -join "`n"
+}
+
+# `anchor help`: the CLI's verb list and the Python verbs as one list, in $HelpOrder. The CLI's help
+# is split into one block per verb -- a block starts with a verb at column 3 -- and the Python verbs
+# are laid out the same way, so the two halves cannot be told apart. If no block can be found, the
+# CLI's text is printed as it came and the Python verbs after it: a changed help format costs the
+# ordering, never a verb.
+function Show-Help($Cli, [string[]] $Line) {
+    # Read through Process rather than `2>&1`: the CLI writes its help to stderr, and Windows
+    # PowerShell turns each redirected stderr line into an ErrorRecord -- blank ones print as
+    # "System.Management.Automation.RemoteException".
+    $info = [Diagnostics.ProcessStartInfo]::new($Cli.Exe)
+    $info.Arguments = ($Line | ForEach-Object { if ($_ -match '\s') { '"' + $_ + '"' } else { $_ } }) -join ' '
+    $info.UseShellExecute = $false
+    $info.RedirectStandardOutput = $true
+    $info.RedirectStandardError = $true
+    $process = [Diagnostics.Process]::Start($info)
+    $stdout = $process.StandardOutput.ReadToEndAsync()
+    $stderr = $process.StandardError.ReadToEndAsync()
+    $process.WaitForExit()
+    # Handed back in a variable, not returned: everything this function writes is its output, and a
+    # returned code would arrive as the last line of the help text.
+    $script:HelpExitCode = $process.ExitCode
+    $text = ($stdout.Result + $stderr.Result) -replace "`r`n", "`n"
+
+    $header = [Collections.Generic.List[string]]::new()
+    $blocks = [ordered]@{}
+    $current = $null
+    foreach ($row in $text -split "`n") {
+        if ($row -match '^  ([A-Za-z][A-Za-z0-9-]*)  ') {
+            $current = $Matches[1]
+            $blocks[$current] = [Collections.Generic.List[string]]::new()
+            $blocks[$current].Add($row)
+        } elseif ($null -eq $current) {
+            $header.Add($row)
+        } elseif ($row.Trim()) {
+            $blocks[$current].Add($row)
+        }
+    }
+
+    if ($blocks.Count -eq 0) {
+        Write-Output $text.TrimEnd()
+        foreach ($verb in $PythonVerbHelp.Keys) { Write-Output ''; Write-Output (Format-VerbBlock $verb $PythonVerbHelp[$verb]) }
+        return
+    }
+
+    $all = [ordered]@{}
+    foreach ($verb in $blocks.Keys) { $all[$verb] = $blocks[$verb] -join "`n" }
+    foreach ($verb in $PythonVerbHelp.Keys) { $all[$verb] = Format-VerbBlock $verb $PythonVerbHelp[$verb] }
+
+    Write-Output ($header -join "`n").TrimEnd()
+    $order = @($HelpOrder | Where-Object { $all.Contains($_) }) + @($all.Keys | Where-Object { $HelpOrder -notcontains $_ })
+    foreach ($verb in $order) { Write-Output ''; Write-Output $all[$verb] }
     Write-Output ''
 }
 
@@ -186,9 +261,13 @@ if ($PythonVerbs.ContainsKey($verb)) {
 # guess here would, and a verb added to the CLI works through this script without it being touched.
 $cli = Find-Cli
 $line = @($cli.Prefix) + @($args)
+
+# Only a bare `anchor help`: `anchor help check` is the CLI's help for one verb, and has no list to
+# merge anything into.
+if (($HelpTokens -contains $verb) -and $rest.Count -eq 0) {
+    Show-Help $cli $line
+    exit $script:HelpExitCode
+}
+
 & $cli.Exe @line
-$code = $LASTEXITCODE
-
-if ($HelpTokens -contains $verb) { Show-ExtraVerbs }
-
-exit $code
+exit $LASTEXITCODE

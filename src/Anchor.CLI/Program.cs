@@ -170,9 +170,9 @@ public static class Program
         foreach (var (name, given) in new[]
                  {
                      ("--output-dir", !string.IsNullOrWhiteSpace(opts.OutputDir)),
-                     ("--no-model", opts.NoModel),
+                     ("--no-llm", opts.NoLlm),
                      ("--provider", !string.IsNullOrWhiteSpace(opts.Provider)),
-                     ("--model", !string.IsNullOrWhiteSpace(opts.Model))
+                     ("--llm", !string.IsNullOrWhiteSpace(opts.Llm))
                  })
         {
             if (given)
@@ -251,11 +251,11 @@ public static class Program
 
         if (!string.IsNullOrWhiteSpace(opts.OutputDir)) args.AddRange(["--output-dir", opts.OutputDir]);
         if (!string.IsNullOrWhiteSpace(opts.Provider)) args.AddRange(["--provider", opts.Provider]);
-        if (!string.IsNullOrWhiteSpace(opts.Model)) args.AddRange(["--model", opts.Model]);
+        if (!string.IsNullOrWhiteSpace(opts.Llm)) args.AddRange(["--llm", opts.Llm]);
         if (opts.Attempts is int a) args.AddRange(["--attempts", a.ToString()]);
         if (opts.Smoke is int sm) args.AddRange(["--smoke", sm.ToString()]);
         if (opts.MaxFields is int mf) args.AddRange(["--max-fields", mf.ToString()]);
-        if (opts.NoModel) args.Add("--no-model");
+        if (opts.NoLlm) args.Add("--no-llm");
         if (opts.AllowFlaggedInput) args.Add("--allow-flagged-input");
 
         // No timeout of our own: a directory of policies is minutes of TLC per policy, and a cap

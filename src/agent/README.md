@@ -430,7 +430,7 @@ branch on "needs a human" without parsing prose.
 | `ANCHOR_CLI` | path to `Anchor.CLI.dll`, or to a self-contained executable. Otherwise a Release build is preferred, then Debug |
 | `--project-dir` | the directory policy paths resolve inside; a path escaping it is refused. Defaults to the repo, and the agent is exactly the caller containment exists for |
 | `--provider` | `auto`, `bedrock` or `gemini`. `auto` picks Gemini when a key is present and Bedrock otherwise — an API key in config was put there deliberately, whereas `~/.aws` exists on most machines whether or not the account can call a model |
-| `--model` | model id. Defaults to the provider's own default |
+| `--llm` | the LLM's model id. Defaults to the provider's own default |
 
 ## The model: Amazon or Google
 
