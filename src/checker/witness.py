@@ -57,16 +57,15 @@ REPO = Path(__file__).resolve().parents[2]
 if str(REPO / "src") not in sys.path:
     sys.path.insert(0, str(REPO / "src"))
 
+# DOGWOOD is the built binary, which is not in the repo. Absent is not an error: everything up to
+# the replay still works and is still worth printing, so a missing binary costs the confirmation and
+# nothing else. Taken from engine.py rather than defined here: this module once kept its own copy of
+# the checkout path, which ignored ANCHOR_DOGWOOD, so inside the container image -- where the binary
+# is /app/bin/dogwood and there is no checkout -- no witness was ever confirmed.
+from checker.engine import DOGWOOD  # noqa: E402
 from checker.explain import (Module, Rec, Seq, Tag, Unknown, parse,  # noqa: E402
                              read, show_value)
 from translator import parse_schema, parse_tla_value  # noqa: E402
-
-# The built binary, which is not in the repo. Absent is not an error: everything up to the replay
-# still works and is still worth printing, so a missing binary costs the confirmation and nothing
-# else. Built with:
-#     cargo build --release --locked --manifest-path ext/dogwood/Cargo.toml
-DOGWOOD = (REPO / "ext" / "dogwood" / "target" / "release"
-           / ("dogwood.exe" if sys.platform == "win32" else "dogwood"))
 
 # A state conjunct as TLC prints it, and the invariant line above it.
 VIOLATION = re.compile(r"Invariant (\w+) is violated")
@@ -637,7 +636,11 @@ def confirm(policy: Path, module: Path, tlc_output: str, *,
         # finding, and our model and the engine disagree.
         c.agreed = (c.engine == "allow") != d.allow
 
+    # The directory is made HERE as well as in the loop, because the loop skips making it when there is
+    # no binary to replay with -- and the README is written regardless. Without this, a missing
+    # binary, which is meant to cost only the confirmation, raised here and lost the trace too.
     if keep and any(c.trace for c in out):
+        Path(keep).mkdir(parents=True, exist_ok=True)
         witness_readme(Path(keep), policy, out, event_schema)
     return out
 

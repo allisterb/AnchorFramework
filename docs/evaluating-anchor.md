@@ -6,28 +6,32 @@ carries all of them. Nothing is installed on your machine and nothing is cloned.
 ## Getting it
 
 ```bash
-docker pull allisterb/anchor:latest
-docker run --rm allisterb/anchor:latest version
+docker pull public.ecr.aws/v4q7x8t1/anchor:latest
+docker run --rm public.ecr.aws/v4q7x8t1/anchor:latest version
 ```
 
-`allisterb/anchor:0.1.0` pins the same image. It is **371 MB**, and it ships the worked examples
-described below, so every command on this page runs with no other setup.
+The image is on Amazon ECR Public, so pulling it needs no AWS account or login. `public.ecr.aws/v4q7x8t1/anchor:0.1.1`
+pins the version this page describes. It is about **350 MB** to download, and it ships the worked
+examples described below, so every command on this page runs with no other setup.
 
-On Apple Silicon, add `--platform linux/amd64` to the `pull` and to every `run`; it works under
-emulation and is slower.
+It is built for both `linux/amd64` and `linux/arm64` under the same tag, so Docker pulls the one
+that matches your machine and Apple Silicon runs it natively, with no `--platform` flag.
+
+Docker Hub's `allisterb/anchor:0.1.0` is the image submitted to the hackathon, kept unchanged while
+judging runs. It predates the input scanner and `findings.html` described below, and is amd64 only.
 
 The entry point is the `anchor` launcher, so arguments after the image name are the verb and its
 options — the container behaves like the command, not like a service.
 
 ```bash
-docker run --rm allisterb/anchor:latest help
+docker run --rm public.ecr.aws/v4q7x8t1/anchor:latest help
 ```
 
 The samples live at `/app`, which is why the commands below pass `-w /app`. To check **your own**
 policy instead, mount your directory and drop that flag:
 
 ```bash
-docker run --rm -v "$PWD:/work" allisterb/anchor:latest check my-policy.dw
+docker run --rm -v "$PWD:/work" public.ecr.aws/v4q7x8t1/anchor:latest check my-policy.dw
 ```
 
 Your working directory is mounted at `/work`, which is the container's working directory, so paths
@@ -56,7 +60,7 @@ Three things are worth knowing before you read a verdict:
 ## 1. The questions that need nothing from you  — *5 seconds, no API key*
 
 ```bash
-docker run --rm -w /app allisterb/anchor:latest check tests/policies/dead_forbid.dw
+docker run --rm -w /app public.ecr.aws/v4q7x8t1/anchor:latest check tests/policies/dead_forbid.dw
 ```
 
 ```
@@ -69,7 +73,7 @@ Two rules, both well-formed. `Approve` has no permit, so default-deny already re
 either rule is impossible in isolation, which is why a per-rule validator has nothing to say:
 
 ```bash
-docker run --rm -w /app --entrypoint /app/bin/dogwood allisterb/anchor:latest \
+docker run --rm -w /app --entrypoint /app/bin/dogwood public.ecr.aws/v4q7x8t1/anchor:latest \
     validate --policy-schema tests/policies/anchor.cedarschema tests/policies/dead_forbid.dw
 ```
 
@@ -89,7 +93,7 @@ no: *can this permit ever grant anything*, *is this rule doing anything*, and wi
 This is the finding the project exists for, and it comes from a real AWS article's example.
 
 ```bash
-docker run --rm -w /app allisterb/anchor:latest \
+docker run --rm -w /app public.ecr.aws/v4q7x8t1/anchor:latest \
     check examples/aws2/agent-policy.dw --property examples/aws2/CumulativeCap.tla --max-fields 8
 ```
 
@@ -110,7 +114,7 @@ supposed to mean.
 ## 3. What a claim will actually catch  — *instant*
 
 ```bash
-docker run --rm -w /app allisterb/anchor:latest explain tests/policies/firewall.tla
+docker run --rm -w /app public.ecr.aws/v4q7x8t1/anchor:latest explain tests/policies/firewall.tla
 ```
 
 Per claim: what it **forbids**, which states it will be checked in, and how many of those its
@@ -121,19 +125,25 @@ nothing will pass having tested nothing.
 ## 4. A whole directory  — *minutes*
 
 ```bash
-docker run --rm -v "$PWD:/work" -w /app allisterb/anchor:latest \
-    check examples/aws1 --output-dir /work/aws1
+docker run --rm -v "$PWD:/work" -w /app public.ecr.aws/v4q7x8t1/anchor:latest \
+    check examples/aws1 --no-model --output-dir /work/aws1
 ```
 
 Every `.dw` paired with the `.tla` module whose header names it, writing `findings.md`,
-`results.json` and `traces/` into `./aws1` on your machine. `--output-dir` is what brings them out:
-without it they are written inside the container, and go when it does. `examples/aws1` and
-`examples/aws2` already contain the committed output of exactly this, so you can compare.
+`findings.html`, `results.json` and `traces/` into `./aws1` on your machine. `--output-dir` is what
+brings them out: without it they are written inside the container, and go when it does. It exits 1,
+because the audit has findings.
 
-> **Newer than the published image.** A directory audit now also scans its inputs before anything
-> reads them, and writes `findings.html` beside `findings.md`. Both are in this repository but not
-> in `allisterb/anchor:0.1.0`. To try them, build the image from source (the README's "In a
-> container") and use `anchor:latest` in place of `allisterb/anchor:latest`.
+`--no-model` is what keeps this mode mechanical. `examples/aws1` also holds a `questions.md`, and
+without the flag the audit asks a model those questions as well, which needs the key set up under
+the agent modes below; with no key, each question fails and the rest of the audit is unaffected.
+
+`examples/aws1` and `examples/aws2` already contain the committed output of this audit, so you can
+compare. Expect three differences: the committed reports predate the input scan, so they have no
+**Input scan** line; they were written with the questions answered; and each `Run it yourself`
+names wherever your copy was written.
+
+A directory audit scans its inputs before anything reads them; see the agent modes below.
 
 `findings.html` is the audit as one page: each broken claim drawn as the session that breaks it,
 with the reference engine's verdict on every decision and the rule that decided it. It is a single
@@ -142,15 +152,15 @@ renderer: its Content-Security-Policy allows that one script by hash, and nothin
 
 ## 5 and 6. The agent modes  — *needs an API key*
 
-The first four modes are mechanical: no model is involved, and nothing a model said can change a
-verdict. The last two are where an agent writes the formal artifact.
+The first four modes are mechanical (the fourth with `--no-model`, as shown): no model is involved,
+and nothing a model said can change a verdict. The last two are where an agent writes the formal artifact.
 
 **Before either shows a model anything, it scans the inputs.** A policy under analysis is often one
 nobody trusts, and its comments and string literals reach the model. `anchor scan` is the same check
 on its own — instant, and no key:
 
 ```bash
-docker run --rm -v "$PWD:/work" anchor:latest scan my-policies/
+docker run --rm -v "$PWD:/work" public.ecr.aws/v4q7x8t1/anchor:latest scan my-policies/
 ```
 
 It reports, by severity, hidden and reordering characters, names spelled with look-alike letters,
@@ -164,7 +174,7 @@ image**, and `.dockerignore` excludes it by name, because a key baked into a lay
 published to everyone who can pull it.
 
 ```bash
-docker run --rm -v "$PWD:/work" -v "$PWD/config:/config:ro" allisterb/anchor:latest \
+docker run --rm -v "$PWD:/work" -v "$PWD/config:/config:ro" public.ecr.aws/v4q7x8t1/anchor:latest \
     auto /app/examples/aws1/07-trust-decay.dw --config /config/appsettings.json --out /work/out
 ```
 
@@ -182,7 +192,7 @@ you in plain English and you say whether that is what you meant; and when a gate
 it asks you about the **requirement**, never about TLA+. It needs a real terminal, so add `-it`:
 
 ```bash
-docker run --rm -it -v "$PWD:/work" -v "$PWD/config:/config:ro" allisterb/anchor:latest \
+docker run --rm -it -v "$PWD:/work" -v "$PWD/config:/config:ro" public.ecr.aws/v4q7x8t1/anchor:latest \
     hitl /app/examples/aws2/03-cumulative-cap.dw --config /config/appsettings.json --out /work/out
 ```
 

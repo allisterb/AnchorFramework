@@ -197,7 +197,7 @@
       "anchor.verifiers.tlaplus": {
         "type": "Project",
         "dependencies": {
-          "Anchor.Runtime": "[0.1.1, )",
+          "Anchor.Runtime": "[0.1.2, )",
           "IKVM": "[8.15.0, )"
         }
       },
