@@ -16,7 +16,9 @@ import os
 import re
 import shlex
 import subprocess
+import sys
 import tempfile
+import threading
 from contextlib import nullcontext
 from functools import lru_cache
 from pathlib import Path
@@ -67,14 +69,38 @@ def run_tlc(module: str, cwd: Path, scratch: Path | None = None,
     """
     with (tempfile.TemporaryDirectory(prefix="anchor-tlc-") if scratch is None
           else nullcontext(str(scratch))) as tmp:
-        proc = subprocess.run(
-            ["java", *JAVA_UTF8, *java_options(), f"-Djava.io.tmpdir={tmp}",
-             "-cp", str(find_jar()), "tlc2.TLC", "-cleanup",
-             "-metadir", str(Path(tmp) / "states"),
-             *(extra or []),
-             "-config", f"{module}.cfg", f"{module}.tla"],
-            cwd=cwd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        cmd = ["java", *JAVA_UTF8, *java_options(), f"-Djava.io.tmpdir={tmp}",
+               "-cp", str(find_jar()), "tlc2.TLC", "-cleanup",
+               "-metadir", str(Path(tmp) / "states"),
+               *(extra or []),
+               "-config", f"{module}.cfg", f"{module}.tla"]
+        if os.environ.get("ANCHOR_PROGRESS"):
+            return relay_progress(cmd, cwd)
+        proc = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, encoding="utf-8",
+                              errors="replace")
         return proc.returncode == 0, proc.stdout + proc.stderr
+
+def relay_progress(cmd: list[str], cwd: Path) -> tuple[bool, str]:
+    """`run_tlc` for a caller that asked for progress: TLC's own `Progress(...)` lines are echoed to
+    stderr as they arrive, and everything is still returned exactly as the quiet path returns it.
+
+    TLC prints one about once a minute on a long search, which is the only sign a ten-minute run is
+    alive. stderr is read on a thread so that neither pipe can fill while the other is being read.
+    """
+    proc = subprocess.Popen(cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                            encoding="utf-8", errors="replace")
+    errors: list[str] = []
+    reader = threading.Thread(target=lambda: errors.append(proc.stderr.read()), daemon=True)
+    reader.start()
+    out: list[str] = []
+    for line in proc.stdout:
+        out.append(line)
+        if line.startswith("Progress"):
+            print(f"        {line.rstrip()}", file=sys.stderr, flush=True)
+    proc.wait()
+    reader.join()
+    return proc.returncode == 0, "".join(out) + "".join(errors)
+
 
 
 def run_sany(module: str, cwd: Path) -> tuple[bool, str]:

@@ -4,7 +4,7 @@
     "01-workflow-sequencing.dw": {
       "kind": "derived",
       "policy": "01-workflow-sequencing.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
+      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
       "bound": {
         "attempts": 3,
         "amount": 2,
@@ -59,7 +59,7 @@
     "02-output-to-input.dw": {
       "kind": "derived",
       "policy": "02-output-to-input.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
+      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
       "bound": {
         "attempts": 3,
         "amount": 2,
@@ -95,7 +95,7 @@
     "03-data-freshness.dw": {
       "kind": "derived",
       "policy": "03-data-freshness.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
+      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
       "bound": {
         "attempts": 3,
         "amount": 2,
@@ -131,7 +131,7 @@
     "04-cumulative-budget-cap.dw": {
       "kind": "derived",
       "policy": "04-cumulative-budget-cap.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
+      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
       "bound": {
         "attempts": 3,
         "amount": 2,
@@ -160,7 +160,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "execute_trade",
@@ -173,7 +175,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             }
           ],
           "narrative": [
@@ -189,7 +193,7 @@
     "05-human-approval.dw": {
       "kind": "derived",
       "policy": "05-human-approval.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
+      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
       "bound": {
         "attempts": 3,
         "amount": 2,
@@ -219,7 +223,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "execute_trade",
@@ -233,7 +239,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             }
           ],
           "narrative": [
@@ -249,7 +257,7 @@
     "07-trust-decay.dw": {
       "kind": "derived",
       "policy": "07-trust-decay.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
+      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
       "bound": {
         "attempts": 3,
         "amount": 2,
@@ -276,7 +284,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "execute_trade",
@@ -287,7 +297,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             }
           ],
           "narrative": [
@@ -303,7 +315,7 @@
     "agent-policy.dw": {
       "kind": "derived",
       "policy": "agent-policy.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
+      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
       "bound": {
         "attempts": 3,
         "amount": 2,
@@ -332,7 +344,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "get_client_profile",
@@ -345,7 +359,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             }
           ],
           "narrative": [
@@ -374,7 +390,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "get_market_price",
@@ -387,7 +405,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             }
           ],
           "narrative": [
@@ -416,7 +436,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "interact_advisor",
@@ -429,7 +451,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             }
           ],
           "narrative": [
@@ -458,7 +482,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "get_client_profile",
@@ -471,7 +497,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "load_portfolio",
@@ -484,7 +512,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "load_portfolio",
@@ -497,7 +527,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             }
           ],
           "narrative": [
@@ -527,7 +559,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "get_client_profile",
@@ -540,7 +574,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "load_portfolio",
@@ -553,7 +589,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "load_portfolio",
@@ -566,7 +604,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "rebalance_portfolio",
@@ -579,7 +619,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "rebalance_portfolio",
@@ -592,7 +634,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             }
           ],
           "narrative": [
@@ -623,7 +667,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "get_client_profile",
@@ -636,7 +682,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "execute_trade",
@@ -649,7 +697,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "execute_trade",
@@ -662,7 +712,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             }
           ],
           "narrative": [
@@ -692,7 +744,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "get_market_price",
@@ -705,7 +759,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "execute_trade",
@@ -718,7 +774,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "execute_trade",
@@ -731,7 +789,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             }
           ],
           "narrative": [
@@ -815,13 +875,13 @@
           "sentence": "with prereq = \"freshPriceOnly\", the Dogwood engine ALLOWS this session at t=40, where `FreshPriceAloneIsNotEnough` says your policy set must REFUSE it",
           "trace": "@11 scope(principal: AgentCore::OAuthUser::\"agent\", resource: AgentCore::Gateway::\"gw\") AgentCore::Action::\"get_market_price\"::response(input: { }, output: { }, callerPrincipal: AgentCore::OAuthUser::\"agent\", callerResource: AgentCore::Gateway::\"gw\", requestId: \"e1\")\n@40 scope(principal: AgentCore::OAuthUser::\"agent\", resource: AgentCore::Gateway::\"gw\") request_context(input: { profile_id: 1 }) AgentCore::Action::\"execute_trade\"::request(input: { profile_id: 1 }, callerPrincipal: AgentCore::OAuthUser::\"agent\", callerResource: AgentCore::Gateway::\"gw\", requestId: \"e2\")\n",
           "directory": "examples\\aws1\\traces\\agent-policy-TradeGate\\witness",
-          "command": "dogwood replay --policy-schema generated.cedarschema --trace FreshPriceAloneIsNotEnough.log agent-policy.dw"
+          "command": "dogwood replay --policy-schema generated.cedarschema --event-schema pinned.dwschema --trace FreshPriceAloneIsNotEnough.log agent-policy.dw"
         }
       ],
       "kind": "property",
       "held": false,
       "exitCode": 1,
-      "output": "no --event-schema given, so every answer below assumes the UNPINNED reading\n  (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal\n  on every kind, so a deployed rule sees only its own principal's events and one\n  reported live here may never fire. Pass --pinned to check that reading, or\n  --event-schema for a real one.\n\nagent-policy.dw against TradeGate.tla: 7 rule(s)\n\n  BROKEN  Invariant FreshPriceAloneIsNotEnough is violated by the initial state:\n      prereq = \"freshPriceOnly\"\n        FreshPriceAloneIsNotEnough ==\n            (prereq = \"freshPriceOnly\") => ~Allowed(prereq)\n\nThe policy does not mean what the property says it means. The state above is the\nrequest that breaks the claim, and the claim is quoted beneath it -- read the two\ntogether, because a violated invariant says which direction failed only when you can\nsee what it asserted.",
+      "output": "no --event-schema given, so every answer below uses Dogwood's own default\n  reading: callerPrincipal pinned on every kind, so a temporal condition sees\n  only the requesting principal's events. Pass --event-schema for your\n  deployment's real one, or --unpinned if it has no universal pin.\n\nagent-policy.dw against TradeGate.tla: 7 rule(s)\n\n  BROKEN  Invariant FreshPriceAloneIsNotEnough is violated by the initial state:\n      prereq = \"freshPriceOnly\"\n        FreshPriceAloneIsNotEnough ==\n            (prereq = \"freshPriceOnly\") => ~Allowed(prereq)\n\nThe policy does not mean what the property says it means. The state above is the\nrequest that breaks the claim, and the claim is quoted beneath it -- read the two\ntogether, because a violated invariant says which direction failed only when you can\nsee what it asserted.",
       "error": ""
     },
     "TrustDecay.tla": {
@@ -926,13 +986,13 @@
           "sentence": "with gap = 1, the Dogwood engine REFUSES this session at t=2, where `KeepsWriteWhileAdvisorEngaged` says your policy set must ALLOW it",
           "trace": "@1 scope(principal: AgentCore::OAuthUser::\"agent\", resource: AgentCore::Gateway::\"gw\") AgentCore::Action::\"interact_advisor\"::response(input: { }, output: { }, callerPrincipal: AgentCore::OAuthUser::\"agent\", callerResource: AgentCore::Gateway::\"gw\", requestId: \"e1\")\n@2 scope(principal: AgentCore::OAuthUser::\"agent\", resource: AgentCore::Gateway::\"gw\") request_context(input: { }) AgentCore::Action::\"execute_trade\"::request(input: { }, callerPrincipal: AgentCore::OAuthUser::\"agent\", callerResource: AgentCore::Gateway::\"gw\", requestId: \"e2\")\n",
           "directory": "examples\\aws1\\traces\\07-trust-decay-TrustDecay\\witness",
-          "command": "dogwood replay --policy-schema generated.cedarschema --trace KeepsWriteWhileAdvisorEngaged.log 07-trust-decay.dw"
+          "command": "dogwood replay --policy-schema generated.cedarschema --event-schema pinned.dwschema --trace KeepsWriteWhileAdvisorEngaged.log 07-trust-decay.dw"
         }
       ],
       "kind": "property",
       "held": false,
       "exitCode": 1,
-      "output": "no --event-schema given, so every answer below assumes the UNPINNED reading\n  (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal\n  on every kind, so a deployed rule sees only its own principal's events and one\n  reported live here may never fire. Pass --pinned to check that reading, or\n  --event-schema for a real one.\n\n07-trust-decay.dw against TrustDecay.tla: 1 rule(s)\n\n  BROKEN  Invariant KeepsWriteWhileAdvisorEngaged is violated by the initial state:\n      gap = 1\n        \\* The other half, which the sentence implies and which is the part that makes the policy useful:\n        \\* while the advisor IS engaged, the agent can still work.\n        KeepsWriteWhileAdvisorEngaged ==\n            (gap <= 15 * Minute) => TradeAllowed(gap)\n\nThe policy does not mean what the property says it means. The state above is the\nrequest that breaks the claim, and the claim is quoted beneath it -- read the two\ntogether, because a violated invariant says which direction failed only when you can\nsee what it asserted.",
+      "output": "no --event-schema given, so every answer below uses Dogwood's own default\n  reading: callerPrincipal pinned on every kind, so a temporal condition sees\n  only the requesting principal's events. Pass --event-schema for your\n  deployment's real one, or --unpinned if it has no universal pin.\n\n07-trust-decay.dw against TrustDecay.tla: 1 rule(s)\n\n  BROKEN  Invariant KeepsWriteWhileAdvisorEngaged is violated by the initial state:\n      gap = 1\n        \\* The other half, which the sentence implies and which is the part that makes the policy useful:\n        \\* while the advisor IS engaged, the agent can still work.\n        KeepsWriteWhileAdvisorEngaged ==\n            (gap <= 15 * Minute) => TradeAllowed(gap)\n\nThe policy does not mean what the property says it means. The state above is the\nrequest that breaks the claim, and the claim is quoted beneath it -- read the two\ntogether, because a violated invariant says which direction failed only when you can\nsee what it asserted.",
       "error": ""
     },
     "TrustDecay10.tla": {
@@ -1001,17 +1061,18 @@
           "sentence": "with gap = 960, the Dogwood engine ALLOWS this session at t=961, where `LosesWriteAfter10m` says your policy set must REFUSE it",
           "trace": "@1 scope(principal: AgentCore::OAuthUser::\"agent\", resource: AgentCore::Gateway::\"gw\") AgentCore::Action::\"interact_advisor\"::response(input: { }, output: { }, callerPrincipal: AgentCore::OAuthUser::\"agent\", callerResource: AgentCore::Gateway::\"gw\", requestId: \"e1\")\n@961 scope(principal: AgentCore::OAuthUser::\"agent\", resource: AgentCore::Gateway::\"gw\") request_context(input: { }) AgentCore::Action::\"execute_trade\"::request(input: { }, callerPrincipal: AgentCore::OAuthUser::\"agent\", callerResource: AgentCore::Gateway::\"gw\", requestId: \"e2\")\n",
           "directory": "examples\\aws1\\traces\\07-trust-decay-TrustDecay10\\witness",
-          "command": "dogwood replay --policy-schema generated.cedarschema --trace LosesWriteAfter10m.log 07-trust-decay.dw"
+          "command": "dogwood replay --policy-schema generated.cedarschema --event-schema pinned.dwschema --trace LosesWriteAfter10m.log 07-trust-decay.dw"
         }
       ],
       "kind": "property",
       "held": false,
       "exitCode": 1,
-      "output": "no --event-schema given, so every answer below assumes the UNPINNED reading\n  (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal\n  on every kind, so a deployed rule sees only its own principal's events and one\n  reported live here may never fire. Pass --pinned to check that reading, or\n  --event-schema for a real one.\n\n07-trust-decay.dw against TrustDecay10.tla: 1 rule(s)\n\n  BROKEN  Invariant LosesWriteAfter10m is violated by the initial state:\n      gap = 960\n        LosesWriteAfter10m ==\n            (gap > 10 * Minute) => ~TradeAllowed(gap)\n\nThe policy does not mean what the property says it means. The state above is the\nrequest that breaks the claim, and the claim is quoted beneath it -- read the two\ntogether, because a violated invariant says which direction failed only when you can\nsee what it asserted.",
+      "output": "no --event-schema given, so every answer below uses Dogwood's own default\n  reading: callerPrincipal pinned on every kind, so a temporal condition sees\n  only the requesting principal's events. Pass --event-schema for your\n  deployment's real one, or --unpinned if it has no universal pin.\n\n07-trust-decay.dw against TrustDecay10.tla: 1 rule(s)\n\n  BROKEN  Invariant LosesWriteAfter10m is violated by the initial state:\n      gap = 960\n        LosesWriteAfter10m ==\n            (gap > 10 * Minute) => ~TradeAllowed(gap)\n\nThe policy does not mean what the property says it means. The state above is the\nrequest that breaks the claim, and the claim is quoted beneath it -- read the two\ntogether, because a violated invariant says which direction failed only when you can\nsee what it asserted.",
       "error": ""
     }
   },
   "smoke": null,
+  "reading": "pinned",
   "unpaired": [],
   "inputScan": {
     "files": [

@@ -10,6 +10,7 @@ than take it on trust — and disagree with it if it is wrong.
 |---|---|
 | `agent-policy.dw` | the policy, copied verbatim so this directory answers for itself |
 | `generated.cedarschema` | a Cedar schema built from the policy's own actions and field types. `replay` requires one; writing it by hand would be a second description of the policy to keep in step |
+| `pinned.dwschema` | the event schema the policy is deployed under. **Not optional**: a universal pin changes what history a temporal predicate can see, so the same trace means something different without it |
 | `ARefusedAttemptDoesNotConsumeTheBudget.log` | the session that breaks `ARefusedAttemptDoesNotConsumeTheBudget` — the engine answered **DENY** at `t=4` |
 
 ## Re-running
@@ -17,7 +18,7 @@ than take it on trust — and disagree with it if it is wrong.
 From inside this directory, with the `dogwood` binary on your PATH:
 
 ```bash
-dogwood replay --policy-schema generated.cedarschema --trace ARefusedAttemptDoesNotConsumeTheBudget.log agent-policy.dw
+dogwood replay --policy-schema generated.cedarschema --event-schema pinned.dwschema --trace ARefusedAttemptDoesNotConsumeTheBudget.log agent-policy.dw
 ```
 
 ## Reading the result

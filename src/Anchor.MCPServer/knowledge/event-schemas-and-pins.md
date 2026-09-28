@@ -21,12 +21,15 @@ The consequence is blunt: a rule can be `live` under one reading and `VACUOUS` u
 
 | reading | history a temporal predicate sees |
 |---|---|
-| **unpinned** (no schema given) | one global trace — every event from every caller |
-| **partitioned** (universal pin) | only the events in its own partition |
+| **pinned** by `callerPrincipal` — Dogwood's default, and the checker's when no schema is given | only the requesting principal's events |
+| **unpinned** (`pinned: false`) | one global trace — every event from every caller |
+| **another partition** (a schema's own universal pin, such as `sessionId`) | only the events in its own partition |
 
-**The shipped default partitions by principal.** So the unpinned reading is the more permissive
-one, and a verdict computed under it is optimistic about deployment. When no schema is passed, the
-checker says so in its `Reading` field. Do not drop that line when summarising.
+**Neither reading is uniformly stricter.** A permit that needs an earlier event fires less often
+pinned, because fewer events count. But a forbid that counts earlier events — a rate limit — also
+fires less often pinned, so for it the pinned reading is the more permissive one. That is why the
+reading belongs in every verdict. When no schema is passed the checker uses Dogwood's default and
+says so in its `Reading` field. Do not drop that line when summarising.
 
 A **partial pin** is different: it becomes an ordinary conjunct on the condition rather than a
 partition key.
@@ -50,7 +53,8 @@ A schema raises the cap with `max_window = 30d`, or lowers it to tighten what po
 ## What to do
 
 - Pass `eventSchema` whenever the policy has one.
-- If you do not have one, say in your summary that the answer assumes the unpinned reading and that
-  the deployed default is stricter.
+- If you do not have one, say in your summary that the answer is under Dogwood's default reading,
+  `callerPrincipal` pinned, and that a deployment with a different schema could decide differently.
+- If the deployment is known to have no universal pin, pass `pinned: false`.
 - Never compare a verdict computed with a schema against one computed without, and call it a change
   in the policy.

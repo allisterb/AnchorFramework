@@ -162,7 +162,7 @@ docker run --rm -v "$PWD:/work" public.ecr.aws/v4q7x8t1/anchor:latest check my-p
 
 | verb | action| 
 |---|---|
-| `check` | check a policy against a property module you wrote, or audit a directory of them — writing `findings.md` and `findings.html` |
+| `check` | check a policy set rule by rule, or against a property module you wrote; with `--full`, audit a policy set or a directory of them — writing `findings.md` and `findings.html` |
 | `auto` | draft the property module from a natural-language brief and check it, unattended |
 | `hitl` | draft the property module from a natural-language brief and check it, with a human answering when a gate turns a draft away |
 | `explain` | say in English what a property module forbids |
@@ -288,17 +288,29 @@ anything that is not an answer — a parse error, an unsupported construct — r
 reporting vacuous. Constructs outside the modelled subset are refused with a reason, never
 approximated.
 
-### Auditing a directory
+### Auditing: `--full`
 
 ```bash
-[./]anchor check examples/aws1
+[./]anchor check examples/aws1 --full                    # every policy set in the directory
+[./]anchor check examples/aws1/agent-policy.dw --full    # one policy set on its own
 ```
 
-Every `.dw` in the directory, each paired with the `.tla` module whose header names it. Beside them
-it writes `findings.md` — the written report — plus `results.json`, a `traces/` directory holding a
-re-runnable witness for every broken claim, and **`findings.html`**: one page for the policy set that
-draws each broken claim as the session that breaks it, with the reference engine's verdict on every
-decision, the rule that decided it, and the window or total that rule looks at.
+Without `--full`, `check` checks each policy set rule by rule — one file or every `.dw` in a
+directory — prints the verdicts and writes nothing. It ends by listing what it did not use: the
+property modules whose header names a policy set, and the questions in `questions.md`.
+
+With `--full` it audits the same policy set or directory. It also runs every `.tla` property module
+whose header names a policy set, and asks the `questions.md` questions of an LLM (`--no-llm` skips
+them). It writes `findings.md`, the written report, plus `results.json`, a `traces/` directory
+holding a re-runnable witness for every broken claim, and **`findings.html`**: one page that draws
+each broken claim as the session that breaks it, with the reference engine's verdict on every
+decision, the rule that decided it, and the window or total that rule looks at. A directory's report
+goes into the directory; a single policy set's into `<policy-set>-findings/` beside it, so it never
+overwrites the directory's.
+
+For a single policy set, `--full --property Other.tla` checks a module as well as the ones found by
+header: one kept elsewhere, not yet given the header, or written for several policy sets. It is
+added, never substituted, and the report marks it as given.
 
 `findings.html` is a single file with nothing beside it, so it can be attached to a ticket and opens
 the same from disk as from a server. It quotes policy text, and a policy under analysis is often one
@@ -326,7 +338,7 @@ a line *looks like* rather than its bytes, so a look-alike letter or a zero-widt
 does not get an instruction past it. Accented names, typography and box drawing are not findings.
 
 The agentic modes run it before a model is shown anything. A high finding stops `auto` and `hitl`
-with exit 2. In a directory audit the checks still run in full — they are deterministic, and not at
+with exit 2. In an audit (`check --full`) the checks still run in full — they are deterministic, and not at
 risk from text aimed at a model — and only the model's questions are withheld. It is a heuristic, and
 says so: a comment that *discusses* prompt injection will trip it, so `--allow-flagged-input`
 proceeds anyway, for findings you have read, and every report records that it was used.

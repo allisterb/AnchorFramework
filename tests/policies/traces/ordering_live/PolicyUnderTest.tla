@@ -26,7 +26,7 @@ AllValues    == {[k |-> "n", v |-> 24999], [k |-> "n", v |-> 25000], [k |-> "n",
 \* The fields a universal pin partitions on. Empty means global-trace semantics -- which is the
 \* `unpinned` preset, NOT the shipped default. Vacuity.tla gives a session two callers when this
 \* is non-empty, so a partition has something to exclude.
-PinKeys == {}
+PinKeys == {"principal"}
 
 \* ---- for a property module extending this one --------------------------------------------
 \* Scalars are TAGGED with their kind so TLC refuses a cross-kind comparison rather than quietly
@@ -69,7 +69,7 @@ Request(action, input) == Ev(action, DecisionKind, input, NoFields, 1)
 
 Policies ==
   <<
-    [effect |-> "permit", actions |-> {"execute_trade"}, cond |-> [op |-> "term", args |-> <<>>, term |-> [op |-> "at", window |-> 0, atom |-> [op |-> "cmp", pred |-> [action |-> "", kind |-> "", binds |-> <<>>], var |-> "", args |-> <<>>, field |-> "cost", cmp |-> "<", value |-> [k |-> "n", v |-> 25000], other |-> "", pattern |-> <<>>, net |-> <<>>, prefix |-> 0], left |-> [op |-> "cmp", pred |-> [action |-> "", kind |-> "", binds |-> <<>>], var |-> "", args |-> <<>>, field |-> "cost", cmp |-> "<", value |-> [k |-> "n", v |-> 25000], other |-> "", pattern |-> <<>>, net |-> <<>>, prefix |-> 0], leftNeg |-> FALSE, keys |-> <<>>]]]
+    [effect |-> "permit", actions |-> {"execute_trade"}, cond |-> [op |-> "term", args |-> <<>>, term |-> [op |-> "at", window |-> 0, atom |-> [op |-> "cmp", pred |-> [action |-> "", kind |-> "", binds |-> <<>>], var |-> "", args |-> <<>>, field |-> "cost", cmp |-> "<", value |-> [k |-> "n", v |-> 25000], other |-> "", pattern |-> <<>>, net |-> <<>>, prefix |-> 0], left |-> [op |-> "cmp", pred |-> [action |-> "", kind |-> "", binds |-> <<>>], var |-> "", args |-> <<>>, field |-> "cost", cmp |-> "<", value |-> [k |-> "n", v |-> 25000], other |-> "", pattern |-> <<>>, net |-> <<>>, prefix |-> 0], leftNeg |-> FALSE, keys |-> <<"principal">>]]]
   >>
 
 Other == Policies

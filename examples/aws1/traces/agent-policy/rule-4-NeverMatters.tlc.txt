@@ -1,7 +1,7 @@
 TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
 Warning: Please run the Java VM which executes TLC with a throughput optimized garbage collector by passing the "-XX:+UseParallelGC" property.
 (Use the -nowarning option to disable this warning.)
-Running breadth-first search Model-Checking with fp 52 and seed -7075568309629864922 with 1 worker on 8 cores with 16344MB heap and 64MB offheap memory [pid: 18480] (Windows 10 10.0 amd64, Microsoft 11.0.16.1 x86_64, MSBDiskFPSet, DiskStateQueue).
+Running breadth-first search Model-Checking with fp 41 and seed -4170142201855578902 with 1 worker on 8 cores with 16344MB heap and 64MB offheap memory [pid: 17976] (Windows 10 10.0 amd64, Microsoft 11.0.16.1 x86_64, MSBDiskFPSet, DiskStateQueue).
 Parsing file C:\Projects\Anchor\examples\aws1\traces\agent-policy\Vacuity.tla
 Parsing file C:\Projects\Anchor\examples\aws1\traces\agent-policy\Integers.tla
 Parsing file C:\Projects\Anchor\examples\aws1\traces\agent-policy\Sequences.tla
@@ -18,9 +18,9 @@ Semantic processing of module PolicyUnderTest
 Semantic processing of module TLC
 Semantic processing of module DogwoodSemantics
 Semantic processing of module Vacuity
-Starting... (2026-09-28 04:44:56)
+Starting... (2026-09-28 11:10:43)
 Computing initial states...
-Finished computing initial states: 1 distinct state generated at 2026-09-28 04:44:57.
+Finished computing initial states: 1 distinct state generated at 2026-09-28 11:10:43.
 Error: Invariant NeverMatters is violated.
 Error: The behavior up to this point is:
 State 1: <Initial predicate>
@@ -32,16 +32,16 @@ State 1: <Initial predicate>
 State 2: <Attempt line 239, col 5 to line 263, col 90 of module Vacuity>
 /\ widened = FALSE
 /\ fired = {1}
-/\ trace = <<[action |-> "get_client_profile", kind |-> "request", input |-> [profile_id |-> [k |-> "n", v |-> 1]], output |-> << >>, time |-> 1, principal |-> [k |-> "s", v |-> "caller"], resource |-> [k |-> "s", v |-> "caller"], session |-> [k |-> "s", v |-> "caller"], pins |-> << >>], [action |-> "get_client_profile", kind |-> "response", input |-> [profile_id |-> [k |-> "n", v |-> 1]], output |-> << >>, time |-> 2, principal |-> [k |-> "s", v |-> "caller"], resource |-> [k |-> "s", v |-> "caller"], session |-> [k |-> "s", v |-> "caller"], pins |-> << >>]>>
+/\ trace = <<[action |-> "get_client_profile", kind |-> "request", input |-> [profile_id |-> [k |-> "n", v |-> 1]], output |-> << >>, time |-> 1, principal |-> [k |-> "s", v |-> "caller"], resource |-> [k |-> "s", v |-> "caller"], session |-> [k |-> "s", v |-> "caller"], pins |-> [principal |-> [k |-> "s", v |-> "caller"]]], [action |-> "get_client_profile", kind |-> "response", input |-> [profile_id |-> [k |-> "n", v |-> 1]], output |-> << >>, time |-> 2, principal |-> [k |-> "s", v |-> "caller"], resource |-> [k |-> "s", v |-> "caller"], session |-> [k |-> "s", v |-> "caller"], pins |-> [principal |-> [k |-> "s", v |-> "caller"]]]>>
 /\ narrowed = FALSE
 
 State 3: <Attempt line 239, col 5 to line 263, col 90 of module Vacuity>
 /\ widened = TRUE
 /\ fired = {1, 4}
-/\ trace = <<[action |-> "get_client_profile", kind |-> "request", input |-> [profile_id |-> [k |-> "n", v |-> 1]], output |-> << >>, time |-> 1, principal |-> [k |-> "s", v |-> "caller"], resource |-> [k |-> "s", v |-> "caller"], session |-> [k |-> "s", v |-> "caller"], pins |-> << >>], [action |-> "get_client_profile", kind |-> "response", input |-> [profile_id |-> [k |-> "n", v |-> 1]], output |-> << >>, time |-> 2, principal |-> [k |-> "s", v |-> "caller"], resource |-> [k |-> "s", v |-> "caller"], session |-> [k |-> "s", v |-> "caller"], pins |-> << >>], [action |-> "load_portfolio", kind |-> "request", input |-> [profile_id |-> [k |-> "n", v |-> 1]], output |-> << >>, time |-> 3, principal |-> [k |-> "s", v |-> "caller"], resource |-> [k |-> "s", v |-> "caller"], session |-> [k |-> "s", v |-> "caller"], pins |-> << >>], [action |-> "load_portfolio", kind |-> "response", input |-> [profile_id |-> [k |-> "n", v |-> 1]], output |-> << >>, time |-> 4, principal |-> [k |-> "s", v |-> "caller"], resource |-> [k |-> "s", v |-> "caller"], session |-> [k |-> "s", v |-> "caller"], pins |-> << >>]>>
+/\ trace = <<[action |-> "get_client_profile", kind |-> "request", input |-> [profile_id |-> [k |-> "n", v |-> 1]], output |-> << >>, time |-> 1, principal |-> [k |-> "s", v |-> "caller"], resource |-> [k |-> "s", v |-> "caller"], session |-> [k |-> "s", v |-> "caller"], pins |-> [principal |-> [k |-> "s", v |-> "caller"]]], [action |-> "get_client_profile", kind |-> "response", input |-> [profile_id |-> [k |-> "n", v |-> 1]], output |-> << >>, time |-> 2, principal |-> [k |-> "s", v |-> "caller"], resource |-> [k |-> "s", v |-> "caller"], session |-> [k |-> "s", v |-> "caller"], pins |-> [principal |-> [k |-> "s", v |-> "caller"]]], [action |-> "load_portfolio", kind |-> "request", input |-> [profile_id |-> [k |-> "n", v |-> 1]], output |-> << >>, time |-> 3, principal |-> [k |-> "s", v |-> "caller"], resource |-> [k |-> "s", v |-> "caller"], session |-> [k |-> "s", v |-> "caller"], pins |-> [principal |-> [k |-> "s", v |-> "caller"]]], [action |-> "load_portfolio", kind |-> "response", input |-> [profile_id |-> [k |-> "n", v |-> 1]], output |-> << >>, time |-> 4, principal |-> [k |-> "s", v |-> "caller"], resource |-> [k |-> "s", v |-> "caller"], session |-> [k |-> "s", v |-> "caller"], pins |-> [principal |-> [k |-> "s", v |-> "caller"]]]>>
 /\ narrowed = FALSE
 
-30 states generated, 30 distinct states found, 26 states left on queue.
+54 states generated, 54 distinct states found, 50 states left on queue.
 The depth of the complete state graph search is 3.
-The average outdegree of the complete state graph is 12 (minimum is 12, the maximum 12 and the 95th percentile is 12).
-Finished in 01s at (2026-09-28 04:44:57)
+The average outdegree of the complete state graph is 24 (minimum is 24, the maximum 24 and the 95th percentile is 24).
+Finished in 01s at (2026-09-28 11:10:43)

@@ -11,9 +11,9 @@ choice actually CHANGES, and that matters twice over:
 
   - every finding we report is scoped to a reading, and a finding that holds under only one of
     them is a weaker claim than it looks;
-  - and Anchor's own default when no schema is given is the UNPINNED one, which is the opposite of
-    Dogwood's. A verification tool whose default differs from the deployed default can produce a
-    finding that does not reproduce.
+  - and Anchor's own default when no schema is given was the UNPINNED one until 0.1.3, the opposite
+    of Dogwood's. A verification tool whose default differs from the deployed default can produce a
+    finding that does not reproduce. It is now PINNED, matching Dogwood, and this checks it stays so.
 
 So this runs each policy/property pair three ways and prints the verdicts side by side. The two
 schemas are the ones Dogwood ships, read from the submodule rather than copied -- no second copy to
@@ -46,7 +46,7 @@ PAIRS = [
 ]
 
 READINGS = [
-    ("default", None),                          # no --event-schema: Anchor assumes UNPINNED
+    ("default", None),                          # no --event-schema: Anchor uses PINNED, Dogwood's default
     ("unpinned", SCHEMAS / "unpinned.dwschema"),
     ("pinned", SCHEMAS / "pinned.dwschema"),     # what Dogwood does when you supply nothing
     ("--pinned", "flag"),                        # the same, built internally, no file needed
@@ -162,10 +162,24 @@ def main() -> int:
     shipped = parse_schema((SCHEMAS / "pinned.dwschema").read_text(encoding="utf-8"))
     check("--pinned agrees with the shipped pinned.dwschema on the partition key",
           shipped["keys"] == ["principal"], str(shipped))
-    check("Anchor's no-schema default agrees with the shipped UNPINNED schema",
+    # THE DEFAULT IS DOGWOOD'S. Column 0 is no schema at all, column 2 the shipped pinned.dwschema.
+    check("Anchor's no-schema default agrees with the shipped PINNED schema",
           all(True for _ in pairs) and not any(
-              v[0] != v[1] for _, v in [(n, vs) for n, vs in differ]),
+              v[0] != v[2] for _, v in [(n, vs) for n, vs in differ]),
           str(differ))
+
+    # THE REPLAY'S COPIES MUST EQUAL THE FILES. witness.py hands `dogwood replay` its own copy of
+    # each reading, because the container carries the binary and not this tree -- which is only
+    # honest while each copy says exactly what Dogwood's shipped file says. Comments aside.
+    from checker.witness import READING_SCHEMAS                 # noqa: PLC0415
+
+    def declarations(text: str) -> list[str]:
+        return [l.rstrip() for l in text.splitlines() if l.strip() and not l.strip().startswith("//")]
+
+    for reading, copy in READING_SCHEMAS.items():
+        shipped_text = (SCHEMAS / f"{reading}.dwschema").read_text(encoding="utf-8")
+        check(f"the replay's {reading} schema is Dogwood's {reading}.dwschema, declaration for declaration",
+              declarations(copy) == declarations(shipped_text))
 
     if differ:
         print("\n  Where the reading CHANGES the answer:")

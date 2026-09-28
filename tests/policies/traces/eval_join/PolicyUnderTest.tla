@@ -26,7 +26,7 @@ AllValues    == {[k |-> "n", v |-> 1], [k |-> "n", v |-> 2], [k |-> "b", v |-> F
 \* The fields a universal pin partitions on. Empty means global-trace semantics -- which is the
 \* `unpinned` preset, NOT the shipped default. Vacuity.tla gives a session two callers when this
 \* is non-empty, so a partition has something to exclude.
-PinKeys == {}
+PinKeys == {"principal"}
 
 \* ---- for a property module extending this one --------------------------------------------
 \* Scalars are TAGGED with their kind so TLC refuses a cross-kind comparison rather than quietly
@@ -69,7 +69,7 @@ Request(action, input) == Ev(action, DecisionKind, input, NoFields, 1)
 
 Policies ==
   <<
-    [effect |-> "permit", actions |-> {"initiate_transfer"}, cond |-> [op |-> "term", args |-> <<>>, term |-> [op |-> "formerly", window |-> 900, atom |-> [op |-> "pred", pred |-> [action |-> "verify_identity", kind |-> "response", binds |-> <<[side |-> "input", field |-> "account", kind |-> "ctx", name |-> "account", value |-> [k |-> "s", v |-> ""]], [side |-> "output", field |-> "verified", kind |-> "lit", name |-> "", value |-> [k |-> "b", v |-> TRUE]]>>], var |-> "", args |-> <<>>, field |-> "", cmp |-> "", value |-> [k |-> "s", v |-> ""], other |-> "", pattern |-> <<>>, net |-> <<>>, prefix |-> 0], left |-> [op |-> "pred", pred |-> [action |-> "verify_identity", kind |-> "response", binds |-> <<[side |-> "input", field |-> "account", kind |-> "ctx", name |-> "account", value |-> [k |-> "s", v |-> ""]], [side |-> "output", field |-> "verified", kind |-> "lit", name |-> "", value |-> [k |-> "b", v |-> TRUE]]>>], var |-> "", args |-> <<>>, field |-> "", cmp |-> "", value |-> [k |-> "s", v |-> ""], other |-> "", pattern |-> <<>>, net |-> <<>>, prefix |-> 0], leftNeg |-> FALSE, keys |-> <<>>]]],
+    [effect |-> "permit", actions |-> {"initiate_transfer"}, cond |-> [op |-> "term", args |-> <<>>, term |-> [op |-> "formerly", window |-> 900, atom |-> [op |-> "pred", pred |-> [action |-> "verify_identity", kind |-> "response", binds |-> <<[side |-> "input", field |-> "account", kind |-> "ctx", name |-> "account", value |-> [k |-> "s", v |-> ""]], [side |-> "output", field |-> "verified", kind |-> "lit", name |-> "", value |-> [k |-> "b", v |-> TRUE]]>>], var |-> "", args |-> <<>>, field |-> "", cmp |-> "", value |-> [k |-> "s", v |-> ""], other |-> "", pattern |-> <<>>, net |-> <<>>, prefix |-> 0], left |-> [op |-> "pred", pred |-> [action |-> "verify_identity", kind |-> "response", binds |-> <<[side |-> "input", field |-> "account", kind |-> "ctx", name |-> "account", value |-> [k |-> "s", v |-> ""]], [side |-> "output", field |-> "verified", kind |-> "lit", name |-> "", value |-> [k |-> "b", v |-> TRUE]]>>], var |-> "", args |-> <<>>, field |-> "", cmp |-> "", value |-> [k |-> "s", v |-> ""], other |-> "", pattern |-> <<>>, net |-> <<>>, prefix |-> 0], leftNeg |-> FALSE, keys |-> <<"principal">>]]],
     [effect |-> "forbid", actions |-> {"initiate_transfer"}, cond |-> [op |-> "true", args |-> <<>>, term |-> [op |-> "formerly", window |-> 0, atom |-> [op |-> "pred", pred |-> [action |-> "", kind |-> "", binds |-> <<>>], var |-> "", args |-> <<>>, field |-> "", cmp |-> "", value |-> [k |-> "s", v |-> ""], other |-> "", pattern |-> <<>>, net |-> <<>>, prefix |-> 0], left |-> [op |-> "pred", pred |-> [action |-> "", kind |-> "", binds |-> <<>>], var |-> "", args |-> <<>>, field |-> "", cmp |-> "", value |-> [k |-> "s", v |-> ""], other |-> "", pattern |-> <<>>, net |-> <<>>, prefix |-> 0], leftNeg |-> FALSE, keys |-> <<>>]]]
   >>
 

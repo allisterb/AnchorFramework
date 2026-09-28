@@ -92,7 +92,7 @@ moved. That is the same `response`/`request` distinction
 ## What the derived questions said, and the rule they cannot reach
 
 ```bash
-anchor check examples/aws2 --smoke 3000 --attempts 5 --max-fields 8
+anchor check examples/aws2 --full --smoke 3000 --attempts 5 --max-fields 8
 ```
 
 Six of the seven rules come back **live** — each fires, none is redundant, nothing is dead. "Live"

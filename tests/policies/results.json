@@ -4,7 +4,7 @@
     "added_action.dw": {
       "kind": "derived",
       "policy": "added_action.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
+      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
       "bound": {
         "attempts": 3,
         "amount": 2,
@@ -31,7 +31,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "Trade",
@@ -42,7 +44,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             }
           ],
           "narrative": [
@@ -69,7 +73,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "Refund",
@@ -80,7 +86,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             }
           ],
           "narrative": [
@@ -96,7 +104,7 @@
     "aggregate_cap.dw": {
       "kind": "derived",
       "policy": "aggregate_cap.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
+      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
       "bound": {
         "attempts": 3,
         "amount": 2,
@@ -125,7 +133,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "transfer",
@@ -138,7 +148,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             }
           ],
           "narrative": [
@@ -174,7 +186,7 @@
     "approval_gate_error.dw": {
       "kind": "derived",
       "policy": "approval_gate_error.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
+      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
       "bound": {
         "attempts": 3,
         "amount": 2,
@@ -201,7 +213,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "Approve",
@@ -212,7 +226,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "Trade",
@@ -223,7 +239,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "Trade",
@@ -234,7 +252,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             }
           ],
           "narrative": [
@@ -251,7 +271,7 @@
     "approval_gate_request.dw": {
       "kind": "derived",
       "policy": "approval_gate_request.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
+      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
       "bound": {
         "attempts": 3,
         "amount": 2,
@@ -278,7 +298,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "Approve",
@@ -289,7 +311,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "Trade",
@@ -300,7 +324,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "Trade",
@@ -311,7 +337,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             }
           ],
           "narrative": [
@@ -328,7 +356,7 @@
     "approval_gate_response.dw": {
       "kind": "derived",
       "policy": "approval_gate_response.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
+      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
       "bound": {
         "attempts": 3,
         "amount": 2,
@@ -364,7 +392,7 @@
     "business_hours.dw": {
       "kind": "derived",
       "policy": "business_hours.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
+      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
       "bound": {
         "attempts": 3,
         "amount": 2,
@@ -393,7 +421,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "issue_refund",
@@ -406,7 +436,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             }
           ],
           "narrative": [
@@ -422,7 +454,7 @@
     "business_hours_impossible.dw": {
       "kind": "derived",
       "policy": "business_hours_impossible.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
+      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
       "bound": {
         "attempts": 3,
         "amount": 2,
@@ -459,7 +491,7 @@
     "dead_forbid.dw": {
       "kind": "derived",
       "policy": "dead_forbid.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
+      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
       "bound": {
         "attempts": 3,
         "amount": 2,
@@ -486,7 +518,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "Trade",
@@ -497,7 +531,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             }
           ],
           "narrative": [
@@ -531,7 +567,7 @@
     "docs_trading.dw": {
       "kind": "derived",
       "policy": "docs_trading.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
+      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
       "bound": {
         "attempts": 3,
         "amount": 2,
@@ -560,7 +596,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "ApproveSale",
@@ -575,7 +613,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             }
           ],
           "narrative": [
@@ -604,7 +644,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "ApproveSale",
@@ -619,7 +661,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "SellShares",
@@ -632,7 +676,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "SellShares",
@@ -647,7 +693,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             }
           ],
           "narrative": [
@@ -664,7 +712,7 @@
     "docs_trading_forbidden.dw": {
       "kind": "derived",
       "policy": "docs_trading_forbidden.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
+      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
       "bound": {
         "attempts": 3,
         "amount": 2,
@@ -717,7 +765,7 @@
     "edit_diverges_both_ways.dw": {
       "kind": "derived",
       "policy": "edit_diverges_both_ways.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
+      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
       "bound": {
         "attempts": 3,
         "amount": 2,
@@ -744,7 +792,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "Trade",
@@ -755,7 +805,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             }
           ],
           "narrative": [
@@ -782,7 +834,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "Approve",
@@ -793,7 +847,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             }
           ],
           "narrative": [
@@ -820,7 +876,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "Trade",
@@ -831,7 +889,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "Approve",
@@ -842,7 +902,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "Approve",
@@ -853,7 +915,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             }
           ],
           "narrative": [
@@ -870,7 +934,7 @@
     "edit_diverges_both_ways_old.dw": {
       "kind": "derived",
       "policy": "edit_diverges_both_ways_old.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
+      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
       "bound": {
         "attempts": 3,
         "amount": 2,
@@ -897,7 +961,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "Approve",
@@ -908,7 +974,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             }
           ],
           "narrative": [
@@ -924,7 +992,7 @@
     "eval_join.dw": {
       "kind": "derived",
       "policy": "eval_join.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
+      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
       "bound": {
         "attempts": 3,
         "amount": 2,
@@ -977,7 +1045,7 @@
     "firewall.dw": {
       "kind": "derived",
       "policy": "firewall.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
+      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
       "bound": {
         "attempts": 3,
         "amount": 2,
@@ -1007,7 +1075,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "Connect",
@@ -1021,7 +1091,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             }
           ],
           "narrative": [
@@ -1057,7 +1129,7 @@
     "firewall_ip.dw": {
       "kind": "derived",
       "policy": "firewall_ip.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
+      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
       "bound": {
         "attempts": 3,
         "amount": 2,
@@ -1091,7 +1163,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "Connect",
@@ -1109,7 +1183,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             }
           ],
           "narrative": [
@@ -1143,7 +1219,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "Connect",
@@ -1161,7 +1239,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             }
           ],
           "narrative": [
@@ -1177,7 +1257,7 @@
     "firewall_ip_narrow.dw": {
       "kind": "derived",
       "policy": "firewall_ip_narrow.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
+      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
       "bound": {
         "attempts": 3,
         "amount": 2,
@@ -1211,7 +1291,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "Connect",
@@ -1229,7 +1311,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             }
           ],
           "narrative": [
@@ -1263,7 +1347,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "Connect",
@@ -1281,7 +1367,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             }
           ],
           "narrative": [
@@ -1297,7 +1385,7 @@
     "firewall_noperm.dw": {
       "kind": "derived",
       "policy": "firewall_noperm.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
+      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
       "bound": {
         "attempts": 3,
         "amount": 2,
@@ -1331,7 +1419,7 @@
     "firewall_open.dw": {
       "kind": "derived",
       "policy": "firewall_open.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
+      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
       "bound": {
         "attempts": 3,
         "amount": 2,
@@ -1379,7 +1467,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "Connect",
@@ -1393,7 +1483,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             }
           ],
           "narrative": [
@@ -1417,7 +1509,7 @@
     "like_prefix.dw": {
       "kind": "derived",
       "policy": "like_prefix.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
+      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
       "bound": {
         "attempts": 3,
         "amount": 2,
@@ -1446,7 +1538,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "SellShares",
@@ -1459,7 +1553,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             }
           ],
           "narrative": [
@@ -1475,7 +1571,7 @@
     "like_two_patterns.dw": {
       "kind": "derived",
       "policy": "like_two_patterns.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
+      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
       "bound": {
         "attempts": 3,
         "amount": 2,
@@ -1504,7 +1600,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "SellShares",
@@ -1517,7 +1615,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             }
           ],
           "narrative": [
@@ -1539,7 +1639,7 @@
     "order_decimal.dw": {
       "kind": "derived",
       "policy": "order_decimal.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
+      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
       "bound": {
         "attempts": 3,
         "amount": 2,
@@ -1575,7 +1675,7 @@
     "order_long.dw": {
       "kind": "derived",
       "policy": "order_long.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
+      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
       "bound": {
         "attempts": 3,
         "amount": 2,
@@ -1611,7 +1711,7 @@
     "ordering_live.dw": {
       "kind": "derived",
       "policy": "ordering_live.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
+      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
       "bound": {
         "attempts": 3,
         "amount": 2,
@@ -1640,7 +1740,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "execute_trade",
@@ -1653,7 +1755,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             }
           ],
           "narrative": [
@@ -1669,7 +1773,7 @@
     "overridden_permit.dw": {
       "kind": "derived",
       "policy": "overridden_permit.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
+      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
       "bound": {
         "attempts": 3,
         "amount": 2,
@@ -1712,7 +1816,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "Trade",
@@ -1723,7 +1829,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             }
           ],
           "narrative": [
@@ -1741,7 +1849,7 @@
     "redundant_permit.dw": {
       "kind": "derived",
       "policy": "redundant_permit.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
+      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
       "bound": {
         "attempts": 3,
         "amount": 2,
@@ -1768,7 +1876,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "Trade",
@@ -1779,7 +1889,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             }
           ],
           "narrative": [
@@ -1813,7 +1925,7 @@
     "redundant_permit_minimal.dw": {
       "kind": "derived",
       "policy": "redundant_permit_minimal.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
+      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
       "bound": {
         "attempts": 3,
         "amount": 2,
@@ -1840,7 +1952,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "Trade",
@@ -1851,7 +1965,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             }
           ],
           "narrative": [
@@ -1867,7 +1983,7 @@
     "scope_bind.dw": {
       "kind": "derived",
       "policy": "scope_bind.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
+      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
       "bound": {
         "attempts": 3,
         "amount": 2,
@@ -1894,7 +2010,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "Approve",
@@ -1905,7 +2023,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "Trade",
@@ -1916,7 +2036,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "Trade",
@@ -1927,7 +2049,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             }
           ],
           "narrative": [
@@ -1944,7 +2068,7 @@
     "session_gate.dw": {
       "kind": "derived",
       "policy": "session_gate.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
+      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
       "bound": {
         "attempts": 3,
         "amount": 2,
@@ -1973,7 +2097,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "Approve",
@@ -1986,7 +2112,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "Trade",
@@ -1999,7 +2127,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "Trade",
@@ -2012,7 +2142,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             }
           ],
           "narrative": [
@@ -2029,7 +2161,7 @@
     "string_output.dw": {
       "kind": "derived",
       "policy": "string_output.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
+      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
       "bound": {
         "attempts": 3,
         "amount": 2,
@@ -2056,7 +2188,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "Login",
@@ -2069,7 +2203,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             }
           ],
           "narrative": [
@@ -2096,7 +2232,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "Login",
@@ -2109,7 +2247,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "Read",
@@ -2120,7 +2260,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "Read",
@@ -2133,7 +2275,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             }
           ],
           "narrative": [
@@ -2151,12 +2295,12 @@
       "kind": "derived",
       "_failed": true,
       "exitCode": 2,
-      "_why": ""
+      "_why": "REFUSED: syntax_broken.dw is outside the modelled subset\n  expected '::', got '{'\n\nAND IT IS NOT VALID DOGWOOD EITHER. The reference implementation refuses to parse\nthis file, so the refusal above is not a limit of the modelled subset -- there is a\nsyntax error in the policy. `dogwood check-parse` says:\n\n    \u00d7 unexpected token `{`, expected comparison operator\n        \u256d\u2500[20:9]\n     19 \u2502         context.input.profit < 0 && temporal {\n     20 \u2502 \u256d\u2500\u25b6         formerly within 24h (\n     21 \u2502 \u2502               AgentCore::Action::\"execute_buy\"{\n     22 \u2502 \u2502                   stock_symbol: context.input.stock_symbol}\n     23 \u2502 \u2502           )\n     24 \u2502 \u251c\u2500\u25b6     }\n        \u00b7 \u2570\u2500\u2500\u2500\u2500 unexpected token `{`, expected comparison operator\n     25 \u2502     };\n        \u2570\u2500\u2500\u2500\u2500"
     },
     "vacuous_two_terms.dw": {
       "kind": "derived",
       "policy": "vacuous_two_terms.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
+      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
       "bound": {
         "attempts": 3,
         "amount": 2,
@@ -2259,7 +2403,7 @@
       "kind": "property",
       "held": true,
       "exitCode": 0,
-      "output": "no --event-schema given, so every answer below assumes the UNPINNED reading\n  (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal\n  on every kind, so a deployed rule sees only its own principal's events and one\n  reported live here may never fire. Pass --pinned to check that reading, or\n  --event-schema for a real one.\n\naggregate_cap.dw against aggregate_cap.tla: 2 rule(s)\n\n  every claim holds over every request the property names.\n\nThat is not a proof about requests it does not name. A property ranges over what it\nsays it ranges over, and nothing warns you when that is less than you meant.",
+      "output": "no --event-schema given, so every answer below uses Dogwood's own default\n  reading: callerPrincipal pinned on every kind, so a temporal condition sees\n  only the requesting principal's events. Pass --event-schema for your\n  deployment's real one, or --unpinned if it has no universal pin.\n\naggregate_cap.dw against aggregate_cap.tla: 2 rule(s)\n\n  every claim holds over every request the property names.\n\nThat is not a proof about requests it does not name. A property ranges over what it\nsays it ranges over, and nothing warns you when that is less than you meant.",
       "error": ""
     },
     "firewall.tla": {
@@ -2315,7 +2459,7 @@
       "kind": "property",
       "held": true,
       "exitCode": 0,
-      "output": "no --event-schema given, so every answer below assumes the UNPINNED reading\n  (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal\n  on every kind, so a deployed rule sees only its own principal's events and one\n  reported live here may never fire. Pass --pinned to check that reading, or\n  --event-schema for a real one.\n\nfirewall.dw against firewall.tla: 2 rule(s)\n\n  every claim holds over every request the property names.\n\nThat is not a proof about requests it does not name. A property ranges over what it\nsays it ranges over, and nothing warns you when that is less than you meant.",
+      "output": "no --event-schema given, so every answer below uses Dogwood's own default\n  reading: callerPrincipal pinned on every kind, so a temporal condition sees\n  only the requesting principal's events. Pass --event-schema for your\n  deployment's real one, or --unpinned if it has no universal pin.\n\nfirewall.dw against firewall.tla: 2 rule(s)\n\n  every claim holds over every request the property names.\n\nThat is not a proof about requests it does not name. A property ranges over what it\nsays it ranges over, and nothing warns you when that is less than you meant.",
       "error": ""
     },
     "firewall_bad_field.tla": {
@@ -2369,7 +2513,7 @@
       "kind": "property",
       "held": false,
       "exitCode": 2,
-      "output": "no --event-schema given, so every answer below assumes the UNPINNED reading\n  (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal\n  on every kind, so a deployed rule sees only its own principal's events and one\n  reported live here may never fire. Pass --pinned to check that reading, or\n  --event-schema for a real one.\n\nfirewall.dw against firewall_bad_field.tla: 2 rule(s)\n\n  firewall_bad_field.tla COMPILED BUT DID NOT EVALUATE. TLC says:\n\n      Error: Attempted to select nonexistent field \"nosuchfield\" from the record\n      Error: The error occurred when TLC was evaluating the nested\n\nNothing was checked. No claim was decided either way, so there is no verdict\nabout the policy here -- the module needs fixing first.",
+      "output": "no --event-schema given, so every answer below uses Dogwood's own default\n  reading: callerPrincipal pinned on every kind, so a temporal condition sees\n  only the requesting principal's events. Pass --event-schema for your\n  deployment's real one, or --unpinned if it has no universal pin.\n\nfirewall.dw against firewall_bad_field.tla: 2 rule(s)\n\n  firewall_bad_field.tla COMPILED BUT DID NOT EVALUATE. TLC says:\n\n      Error: Attempted to select nonexistent field \"nosuchfield\" from the record\n      Error: The error occurred when TLC was evaluating the nested\n\nNothing was checked. No claim was decided either way, so there is no verdict\nabout the policy here -- the module needs fixing first.",
       "error": ""
     },
     "firewall_ip.tla": {
@@ -2407,7 +2551,7 @@
       "kind": "property",
       "held": true,
       "exitCode": 0,
-      "output": "no --event-schema given, so every answer below assumes the UNPINNED reading\n  (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal\n  on every kind, so a deployed rule sees only its own principal's events and one\n  reported live here may never fire. Pass --pinned to check that reading, or\n  --event-schema for a real one.\n\nfirewall_ip.dw against firewall_ip.tla: 2 rule(s)\n\n  every claim holds over every request the property names.\n\nThat is not a proof about requests it does not name. A property ranges over what it\nsays it ranges over, and nothing warns you when that is less than you meant.",
+      "output": "no --event-schema given, so every answer below uses Dogwood's own default\n  reading: callerPrincipal pinned on every kind, so a temporal condition sees\n  only the requesting principal's events. Pass --event-schema for your\n  deployment's real one, or --unpinned if it has no universal pin.\n\nfirewall_ip.dw against firewall_ip.tla: 2 rule(s)\n\n  every claim holds over every request the property names.\n\nThat is not a proof about requests it does not name. A property ranges over what it\nsays it ranges over, and nothing warns you when that is less than you meant.",
       "error": ""
     },
     "firewall_unparseable.tla": {
@@ -2463,11 +2607,12 @@
       "kind": "property",
       "held": false,
       "exitCode": 2,
-      "output": "no --event-schema given, so every answer below assumes the UNPINNED reading\n  (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal\n  on every kind, so a deployed rule sees only its own principal's events and one\n  reported live here may never fire. Pass --pinned to check that reading, or\n  --event-schema for a real one.\n\nfirewall.dw against firewall_unparseable.tla: 2 rule(s)\n\n  firewall_unparseable.tla DOES NOT COMPILE. SANY says:\n\n      ****** SANY2 Version 2.1 created 24 February 2014\n      \n      Parsing file C:\\Projects\\Anchor\\tests\\policies\\traces\\firewall-firewall_unparseable\\firewall_unparseable.tla\n      ***Parse Error***\n      Encountered \"Beginning of definition\" at line 31, column 1 and token \"*\" \n      \n      Residual stack trace follows:\n      ExtendableExpr starting at line 31, column 1.\n      ExtendableExpr starting at line 17, column 18.\n      Expression starting at line 17, column 18.\n      Definition starting at line 17, column 1.\n      Module body starting at line 15, column 1.\n      \n      \n      Fatal errors while parsing TLA+ spec in file firewall_unparseable.tla\n      \n      tla2sany.semantic.AbortException\n      *** Abort messages: 1\n      \n      In module firewall_unparseable\n      \n      Could not parse module firewall_unparseable from file firewall_unparseable.tla\n\nNothing was checked. A module that does not compile has no verdict to give,\nand the claims in it have not been tested.",
+      "output": "no --event-schema given, so every answer below uses Dogwood's own default\n  reading: callerPrincipal pinned on every kind, so a temporal condition sees\n  only the requesting principal's events. Pass --event-schema for your\n  deployment's real one, or --unpinned if it has no universal pin.\n\nfirewall.dw against firewall_unparseable.tla: 2 rule(s)\n\n  firewall_unparseable.tla DOES NOT COMPILE. SANY says:\n\n      ****** SANY2 Version 2.1 created 24 February 2014\n      \n      Parsing file C:\\Projects\\Anchor\\tests\\policies\\traces\\firewall-firewall_unparseable\\firewall_unparseable.tla\n      ***Parse Error***\n      Encountered \"Beginning of definition\" at line 31, column 1 and token \"*\" \n      \n      Residual stack trace follows:\n      ExtendableExpr starting at line 31, column 1.\n      ExtendableExpr starting at line 17, column 18.\n      Expression starting at line 17, column 18.\n      Definition starting at line 17, column 1.\n      Module body starting at line 15, column 1.\n      \n      \n      Fatal errors while parsing TLA+ spec in file firewall_unparseable.tla\n      \n      tla2sany.semantic.AbortException\n      *** Abort messages: 1\n      \n      In module firewall_unparseable\n      \n      Could not parse module firewall_unparseable from file firewall_unparseable.tla\n\nNothing was checked. A module that does not compile has no verdict to give,\nand the claims in it have not been tested.",
       "error": ""
     }
   },
   "smoke": null,
+  "reading": "pinned",
   "unpaired": [
     {
       "module": "eval_join.tla",

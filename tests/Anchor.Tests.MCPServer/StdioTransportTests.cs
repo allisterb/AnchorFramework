@@ -105,7 +105,8 @@ public class StdioTransportTests : TestsRuntime
 
         var text = Text(r);
         Assert.Contains("DEAD", text);
-        Assert.Contains("UNPINNED", text, StringComparison.OrdinalIgnoreCase);
+        // No apostrophe in what is matched: the JSON encoder writes one as '.
+        Assert.Contains("callerPrincipal pinned", text, StringComparison.Ordinal);
     }
 
     /// <summary>

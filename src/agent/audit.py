@@ -42,6 +42,9 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
+import threading
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -53,7 +56,7 @@ CHECKER = REPO / "src" / "checker" / "properties.py"
 
 from checker import scan as screen  # noqa: E402
 from checker.explain import as_dict, explain_file  # noqa: E402
-from checker.witness import Confirmation, confirm  # noqa: E402
+from checker.witness import Confirmation, confirm, reading_schema  # noqa: E402
 
 
 def as_finding(c: Confirmation) -> dict:
@@ -100,6 +103,10 @@ class Plan:
     """What was found in the directory, before anything is run."""
 
     directory: Path
+    # The one policy set a single-set audit is about; empty for a whole directory.
+    subject: str = ""
+    # Modules named with --property rather than found by header, so the report can say which.
+    given: list[Path] = field(default_factory=list)
     policies: list[Path] = field(default_factory=list)
     properties: list[tuple[Path, Path]] = field(default_factory=list)   # (module, policy)
     unpaired: list[tuple[Path, str]] = field(default_factory=list)      # (module, why)
@@ -154,9 +161,51 @@ def discover(directory: Path) -> Plan:
     return plan
 
 
+def narrow(plan: Plan, policy: Path) -> Plan:
+    """The same plan, about ONE policy set: its modules, and the questions that name it.
+
+    A module that names the set but cannot run -- no .cfg -- is kept as unpaired, so it is reported
+    rather than silently dropped. A question with no `*Policy:*` line is left out: in a directory it
+    falls to the first policy set, which says nothing about whether it was meant for this one.
+    """
+    def names_it(module: Path) -> bool:
+        head = module.read_text(encoding="utf-8", errors="replace")[:2000]
+        return policy.name in POLICY_IN_HEADER.findall(head)
+
+    return Plan(directory=plan.directory, subject=policy.name, policies=[policy],
+                properties=[(m, p) for m, p in plan.properties if p == policy],
+                unpaired=[(m, why) for m, why in plan.unpaired if names_it(m)],
+                questions=[q for q in plan.questions if policy.name in (q.policy, q.against)])
+
+
+def available(plan: Plan) -> str:
+    """What `--full` would add to a plain check: the intentions and questions it did not use.
+
+    Read from headers and questions.md only -- nothing is run -- so a plain check can say what it
+    skipped without paying for it. Empty when there is nothing, so a caller prints it as it comes.
+    """
+    about = f"`{plan.subject}`" if plan.subject else "these policy sets"
+    lines = []
+    if plan.properties:
+        names = [m.name for m, _ in plan.properties]
+        shown = ", ".join(names[:6]) + (f", and {len(names) - 6} more" if len(names) > 6 else "")
+        lines.append(f"  {len(names)} property module(s) state what {about} should mean: {shown}")
+    if plan.unpaired:
+        lines.append(f"  {len(plan.unpaired)} more module(s) cannot run as they are, and --full says why: "
+                     + ", ".join(m.name for m, _ in plan.unpaired))
+    if plan.questions:
+        lines.append(f"  {len(plan.questions)} question(s) in questions.md name {about} "
+                     f"(asking them uses an LLM; --no-llm skips them)")
+    if not lines:
+        return ""
+    return ("Not checked, and available to --full:\n" + "\n".join(lines)
+            + "\n--full checks them and writes the report.")
+
+
 def run_checker(policy: Path, *, against: Path | None = None, property_module: Path | None = None,
                 keep: Path | None = None, attempts: int | None = None,
                 smoke: int | None = None, max_fields: int | None = None,
+                reading: str | None = None, event_schema: Path | None = None,
                 timeout: int = 1800) -> dict:
     """One check, structured. A refusal is data, never an exception."""
     args = [sys.executable, str(CHECKER), str(policy)]
@@ -172,6 +221,12 @@ def run_checker(policy: Path, *, against: Path | None = None, property_module: P
         args += ["--attempts", str(attempts)]
     if max_fields is not None:
         args += ["--max-fields", str(max_fields)]
+    # "pinned" or "unpinned", passed to EVERY check -- derived and property alike -- so a report
+    # never mixes verdicts from two readings.
+    if reading is not None:
+        args.append(f"--{reading}")
+    if event_schema is not None:
+        args += ["--event-schema", str(event_schema)]
 
     # A random walk, for a set too big to exhaust. NOT passed to a --property run: a property is
     # meant to HOLD and its counterexample is the answer, so sampling behaviours would turn "this
@@ -179,10 +234,7 @@ def run_checker(policy: Path, *, against: Path | None = None, property_module: P
     if smoke is not None and property_module is None:
         args += ["--smoke", str(smoke)]
 
-    # UTF-8 both ways: PYTHONUTF8 makes the child WRITE it, and the encoding makes us READ it.
-    # Either half alone breaks on Windows, whose locale default is cp1252.
-    proc = subprocess.run(args, cwd=REPO, capture_output=True, text=True, encoding="utf-8", errors="replace",
-                          env={**os.environ, "PYTHONUTF8": "1"}, timeout=timeout)
+    proc = run_relayed(args, timeout)
 
     # A property run prints prose, not JSON: its verdict is the exit code and its detail is the
     # BROKEN lines. Carried as text rather than forced into a shape it does not have.
@@ -196,8 +248,58 @@ def run_checker(policy: Path, *, against: Path | None = None, property_module: P
                 "_why": (proc.stderr or proc.stdout).strip()[-1500:]}
 
 
+# The lines the audit passes on from a checker run: which TLC run is starting, and TLC's own
+# once-a-minute progress on a long search. Everything else the checker says on stderr is already
+# carried into the report, so relaying it too would only print it twice.
+RELAYED = ("  TLC ", "        Progress")
+
+
+def run_relayed(args: list[str], timeout: int) -> subprocess.CompletedProcess[str]:
+    """Run the checker, passing its progress lines on as they arrive and keeping everything else.
+
+    stdout, the JSON answer, is read on a thread while stderr is read here line by line, so neither
+    pipe can fill and stall the other. A run past `timeout` is killed and raises TimeoutExpired,
+    exactly as `subprocess.run` did before this relayed anything.
+    """
+    proc = subprocess.Popen(args, cwd=REPO, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                            text=True, encoding="utf-8", errors="replace",
+                            # UTF-8 both ways, and ask the checker for its progress lines.
+                            env={**os.environ, "PYTHONUTF8": "1", "ANCHOR_PROGRESS": "1"})
+    out: list[str] = []
+    reader = threading.Thread(target=lambda: out.append(proc.stdout.read()), daemon=True)
+    reader.start()
+    expired = threading.Event()
+    timer = threading.Timer(timeout, lambda: (expired.set(), proc.kill()))
+    timer.start()
+    errors: list[str] = []
+    try:
+        for line in proc.stderr:
+            errors.append(line)
+            if line.startswith(RELAYED):
+                print(line.rstrip(), file=sys.stderr, flush=True)
+        proc.wait()
+    finally:
+        timer.cancel()
+    reader.join()
+    if expired.is_set():
+        raise subprocess.TimeoutExpired(args, timeout)
+    return subprocess.CompletedProcess(args, proc.returncode, "".join(out), "".join(errors))
+
+
+def step_summary(result: dict) -> str:
+    """One line for a finished step: what came back."""
+    if result.get("kind") == "property":
+        return "holds" if result.get("held") else "BROKEN"
+    if result.get("_failed"):
+        return "could not be checked"
+    rules = result.get("rules") or []
+    verdicts = ", ".join(sorted({str(r.get("verdict")) for r in rules})) or "no rules"
+    return f"{len(rules)} rule(s): {verdicts}"
+
+
 def check_all(plan: Plan, out: Path, attempts: int | None = None,
-              smoke: int | None = None, max_fields: int | None = None) -> dict:
+              smoke: int | None = None, max_fields: int | None = None,
+              reading: str | None = None, event_schema: Path | None = None) -> dict:
     """Every check, in a fixed order, before the model is asked anything."""
     traces = out / "traces"
     results: dict = {"directory": str(plan.directory), "derived": {}, "properties": {},
@@ -205,19 +307,36 @@ def check_all(plan: Plan, out: Path, attempts: int | None = None,
                      # sweep reports `live` or `unknown` and never VACUOUS, REDUNDANT or DEAD --
                      # those are claims of ABSENCE and a random walk cannot make one.
                      "smoke": smoke,
+                     # Which event-schema reading every verdict below was computed under.
+                     "reading": event_schema.name if event_schema else (reading or "pinned"),
                      "unpaired": [{"module": m.name, "why": w} for m, w in plan.unpaired]}
 
+    # SAID BEFORE IT STARTS, because the first answer can be minutes away: every rule is one or
+    # two TLC runs, and each run is a JVM starting and a model being searched.
+    steps = len(plan.policies) + len(plan.properties)
+    print(f"{steps} step(s): {len(plan.policies)} policy set(s) checked rule by rule, then "
+          f"{len(plan.properties)} property module(s). Each rule is one or two TLC runs of a few "
+          f"seconds, so a large set takes minutes; each run is announced as it starts.\n",
+          file=sys.stderr, flush=True)
+    step = 0
+
     for policy in plan.policies:
-        print(f"  checking {policy.name}", file=sys.stderr)
+        step += 1
+        print(f"[{step}/{steps}] {policy.name}: rule by rule", file=sys.stderr, flush=True)
+        began = time.monotonic()
         results["derived"][policy.name] = run_checker(
             policy, keep=traces / policy.stem, attempts=attempts,
-            smoke=smoke, max_fields=max_fields)
+            smoke=smoke, max_fields=max_fields, reading=reading, event_schema=event_schema)
+        print(f"      -> {step_summary(results['derived'][policy.name])} "
+              f"({time.monotonic() - began:.0f}s)", file=sys.stderr, flush=True)
 
     for module, policy in plan.properties:
-        print(f"  {policy.name} against {module.name}", file=sys.stderr)
+        step += 1
+        print(f"[{step}/{steps}] {policy.name} against {module.name}", file=sys.stderr, flush=True)
+        began = time.monotonic()
         checked = run_checker(policy, property_module=module,
                               keep=traces / f"{policy.stem}-{module.stem}", attempts=attempts,
-                              max_fields=max_fields)
+                              max_fields=max_fields, reading=reading, event_schema=event_schema)
 
         # A BROKEN claim, carried back into the policy's own language and put to the reference
         # engine. Cheap -- the counterexample is already computed and a replay is milliseconds --
@@ -226,14 +345,25 @@ def check_all(plan: Plan, out: Path, attempts: int | None = None,
         confirmations = []
         if not checked.get("held"):
             try:
-                confirmations = [as_finding(c) for c in
-                                 confirm(policy, module, checked.get("output", ""),
-                                         keep=traces / f"{policy.stem}-{module.stem}" / "witness")]
+                # The engine gets the reading the model was built under, as a file -- never its
+                # own default, which is only the same reading by coincidence.
+                with tempfile.TemporaryDirectory(prefix="anchor-reading-") as scratch:
+                    confirmations = [as_finding(c) for c in
+                                     confirm(policy, module, checked.get("output", ""),
+                                             keep=traces / f"{policy.stem}-{module.stem}" / "witness",
+                                             event_schema=event_schema or reading_schema(
+                                                 reading or "pinned", Path(scratch)))]
             except Exception as e:                   # never let the extra step lose the finding
                 confirmations = [{"why": f"the counterexample could not be replayed: {e}"}]
 
+        confirmed = sum(1 for c in confirmations if c.get("engine"))
+        print(f"      -> {step_summary(checked)}"
+              + (f", confirmed by the Dogwood engine" if confirmed else "")
+              + f" ({time.monotonic() - began:.0f}s)", file=sys.stderr, flush=True)
+
         results["properties"][module.name] = {
             "policy": policy.name,
+            "given": module in plan.given,
             # READ BEFORE RUN. What the module claims is worked out from its own text, costs
             # nothing, and is the only part of this report a reader can disagree with on sight --
             # "holds" is a fact about a claim nobody has read yet.
@@ -293,7 +423,7 @@ def findings_of(results: dict) -> list[str]:
 def report(plan: Plan, results: dict, findings: list[str], *, model_used: bool,
            scanned: list[str] | None = None) -> str:
     """The findings file. Written whether or not a model ran."""
-    lines = [f"# Findings — `{plan.directory.name}`", ""]
+    lines = [f"# Findings — `{plan.subject or plan.directory.name}`", ""]
     # THE INPUT SCAN FIRST: whether a model was shown this directory's text, and whether that text
     # held anything aimed at one, changes how every model-written word below should be read.
     if scanned:
@@ -350,7 +480,14 @@ def report(plan: Plan, results: dict, findings: list[str], *, model_used: bool,
               "| | |", "|---|---|",
               f"| policy sets | {len(plan.policies)} |",
               f"| stated intentions (`.tla`) | {len(plan.properties)} |",
-              f"| questions answered | {len(plan.questions) if model_used else 0} |", ""]
+              f"| questions answered | {len(plan.questions) if model_used else 0} |",
+              # SAID EVERY TIME, the default included: a verdict is scoped to a reading, and one
+              # that does not say which gets read as being about the deployed configuration.
+              "| event-schema reading | " + (
+                  f"`{results['reading']}`, the schema given" if str(results.get("reading", "")).endswith(".dwschema")
+                  else "unpinned, by `--unpinned`: no pins, so a temporal condition sees every "
+                       "principal's events" if results.get("reading") == "unpinned"
+                  else "pinned by `callerPrincipal`, Dogwood's default") + " |", ""]
 
     # THE SENTENCE THAT KEEPS THIS HONEST. A clean report over a directory with no stated
     # intentions means far less than a clean report over one with them, and nothing else in this
@@ -382,7 +519,8 @@ def report(plan: Plan, results: dict, findings: list[str], *, model_used: bool,
     if plan.properties:
         lines += ["## Stated intentions", "", "| policy set | module | |", "|---|---|---|"]
         for name, r in results.get("properties", {}).items():
-            lines.append(f"| `{r['policy']}` | `{name}` | "
+            lines.append(f"| `{r['policy']}` | `{name}`"
+                         f"{' (given with `--property`)' if r.get('given') else ''} | "
                          f"{'holds' if r.get('held') else '**BROKEN**'} |")
         lines.append("")
 
@@ -532,10 +670,19 @@ def scan_note(scan: screen.Report, *, withheld: bool, overridden: bool) -> dict[
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("directory", type=Path, help="a directory of .dw policy sets")
+    ap.add_argument("target", type=Path,
+                    help="a directory of .dw policy sets, or one .dw policy set to audit on its own")
     ap.add_argument("--output-dir", type=Path, default=None,
-                    help="where to write findings.md, results.json and traces/ "
-                         "(default: the directory itself)")
+                    help="where to write findings.md, findings.html, results.json and traces/ "
+                         "(default: the directory itself, or <policy-set>-findings/ beside a "
+                         "single policy set, so it never overwrites the directory's report)")
+    ap.add_argument("--property", type=Path, metavar="FILE.tla",
+                    help="one policy set only: a property module to check as well as the ones "
+                         "whose header names it -- kept elsewhere, not yet given the header, or "
+                         "written for several policy sets. Needs its .cfg beside it")
+    ap.add_argument("--list", action="store_true",
+                    help="print the property modules and questions an audit would use, and stop. "
+                         "Reads headers and questions.md; runs nothing")
     ap.add_argument("--no-llm", action="store_true",
                     help="run the checks and write the report without asking an LLM anything. "
                          "Most of the value, none of the cost, and the part that belongs in CI")
@@ -553,23 +700,69 @@ def main() -> int:
                     help="refuse a policy set reading more than N input/output fields (default 4). "
                          "The request space is the product of their domains, so raising this "
                          "trades runtime for reach rather than soundness")
+    reading = ap.add_mutually_exclusive_group()
+    reading.add_argument("--pinned", action="store_const", const="pinned", dest="reading",
+                         help="Dogwood's own default reading, and Anchor's, stated explicitly: "
+                              "callerPrincipal pinned, so a temporal condition sees only the "
+                              "requesting principal's events")
+    reading.add_argument("--event-schema", type=Path, metavar="FILE.dwschema",
+                         help="the .dwschema every policy set here is deployed under")
+    reading.add_argument("--unpinned", action="store_const", const="unpinned", dest="reading",
+                         help="no pins, so a temporal condition sees every principal's events in "
+                              "the session. For a deployment whose event schema has no universal "
+                              "pin")
     ap.add_argument("--allow-flagged-input", action="store_true",
                     help="ask the LLM its questions even when the input scan found "
                          "high-severity text. For findings you have read and judged benign; the "
                          "report records that it was used")
     args = ap.parse_args()
 
-    if not args.directory.is_dir():
-        print(f"{args.directory} is not a directory", file=sys.stderr)
+    # A DIRECTORY, OR ONE POLICY SET IN IT. The single set is the directory narrowed to that
+    # file, so the two produce the same report and there is one audit rather than two.
+    target = args.target
+    if target.is_file() and target.suffix.lower() == ".dw":
+        directory = target.parent
+        plan = narrow(discover(directory), target)
+        default_out = directory / f"{target.stem}-findings"
+    elif target.is_dir():
+        directory = target
+        plan = discover(directory)
+        default_out = directory
+    else:
+        print(f"{target} is neither a directory nor a .dw policy set", file=sys.stderr)
         return 3
 
-    out = args.output_dir or args.directory
-    out.mkdir(parents=True, exist_ok=True)
+    # ADDED, NOT SUBSTITUTED: "full" is everything, and an audit that dropped the discovered
+    # modules because one was named would be the surprising kind of override. Checking only the
+    # named one is what a plain `check --property` is for.
+    if args.property is not None:
+        if not plan.subject:
+            ap.error("--property names one policy set's module; with a directory, name the policy "
+                     "set in the module's header instead")
+        module = args.property.resolve()
+        if not module.is_file() or not module.with_suffix(".cfg").is_file():
+            ap.error(f"--property {args.property}: needs the .tla and a .cfg beside it naming its "
+                     f"invariants")
+        paired = {m.resolve(): m for m, _ in plan.properties}
+        if module not in paired:
+            # Two modules of one name would share a traces/ folder and a row in the report.
+            if any(m.name == module.name for m in paired):
+                ap.error(f"--property {module.name}: a module of that name is already found by "
+                         f"header here; rename one of them")
+            plan.properties.append((module, target))
+            plan.given.append(module)
 
-    plan = discover(args.directory)
+    if args.list:
+        if (said := available(plan)):
+            print(said)
+        return 0
+
     if not plan.policies:
-        print(f"no .dw policy sets in {args.directory}", file=sys.stderr)
+        print(f"no .dw policy sets in {directory}", file=sys.stderr)
         return 3
+
+    out = args.output_dir or default_out
+    out.mkdir(parents=True, exist_ok=True)
 
     print(f"{len(plan.policies)} policy set(s), {len(plan.properties)} stated intention(s), "
           f"{len(plan.questions)} question(s)\n", file=sys.stderr)
@@ -577,7 +770,17 @@ def main() -> int:
     # THE INPUT SCAN, BEFORE ANYTHING READS THE INPUTS. The checks run in full whatever it finds:
     # the parser, TLC and Dogwood are deterministic and not at risk from text aimed at a model.
     # What a high finding withholds is the MODEL -- the one reader here that would follow it.
-    scan = screen.scan([args.directory], relative_to=args.directory)
+    # Only what this audit reads: the whole directory for a directory, and for one policy set
+    # just it, its modules and their .cfg, the questions and the schema. Another set's text
+    # must not withhold the LLM from this one.
+    if plan.subject:
+        # A module given with --property is read like any other, wherever it lives.
+        reads = [target, *[f for m, _ in plan.properties for f in (m, m.with_suffix(".cfg"))],
+                 *([directory / "questions.md"] if plan.questions else []),
+                 *([args.event_schema] if args.event_schema else [])]
+    else:
+        reads = [directory, *([args.event_schema] if args.event_schema else [])]
+    scan = screen.scan(reads, relative_to=directory)
     asking = not args.no_llm and bool(plan.questions)
     withheld = bool(scan.high) and asking and not args.allow_flagged_input
     if scan.high or scan.medium:
@@ -587,8 +790,9 @@ def main() -> int:
               "found high-severity text above that it would read. If it is benign, run again "
               "with --allow-flagged-input.\n", file=sys.stderr)
 
-    results = check_all(plan, out, attempts=args.attempts,
-                        smoke=args.smoke, max_fields=args.max_fields)
+    results = check_all(plan, out, attempts=args.attempts, smoke=args.smoke,
+                        max_fields=args.max_fields, reading=args.reading,
+                        event_schema=args.event_schema)
     results["inputScan"] = scan.as_dict() | {"modelWithheld": withheld}
     findings = findings_of(results)
 
@@ -609,7 +813,8 @@ def main() -> int:
     # missing finding -- so it is said, not raised.
     try:
         from checker.timeline import write_report                      # noqa: PLC0415
-        page = write_report(out, inputs=args.directory, findings=findings, notes=note["html"])
+        page = write_report(out, inputs=target, findings=findings, notes=note["html"],
+                            scanned=scan)
         print(f"wrote {page}", file=sys.stderr)
     except Exception as e:                                              # noqa: BLE001
         print(f"findings.html was not written ({type(e).__name__}: {e}); findings.md is complete "

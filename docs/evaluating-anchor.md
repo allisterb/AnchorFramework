@@ -130,29 +130,34 @@ condition even applies to. No model checker runs. Read the `forbids` lines befor
 than after — each one is the only thing its claim can catch, and a claim whose condition applies to
 nothing will pass having tested nothing.
 
-## 4. A whole directory  — *minutes*
+## 4. An audit  — *minutes*
 
 ```bash
 docker run --rm -v "$PWD:/work" -w /app public.ecr.aws/v4q7x8t1/anchor:latest \
-    check examples/aws1 --no-llm --output-dir /work/aws1
+    check examples/aws1 --full --no-llm --output-dir /work/aws1
 ```
 
-Every `.dw` paired with the `.tla` module whose header names it, writing `findings.md`,
-`findings.html`, `results.json` and `traces/` into `./aws1` on your machine. `--output-dir` is what
-brings them out: without it they are written inside the container, and go when it does. It exits 1,
-because the audit has findings.
+`--full` turns a check into an audit: every `.dw` in the directory, each paired with every `.tla`
+property module whose header names it, writing `findings.md`, `findings.html`, `results.json` and
+`traces/` into `./aws1` on your machine. `--output-dir` is what brings them out: without it they are
+written inside the container, and go when it does. It exits 1, because the audit has findings.
+Without `--full`, the same command checks each policy set rule by rule, prints the verdicts, writes
+nothing, and ends by listing the property modules and questions an audit would use.
+
+A single policy set can be audited on its own the same way,
+`check examples/aws1/agent-policy.dw --full`, which uses only the modules and questions that name it.
 
 `--no-llm` is what keeps this mode mechanical. `examples/aws1` also holds a `questions.md`, and
 without the flag the audit asks an LLM those questions as well, which needs the key set up under
 the agent modes below; with no key, each question fails and the rest of the audit is unaffected.
 
-`examples/aws1` and `examples/aws2` already contain the committed output of this audit, so you can
-compare. Expect three differences: the committed reports predate the input scan, so they have no
-**Input scan** line; they were written with the questions answered; and each `Run it yourself`
-names wherever your copy was written, which from inside the container is `/work/aws1`, i.e. `./aws1`
-on your machine.
+`examples/aws1` already contains the committed output of exactly this audit, so you can compare. The
+one difference is that each `Run it yourself` names wherever your copy was written, which from
+inside the container is `/work/aws1`, i.e. `./aws1` on your machine. (`examples/aws2`'s was made
+with the extra flags its README gives, because its largest policy set is too big to check
+exhaustively.)
 
-A directory audit scans its inputs before anything reads them; see the agent modes below.
+An audit scans its inputs before anything reads them; see the agent modes below.
 
 `findings.html` is the audit as one page: each broken claim drawn as the session that breaks it,
 with the reference engine's verdict on every decision and the rule that decided it. It is a single

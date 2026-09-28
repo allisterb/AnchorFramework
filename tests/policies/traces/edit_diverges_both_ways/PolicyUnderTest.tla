@@ -26,7 +26,7 @@ AllValues    == {}
 \* The fields a universal pin partitions on. Empty means global-trace semantics -- which is the
 \* `unpinned` preset, NOT the shipped default. Vacuity.tla gives a session two callers when this
 \* is non-empty, so a partition has something to exclude.
-PinKeys == {}
+PinKeys == {"principal"}
 
 \* ---- for a property module extending this one --------------------------------------------
 \* Scalars are TAGGED with their kind so TLC refuses a cross-kind comparison rather than quietly
@@ -71,7 +71,7 @@ Policies ==
   <<
     [effect |-> "permit", actions |-> {"Trade"}, cond |-> [op |-> "true", args |-> <<>>, term |-> [op |-> "formerly", window |-> 0, atom |-> [op |-> "pred", pred |-> [action |-> "", kind |-> "", binds |-> <<>>], var |-> "", args |-> <<>>, field |-> "", cmp |-> "", value |-> [k |-> "s", v |-> ""], other |-> "", pattern |-> <<>>, net |-> <<>>, prefix |-> 0], left |-> [op |-> "pred", pred |-> [action |-> "", kind |-> "", binds |-> <<>>], var |-> "", args |-> <<>>, field |-> "", cmp |-> "", value |-> [k |-> "s", v |-> ""], other |-> "", pattern |-> <<>>, net |-> <<>>, prefix |-> 0], leftNeg |-> FALSE, keys |-> <<>>]]],
     [effect |-> "permit", actions |-> {"Approve"}, cond |-> [op |-> "true", args |-> <<>>, term |-> [op |-> "formerly", window |-> 0, atom |-> [op |-> "pred", pred |-> [action |-> "", kind |-> "", binds |-> <<>>], var |-> "", args |-> <<>>, field |-> "", cmp |-> "", value |-> [k |-> "s", v |-> ""], other |-> "", pattern |-> <<>>, net |-> <<>>, prefix |-> 0], left |-> [op |-> "pred", pred |-> [action |-> "", kind |-> "", binds |-> <<>>], var |-> "", args |-> <<>>, field |-> "", cmp |-> "", value |-> [k |-> "s", v |-> ""], other |-> "", pattern |-> <<>>, net |-> <<>>, prefix |-> 0], leftNeg |-> FALSE, keys |-> <<>>]]],
-    [effect |-> "forbid", actions |-> {"Approve"}, cond |-> [op |-> "term", args |-> <<>>, term |-> [op |-> "formerly", window |-> 1000, atom |-> [op |-> "pred", pred |-> [action |-> "Trade", kind |-> "response", binds |-> <<>>], var |-> "", args |-> <<>>, field |-> "", cmp |-> "", value |-> [k |-> "s", v |-> ""], other |-> "", pattern |-> <<>>, net |-> <<>>, prefix |-> 0], left |-> [op |-> "pred", pred |-> [action |-> "Trade", kind |-> "response", binds |-> <<>>], var |-> "", args |-> <<>>, field |-> "", cmp |-> "", value |-> [k |-> "s", v |-> ""], other |-> "", pattern |-> <<>>, net |-> <<>>, prefix |-> 0], leftNeg |-> FALSE, keys |-> <<>>]]]
+    [effect |-> "forbid", actions |-> {"Approve"}, cond |-> [op |-> "term", args |-> <<>>, term |-> [op |-> "formerly", window |-> 1000, atom |-> [op |-> "pred", pred |-> [action |-> "Trade", kind |-> "response", binds |-> <<>>], var |-> "", args |-> <<>>, field |-> "", cmp |-> "", value |-> [k |-> "s", v |-> ""], other |-> "", pattern |-> <<>>, net |-> <<>>, prefix |-> 0], left |-> [op |-> "pred", pred |-> [action |-> "Trade", kind |-> "response", binds |-> <<>>], var |-> "", args |-> <<>>, field |-> "", cmp |-> "", value |-> [k |-> "s", v |-> ""], other |-> "", pattern |-> <<>>, net |-> <<>>, prefix |-> 0], leftNeg |-> FALSE, keys |-> <<"principal">>]]]
   >>
 
 Other == Policies

@@ -4,7 +4,7 @@
     "01-business-hours.dw": {
       "kind": "derived",
       "policy": "01-business-hours.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
+      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
       "bound": {
         "attempts": 5,
         "amount": 2,
@@ -19,8 +19,8 @@
             "issue_refund"
           ],
           "verdict": "live",
-          "note": "witness: issue_refund -> issue_refund -> issue_refund -> issue_refund -> issue_refund",
-          "witness": "issue_refund -> issue_refund -> issue_refund -> issue_refund -> issue_refund",
+          "note": "witness: issue_refund -> issue_refund",
+          "witness": "issue_refund -> issue_refund",
           "session": [
             {
               "action": "issue_refund",
@@ -34,7 +34,9 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "issue_refund",
@@ -48,127 +50,46 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "issue_refund",
               "kind": "request",
               "input": {
-                "amount": 2500,
-                "systemNowTime": 32399999
+                "amount": 2499,
+                "systemNowTime": 32400000
               },
               "output": {},
               "time": 3,
-              "principal": "caller",
+              "principal": "stranger",
               "resource": "caller",
-              "session": "caller",
-              "pins": {}
-            },
-            {
-              "action": "issue_refund",
-              "kind": "error",
-              "input": {
-                "amount": 2500,
-                "systemNowTime": 32399999
-              },
-              "output": {},
-              "time": 4,
-              "principal": "caller",
-              "resource": "caller",
-              "session": "caller",
-              "pins": {}
-            },
-            {
-              "action": "issue_refund",
-              "kind": "request",
-              "input": {
-                "amount": 2501,
-                "systemNowTime": 61200001
-              },
-              "output": {},
-              "time": 5,
-              "principal": "caller",
-              "resource": "caller",
-              "session": "caller",
-              "pins": {}
-            },
-            {
-              "action": "issue_refund",
-              "kind": "error",
-              "input": {
-                "amount": 2501,
-                "systemNowTime": 61200001
-              },
-              "output": {},
-              "time": 6,
-              "principal": "caller",
-              "resource": "caller",
-              "session": "caller",
-              "pins": {}
-            },
-            {
-              "action": "issue_refund",
-              "kind": "request",
-              "input": {
-                "amount": 2501,
-                "systemNowTime": 32400000
-              },
-              "output": {},
-              "time": 7,
-              "principal": "caller",
-              "resource": "caller",
-              "session": "caller",
-              "pins": {}
-            },
-            {
-              "action": "issue_refund",
-              "kind": "error",
-              "input": {
-                "amount": 2501,
-                "systemNowTime": 32400000
-              },
-              "output": {},
-              "time": 8,
-              "principal": "caller",
-              "resource": "caller",
-              "session": "caller",
-              "pins": {}
-            },
-            {
-              "action": "issue_refund",
-              "kind": "request",
-              "input": {
-                "amount": 2500,
-                "systemNowTime": 32400000
-              },
-              "output": {},
-              "time": 9,
-              "principal": "caller",
-              "resource": "caller",
-              "session": "caller",
-              "pins": {}
+              "session": "stranger",
+              "pins": {
+                "principal": "stranger"
+              }
             },
             {
               "action": "issue_refund",
               "kind": "response",
               "input": {
-                "amount": 2500,
+                "amount": 2499,
                 "systemNowTime": 32400000
               },
               "output": {},
-              "time": 10,
-              "principal": "caller",
+              "time": 4,
+              "principal": "stranger",
               "resource": "caller",
-              "session": "caller",
-              "pins": {}
+              "session": "stranger",
+              "pins": {
+                "principal": "stranger"
+              }
             }
           ],
           "narrative": [
             "1. issue_refund(amount = 2501, systemNowTime = 32400000)  denied",
-            "2. issue_refund(amount = 2500, systemNowTime = 32399999)  denied",
-            "3. issue_refund(amount = 2501, systemNowTime = 61200001)  denied",
-            "4. issue_refund(amount = 2501, systemNowTime = 32400000)  denied",
-            "5. issue_refund(amount = 2500, systemNowTime = 32400000)  allowed"
+            "2. issue_refund(amount = 2499, systemNowTime = 32400000)  allowed"
           ],
           "blame": null
         }
@@ -180,7 +101,7 @@
     "02-identity-verification.dw": {
       "kind": "derived",
       "policy": "02-identity-verification.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
+      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
       "bound": {
         "attempts": 5,
         "amount": 2,
@@ -211,7 +132,7 @@
     "03-cumulative-cap.dw": {
       "kind": "derived",
       "policy": "03-cumulative-cap.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
+      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
       "bound": {
         "attempts": 5,
         "amount": 2,
@@ -242,7 +163,7 @@
     "04-refund-rate-limit.dw": {
       "kind": "derived",
       "policy": "04-refund-rate-limit.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
+      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
       "bound": {
         "attempts": 5,
         "amount": 2,
@@ -273,7 +194,7 @@
     "06-supervisor-approval.dw": {
       "kind": "derived",
       "policy": "06-supervisor-approval.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
+      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
       "bound": {
         "attempts": 5,
         "amount": 2,
@@ -304,7 +225,7 @@
     "agent-policy.dw": {
       "kind": "derived",
       "policy": "agent-policy.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
+      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
       "bound": {
         "attempts": 5,
         "amount": 2,
@@ -319,24 +240,101 @@
             "verify_identity"
           ],
           "verdict": "live",
-          "note": "witness: verify_identity",
-          "witness": "verify_identity",
+          "note": "witness: initiate_transfer -> issue_refund -> verify_identity",
+          "witness": "initiate_transfer -> issue_refund -> verify_identity",
           "session": [
+            {
+              "action": "initiate_transfer",
+              "kind": "request",
+              "input": {
+                "account": 1,
+                "amount": 2500,
+                "charge_id": 2,
+                "systemNowTime": 61200000
+              },
+              "output": {},
+              "time": 1,
+              "principal": "stranger",
+              "resource": "caller",
+              "session": "stranger",
+              "pins": {
+                "principal": "stranger"
+              }
+            },
+            {
+              "action": "initiate_transfer",
+              "kind": "error",
+              "input": {
+                "account": 1,
+                "amount": 2500,
+                "charge_id": 2,
+                "systemNowTime": 61200000
+              },
+              "output": {},
+              "time": 2,
+              "principal": "stranger",
+              "resource": "caller",
+              "session": "stranger",
+              "pins": {
+                "principal": "stranger"
+              }
+            },
+            {
+              "action": "issue_refund",
+              "kind": "request",
+              "input": {
+                "account": 2,
+                "amount": 500,
+                "charge_id": 2,
+                "systemNowTime": 32400000
+              },
+              "output": {},
+              "time": 3,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            },
+            {
+              "action": "issue_refund",
+              "kind": "response",
+              "input": {
+                "account": 2,
+                "amount": 500,
+                "charge_id": 2,
+                "systemNowTime": 32400000
+              },
+              "output": {
+                "approved": true,
+                "verified": false
+              },
+              "time": 4,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            },
             {
               "action": "verify_identity",
               "kind": "request",
               "input": {
                 "account": 2,
                 "amount": 499,
-                "charge_id": 2,
-                "systemNowTime": 61200001
+                "charge_id": 1,
+                "systemNowTime": 32399999
               },
               "output": {},
-              "time": 1,
-              "principal": "caller",
+              "time": 5,
+              "principal": "stranger",
               "resource": "caller",
-              "session": "caller",
-              "pins": {}
+              "session": "stranger",
+              "pins": {
+                "principal": "stranger"
+              }
             },
             {
               "action": "verify_identity",
@@ -344,22 +342,26 @@
               "input": {
                 "account": 2,
                 "amount": 499,
-                "charge_id": 2,
-                "systemNowTime": 61200001
+                "charge_id": 1,
+                "systemNowTime": 32399999
               },
               "output": {
-                "approved": false,
+                "approved": true,
                 "verified": true
               },
-              "time": 2,
-              "principal": "caller",
+              "time": 6,
+              "principal": "stranger",
               "resource": "caller",
-              "session": "caller",
-              "pins": {}
+              "session": "stranger",
+              "pins": {
+                "principal": "stranger"
+              }
             }
           ],
           "narrative": [
-            "1. verify_identity(account = 2, amount = 499, charge_id = 2, systemNowTime = 61200001)  allowed  (approved = false, verified = true)"
+            "1. initiate_transfer(account = 1, amount = 2500, charge_id = 2, systemNowTime = 61200000)  denied",
+            "2. issue_refund     (account = 2, amount = 500, charge_id = 2, systemNowTime = 32400000)  allowed  (approved = true, verified = false)",
+            "3. verify_identity  (account = 2, amount = 499, charge_id = 1, systemNowTime = 32399999)  allowed  (approved = true, verified = true)"
           ],
           "blame": null
         },
@@ -370,80 +372,208 @@
             "request_approval"
           ],
           "verdict": "live",
-          "note": "witness: initiate_transfer -> request_approval",
-          "witness": "initiate_transfer -> request_approval",
+          "note": "witness: initiate_transfer -> issue_refund -> verify_identity -> verify_identity -> request_approval",
+          "witness": "initiate_transfer -> issue_refund -> verify_identity -> verify_identity -> request_approval",
           "session": [
             {
               "action": "initiate_transfer",
               "kind": "request",
               "input": {
                 "account": 1,
-                "amount": 500,
-                "charge_id": 1,
-                "systemNowTime": 61200001
+                "amount": 2500,
+                "charge_id": 2,
+                "systemNowTime": 61200000
               },
               "output": {},
               "time": 1,
-              "principal": "caller",
+              "principal": "stranger",
               "resource": "caller",
-              "session": "caller",
-              "pins": {}
+              "session": "stranger",
+              "pins": {
+                "principal": "stranger"
+              }
             },
             {
               "action": "initiate_transfer",
               "kind": "error",
               "input": {
                 "account": 1,
-                "amount": 500,
-                "charge_id": 1,
-                "systemNowTime": 61200001
-              },
-              "output": {},
-              "time": 2,
-              "principal": "caller",
-              "resource": "caller",
-              "session": "caller",
-              "pins": {}
-            },
-            {
-              "action": "request_approval",
-              "kind": "request",
-              "input": {
-                "account": 1,
                 "amount": 2500,
                 "charge_id": 2,
                 "systemNowTime": 61200000
+              },
+              "output": {},
+              "time": 2,
+              "principal": "stranger",
+              "resource": "caller",
+              "session": "stranger",
+              "pins": {
+                "principal": "stranger"
+              }
+            },
+            {
+              "action": "issue_refund",
+              "kind": "request",
+              "input": {
+                "account": 2,
+                "amount": 500,
+                "charge_id": 2,
+                "systemNowTime": 32400000
               },
               "output": {},
               "time": 3,
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
-              "action": "request_approval",
+              "action": "issue_refund",
               "kind": "response",
               "input": {
-                "account": 1,
-                "amount": 2500,
+                "account": 2,
+                "amount": 500,
                 "charge_id": 2,
-                "systemNowTime": 61200000
+                "systemNowTime": 32400000
               },
               "output": {
-                "approved": false,
-                "verified": true
+                "approved": true,
+                "verified": false
               },
               "time": 4,
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
+            },
+            {
+              "action": "verify_identity",
+              "kind": "request",
+              "input": {
+                "account": 2,
+                "amount": 499,
+                "charge_id": 1,
+                "systemNowTime": 32399999
+              },
+              "output": {},
+              "time": 5,
+              "principal": "stranger",
+              "resource": "caller",
+              "session": "stranger",
+              "pins": {
+                "principal": "stranger"
+              }
+            },
+            {
+              "action": "verify_identity",
+              "kind": "response",
+              "input": {
+                "account": 2,
+                "amount": 499,
+                "charge_id": 1,
+                "systemNowTime": 32399999
+              },
+              "output": {
+                "approved": true,
+                "verified": true
+              },
+              "time": 6,
+              "principal": "stranger",
+              "resource": "caller",
+              "session": "stranger",
+              "pins": {
+                "principal": "stranger"
+              }
+            },
+            {
+              "action": "verify_identity",
+              "kind": "request",
+              "input": {
+                "account": 1,
+                "amount": 2501,
+                "charge_id": 1,
+                "systemNowTime": 61200000
+              },
+              "output": {},
+              "time": 7,
+              "principal": "stranger",
+              "resource": "caller",
+              "session": "stranger",
+              "pins": {
+                "principal": "stranger"
+              }
+            },
+            {
+              "action": "verify_identity",
+              "kind": "response",
+              "input": {
+                "account": 1,
+                "amount": 2501,
+                "charge_id": 1,
+                "systemNowTime": 61200000
+              },
+              "output": {
+                "approved": true,
+                "verified": false
+              },
+              "time": 8,
+              "principal": "stranger",
+              "resource": "caller",
+              "session": "stranger",
+              "pins": {
+                "principal": "stranger"
+              }
+            },
+            {
+              "action": "request_approval",
+              "kind": "request",
+              "input": {
+                "account": 2,
+                "amount": 2501,
+                "charge_id": 2,
+                "systemNowTime": 61200000
+              },
+              "output": {},
+              "time": 9,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            },
+            {
+              "action": "request_approval",
+              "kind": "response",
+              "input": {
+                "account": 2,
+                "amount": 2501,
+                "charge_id": 2,
+                "systemNowTime": 61200000
+              },
+              "output": {
+                "approved": true,
+                "verified": true
+              },
+              "time": 10,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
             }
           ],
           "narrative": [
-            "1. initiate_transfer(account = 1, amount = 500, charge_id = 1, systemNowTime = 61200001)  denied",
-            "2. request_approval (account = 1, amount = 2500, charge_id = 2, systemNowTime = 61200000)  allowed  (approved = false, verified = true)"
+            "1. initiate_transfer(account = 1, amount = 2500, charge_id = 2, systemNowTime = 61200000)  denied",
+            "2. issue_refund     (account = 2, amount = 500, charge_id = 2, systemNowTime = 32400000)  allowed  (approved = true, verified = false)",
+            "3. verify_identity  (account = 2, amount = 499, charge_id = 1, systemNowTime = 32399999)  allowed  (approved = true, verified = true)",
+            "4. verify_identity  (account = 1, amount = 2501, charge_id = 1, systemNowTime = 61200000)  allowed  (approved = true, verified = false)",
+            "5. request_approval (account = 2, amount = 2501, charge_id = 2, systemNowTime = 61200000)  allowed  (approved = true, verified = true)"
           ],
           "blame": null
         },
@@ -454,149 +584,88 @@
             "issue_refund"
           ],
           "verdict": "live",
-          "note": "witness: initiate_transfer -> request_approval -> issue_refund -> issue_refund",
-          "witness": "initiate_transfer -> request_approval -> issue_refund -> issue_refund",
+          "note": "witness: initiate_transfer -> issue_refund",
+          "witness": "initiate_transfer -> issue_refund",
           "session": [
             {
               "action": "initiate_transfer",
               "kind": "request",
               "input": {
                 "account": 1,
-                "amount": 500,
-                "charge_id": 1,
-                "systemNowTime": 61200001
+                "amount": 2500,
+                "charge_id": 2,
+                "systemNowTime": 61200000
               },
               "output": {},
               "time": 1,
-              "principal": "caller",
+              "principal": "stranger",
               "resource": "caller",
-              "session": "caller",
-              "pins": {}
+              "session": "stranger",
+              "pins": {
+                "principal": "stranger"
+              }
             },
             {
               "action": "initiate_transfer",
               "kind": "error",
               "input": {
                 "account": 1,
-                "amount": 500,
-                "charge_id": 1,
-                "systemNowTime": 61200001
-              },
-              "output": {},
-              "time": 2,
-              "principal": "caller",
-              "resource": "caller",
-              "session": "caller",
-              "pins": {}
-            },
-            {
-              "action": "request_approval",
-              "kind": "request",
-              "input": {
-                "account": 1,
                 "amount": 2500,
                 "charge_id": 2,
                 "systemNowTime": 61200000
+              },
+              "output": {},
+              "time": 2,
+              "principal": "stranger",
+              "resource": "caller",
+              "session": "stranger",
+              "pins": {
+                "principal": "stranger"
+              }
+            },
+            {
+              "action": "issue_refund",
+              "kind": "request",
+              "input": {
+                "account": 2,
+                "amount": 500,
+                "charge_id": 2,
+                "systemNowTime": 32400000
               },
               "output": {},
               "time": 3,
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
-            },
-            {
-              "action": "request_approval",
-              "kind": "response",
-              "input": {
-                "account": 1,
-                "amount": 2500,
-                "charge_id": 2,
-                "systemNowTime": 61200000
-              },
-              "output": {
-                "approved": false,
-                "verified": true
-              },
-              "time": 4,
-              "principal": "caller",
-              "resource": "caller",
-              "session": "caller",
-              "pins": {}
-            },
-            {
-              "action": "issue_refund",
-              "kind": "request",
-              "input": {
-                "account": 2,
-                "amount": 2500,
-                "charge_id": 1,
-                "systemNowTime": 32399999
-              },
-              "output": {},
-              "time": 5,
-              "principal": "caller",
-              "resource": "caller",
-              "session": "caller",
-              "pins": {}
-            },
-            {
-              "action": "issue_refund",
-              "kind": "error",
-              "input": {
-                "account": 2,
-                "amount": 2500,
-                "charge_id": 1,
-                "systemNowTime": 32399999
-              },
-              "output": {},
-              "time": 6,
-              "principal": "caller",
-              "resource": "caller",
-              "session": "caller",
-              "pins": {}
-            },
-            {
-              "action": "issue_refund",
-              "kind": "request",
-              "input": {
-                "account": 1,
-                "amount": 500,
-                "charge_id": 2,
-                "systemNowTime": 32400000
-              },
-              "output": {},
-              "time": 7,
-              "principal": "caller",
-              "resource": "caller",
-              "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "issue_refund",
               "kind": "response",
               "input": {
-                "account": 1,
+                "account": 2,
                 "amount": 500,
                 "charge_id": 2,
                 "systemNowTime": 32400000
               },
               "output": {
                 "approved": true,
-                "verified": true
+                "verified": false
               },
-              "time": 8,
+              "time": 4,
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             }
           ],
           "narrative": [
-            "1. initiate_transfer(account = 1, amount = 500, charge_id = 1, systemNowTime = 61200001)  denied",
-            "2. request_approval (account = 1, amount = 2500, charge_id = 2, systemNowTime = 61200000)  allowed  (approved = false, verified = true)",
-            "3. issue_refund     (account = 2, amount = 2500, charge_id = 1, systemNowTime = 32399999)  denied",
-            "4. issue_refund     (account = 1, amount = 500, charge_id = 2, systemNowTime = 32400000)  allowed  (approved = true, verified = true)"
+            "1. initiate_transfer(account = 1, amount = 2500, charge_id = 2, systemNowTime = 61200000)  denied",
+            "2. issue_refund     (account = 2, amount = 500, charge_id = 2, systemNowTime = 32400000)  allowed  (approved = true, verified = false)"
           ],
           "blame": null
         },
@@ -607,15 +676,15 @@
             "initiate_transfer"
           ],
           "verdict": "live",
-          "note": "witness: verify_identity -> initiate_transfer -> request_approval -> initiate_transfer",
-          "witness": "verify_identity -> initiate_transfer -> request_approval -> initiate_transfer",
+          "note": "witness: verify_identity -> issue_refund -> initiate_transfer",
+          "witness": "verify_identity -> issue_refund -> initiate_transfer",
           "session": [
             {
               "action": "verify_identity",
               "kind": "request",
               "input": {
-                "account": 2,
-                "amount": 499,
+                "account": 1,
+                "amount": 500,
                 "charge_id": 2,
                 "systemNowTime": 61200001
               },
@@ -624,66 +693,77 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
               "action": "verify_identity",
               "kind": "response",
               "input": {
-                "account": 2,
-                "amount": 499,
+                "account": 1,
+                "amount": 500,
                 "charge_id": 2,
                 "systemNowTime": 61200001
               },
               "output": {
-                "approved": false,
+                "approved": true,
                 "verified": true
               },
               "time": 2,
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
-              "action": "initiate_transfer",
-              "kind": "request",
-              "input": {
-                "account": 1,
-                "amount": 2500,
-                "charge_id": 2,
-                "systemNowTime": 32400000
-              },
-              "output": {},
-              "time": 3,
-              "principal": "caller",
-              "resource": "caller",
-              "session": "caller",
-              "pins": {}
-            },
-            {
-              "action": "initiate_transfer",
-              "kind": "error",
-              "input": {
-                "account": 1,
-                "amount": 2500,
-                "charge_id": 2,
-                "systemNowTime": 32400000
-              },
-              "output": {},
-              "time": 4,
-              "principal": "caller",
-              "resource": "caller",
-              "session": "caller",
-              "pins": {}
-            },
-            {
-              "action": "request_approval",
+              "action": "issue_refund",
               "kind": "request",
               "input": {
                 "account": 2,
                 "amount": 500,
                 "charge_id": 1,
+                "systemNowTime": 61200000
+              },
+              "output": {},
+              "time": 3,
+              "principal": "stranger",
+              "resource": "caller",
+              "session": "stranger",
+              "pins": {
+                "principal": "stranger"
+              }
+            },
+            {
+              "action": "issue_refund",
+              "kind": "response",
+              "input": {
+                "account": 2,
+                "amount": 500,
+                "charge_id": 1,
+                "systemNowTime": 61200000
+              },
+              "output": {
+                "approved": false,
+                "verified": false
+              },
+              "time": 4,
+              "principal": "stranger",
+              "resource": "caller",
+              "session": "stranger",
+              "pins": {
+                "principal": "stranger"
+              }
+            },
+            {
+              "action": "initiate_transfer",
+              "kind": "request",
+              "input": {
+                "account": 1,
+                "amount": 2500,
+                "charge_id": 2,
                 "systemNowTime": 61200001
               },
               "output": {},
@@ -691,68 +771,36 @@
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             },
             {
-              "action": "request_approval",
+              "action": "initiate_transfer",
               "kind": "response",
               "input": {
-                "account": 2,
-                "amount": 500,
-                "charge_id": 1,
+                "account": 1,
+                "amount": 2500,
+                "charge_id": 2,
                 "systemNowTime": 61200001
               },
               "output": {
-                "approved": false,
+                "approved": true,
                 "verified": true
               },
               "time": 6,
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
-              "pins": {}
-            },
-            {
-              "action": "initiate_transfer",
-              "kind": "request",
-              "input": {
-                "account": 2,
-                "amount": 2500,
-                "charge_id": 1,
-                "systemNowTime": 32399999
-              },
-              "output": {},
-              "time": 7,
-              "principal": "caller",
-              "resource": "caller",
-              "session": "caller",
-              "pins": {}
-            },
-            {
-              "action": "initiate_transfer",
-              "kind": "response",
-              "input": {
-                "account": 2,
-                "amount": 2500,
-                "charge_id": 1,
-                "systemNowTime": 32399999
-              },
-              "output": {
-                "approved": false,
-                "verified": true
-              },
-              "time": 8,
-              "principal": "caller",
-              "resource": "caller",
-              "session": "caller",
-              "pins": {}
+              "pins": {
+                "principal": "caller"
+              }
             }
           ],
           "narrative": [
-            "1. verify_identity  (account = 2, amount = 499, charge_id = 2, systemNowTime = 61200001)  allowed  (approved = false, verified = true)",
-            "2. initiate_transfer(account = 1, amount = 2500, charge_id = 2, systemNowTime = 32400000)  denied",
-            "3. request_approval (account = 2, amount = 500, charge_id = 1, systemNowTime = 61200001)  allowed  (approved = false, verified = true)",
-            "4. initiate_transfer(account = 2, amount = 2500, charge_id = 1, systemNowTime = 32399999)  allowed  (approved = false, verified = true)"
+            "1. verify_identity  (account = 1, amount = 500, charge_id = 2, systemNowTime = 61200001)  allowed  (approved = true, verified = true)",
+            "2. issue_refund     (account = 2, amount = 500, charge_id = 1, systemNowTime = 61200000)  allowed  (approved = false, verified = false)",
+            "3. initiate_transfer(account = 1, amount = 2500, charge_id = 2, systemNowTime = 61200001)  allowed  (approved = true, verified = true)"
           ],
           "blame": null
         },
@@ -775,181 +823,11 @@
           "actions": [
             "issue_refund"
           ],
-          "verdict": "live",
-          "note": "witness: issue_refund -> request_approval -> issue_refund -> issue_refund -> issue_refund",
-          "witness": "issue_refund -> request_approval -> issue_refund -> issue_refund -> issue_refund",
-          "session": [
-            {
-              "action": "issue_refund",
-              "kind": "request",
-              "input": {
-                "account": 2,
-                "amount": 2500,
-                "charge_id": 2,
-                "systemNowTime": 32400000
-              },
-              "output": {},
-              "time": 1,
-              "principal": "caller",
-              "resource": "caller",
-              "session": "caller",
-              "pins": {}
-            },
-            {
-              "action": "issue_refund",
-              "kind": "error",
-              "input": {
-                "account": 2,
-                "amount": 2500,
-                "charge_id": 2,
-                "systemNowTime": 32400000
-              },
-              "output": {},
-              "time": 2,
-              "principal": "caller",
-              "resource": "caller",
-              "session": "caller",
-              "pins": {}
-            },
-            {
-              "action": "request_approval",
-              "kind": "request",
-              "input": {
-                "account": 2,
-                "amount": 499,
-                "charge_id": 1,
-                "systemNowTime": 32400000
-              },
-              "output": {},
-              "time": 3,
-              "principal": "caller",
-              "resource": "caller",
-              "session": "caller",
-              "pins": {}
-            },
-            {
-              "action": "request_approval",
-              "kind": "response",
-              "input": {
-                "account": 2,
-                "amount": 499,
-                "charge_id": 1,
-                "systemNowTime": 32400000
-              },
-              "output": {
-                "approved": true,
-                "verified": false
-              },
-              "time": 4,
-              "principal": "caller",
-              "resource": "caller",
-              "session": "caller",
-              "pins": {}
-            },
-            {
-              "action": "issue_refund",
-              "kind": "request",
-              "input": {
-                "account": 2,
-                "amount": 2501,
-                "charge_id": 1,
-                "systemNowTime": 32400000
-              },
-              "output": {},
-              "time": 5,
-              "principal": "caller",
-              "resource": "caller",
-              "session": "caller",
-              "pins": {}
-            },
-            {
-              "action": "issue_refund",
-              "kind": "error",
-              "input": {
-                "account": 2,
-                "amount": 2501,
-                "charge_id": 1,
-                "systemNowTime": 32400000
-              },
-              "output": {},
-              "time": 6,
-              "principal": "caller",
-              "resource": "caller",
-              "session": "caller",
-              "pins": {}
-            },
-            {
-              "action": "issue_refund",
-              "kind": "request",
-              "input": {
-                "account": 2,
-                "amount": 500,
-                "charge_id": 2,
-                "systemNowTime": 32399999
-              },
-              "output": {},
-              "time": 7,
-              "principal": "caller",
-              "resource": "caller",
-              "session": "caller",
-              "pins": {}
-            },
-            {
-              "action": "issue_refund",
-              "kind": "error",
-              "input": {
-                "account": 2,
-                "amount": 500,
-                "charge_id": 2,
-                "systemNowTime": 32399999
-              },
-              "output": {},
-              "time": 8,
-              "principal": "caller",
-              "resource": "caller",
-              "session": "caller",
-              "pins": {}
-            },
-            {
-              "action": "issue_refund",
-              "kind": "request",
-              "input": {
-                "account": 2,
-                "amount": 500,
-                "charge_id": 2,
-                "systemNowTime": 32400000
-              },
-              "output": {},
-              "time": 9,
-              "principal": "caller",
-              "resource": "caller",
-              "session": "caller",
-              "pins": {}
-            },
-            {
-              "action": "issue_refund",
-              "kind": "error",
-              "input": {
-                "account": 2,
-                "amount": 500,
-                "charge_id": 2,
-                "systemNowTime": 32400000
-              },
-              "output": {},
-              "time": 10,
-              "principal": "caller",
-              "resource": "caller",
-              "session": "caller",
-              "pins": {}
-            }
-          ],
-          "narrative": [
-            "1. issue_refund    (account = 2, amount = 2500, charge_id = 2, systemNowTime = 32400000)  denied",
-            "2. request_approval(account = 2, amount = 499, charge_id = 1, systemNowTime = 32400000)  allowed  (approved = true, verified = false)",
-            "3. issue_refund    (account = 2, amount = 2501, charge_id = 1, systemNowTime = 32400000)  denied",
-            "4. issue_refund    (account = 2, amount = 500, charge_id = 2, systemNowTime = 32399999)  denied",
-            "5. issue_refund    (account = 2, amount = 500, charge_id = 2, systemNowTime = 32400000)  denied"
-          ],
+          "verdict": "unknown",
+          "note": "no witness in 3000 random sessions -- not a verdict",
+          "witness": null,
+          "session": [],
+          "narrative": [],
           "blame": null
         },
         {
@@ -959,11 +837,11 @@
             "issue_refund"
           ],
           "verdict": "live",
-          "note": "witness: verify_identity -> issue_refund",
-          "witness": "verify_identity -> issue_refund",
+          "note": "witness: issue_refund",
+          "witness": "issue_refund",
           "session": [
             {
-              "action": "verify_identity",
+              "action": "issue_refund",
               "kind": "request",
               "input": {
                 "account": 1,
@@ -973,73 +851,42 @@
               },
               "output": {},
               "time": 1,
-              "principal": "caller",
+              "principal": "stranger",
               "resource": "caller",
-              "session": "caller",
-              "pins": {}
+              "session": "stranger",
+              "pins": {
+                "principal": "stranger"
+              }
             },
             {
-              "action": "verify_identity",
-              "kind": "response",
+              "action": "issue_refund",
+              "kind": "error",
               "input": {
                 "account": 1,
                 "amount": 2500,
                 "charge_id": 2,
                 "systemNowTime": 32400000
               },
-              "output": {
-                "approved": true,
-                "verified": false
-              },
+              "output": {},
               "time": 2,
-              "principal": "caller",
+              "principal": "stranger",
               "resource": "caller",
-              "session": "caller",
-              "pins": {}
-            },
-            {
-              "action": "issue_refund",
-              "kind": "request",
-              "input": {
-                "account": 2,
-                "amount": 2500,
-                "charge_id": 2,
-                "systemNowTime": 61200000
-              },
-              "output": {},
-              "time": 3,
-              "principal": "caller",
-              "resource": "caller",
-              "session": "caller",
-              "pins": {}
-            },
-            {
-              "action": "issue_refund",
-              "kind": "error",
-              "input": {
-                "account": 2,
-                "amount": 2500,
-                "charge_id": 2,
-                "systemNowTime": 61200000
-              },
-              "output": {},
-              "time": 4,
-              "principal": "caller",
-              "resource": "caller",
-              "session": "caller",
-              "pins": {}
+              "session": "stranger",
+              "pins": {
+                "principal": "stranger"
+              }
             }
           ],
           "narrative": [
-            "1. verify_identity(account = 1, amount = 2500, charge_id = 2, systemNowTime = 32400000)  allowed  (approved = true, verified = false)",
-            "2. issue_refund   (account = 2, amount = 2500, charge_id = 2, systemNowTime = 61200000)  denied"
+            "1. issue_refund(account = 1, amount = 2500, charge_id = 2, systemNowTime = 32400000)  denied"
           ],
           "blame": null
         }
       ],
       "defects": [],
       "unknown": [
-        5
+        5,
+        6
       ],
       "artifacts": "examples\\aws2\\traces\\agent-policy"
     }
@@ -1120,17 +967,18 @@
           "sentence": "with scenario = \"afterRefused\", the Dogwood engine REFUSES this session at t=4, where `ARefusedAttemptDoesNotConsumeTheBudget` says your policy set must ALLOW it",
           "trace": "@1 scope(principal: AgentCore::OAuthUser::\"agent\", resource: AgentCore::Gateway::\"gw\") AgentCore::Action::\"verify_identity\"::response(input: { account: \"a1\" }, output: { verified: true }, callerPrincipal: AgentCore::OAuthUser::\"agent\", callerResource: AgentCore::Gateway::\"gw\", requestId: \"e1\")\n@2 scope(principal: AgentCore::OAuthUser::\"agent\", resource: AgentCore::Gateway::\"gw\") request_context(input: { account: \"a1\", amount: 60000 }) AgentCore::Action::\"initiate_transfer\"::request(input: { account: \"a1\", amount: 60000 }, callerPrincipal: AgentCore::OAuthUser::\"agent\", callerResource: AgentCore::Gateway::\"gw\", requestId: \"e2\")\n@3 scope(principal: AgentCore::OAuthUser::\"agent\", resource: AgentCore::Gateway::\"gw\") AgentCore::Action::\"initiate_transfer\"::error(input: { account: \"a1\", amount: 60000 }, callerPrincipal: AgentCore::OAuthUser::\"agent\", callerResource: AgentCore::Gateway::\"gw\", requestId: \"e3\")\n@4 scope(principal: AgentCore::OAuthUser::\"agent\", resource: AgentCore::Gateway::\"gw\") request_context(input: { account: \"a1\", amount: 1 }) AgentCore::Action::\"initiate_transfer\"::request(input: { account: \"a1\", amount: 1 }, callerPrincipal: AgentCore::OAuthUser::\"agent\", callerResource: AgentCore::Gateway::\"gw\", requestId: \"e4\")\n",
           "directory": "examples\\aws2\\traces\\agent-policy-CumulativeCap\\witness",
-          "command": "dogwood replay --policy-schema generated.cedarschema --trace ARefusedAttemptDoesNotConsumeTheBudget.log agent-policy.dw"
+          "command": "dogwood replay --policy-schema generated.cedarschema --event-schema pinned.dwschema --trace ARefusedAttemptDoesNotConsumeTheBudget.log agent-policy.dw"
         }
       ],
       "kind": "property",
       "held": false,
       "exitCode": 1,
-      "output": "no --event-schema given, so every answer below assumes the UNPINNED reading\n  (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal\n  on every kind, so a deployed rule sees only its own principal's events and one\n  reported live here may never fire. Pass --pinned to check that reading, or\n  --event-schema for a real one.\n\nagent-policy.dw against CumulativeCap.tla: 7 rule(s)\n\n  BROKEN  Invariant ARefusedAttemptDoesNotConsumeTheBudget is violated by the initial state:\n      scenario = \"afterRefused\"\n        \\* A $1 transfer is permitted in both sessions. The refused $60,000 moved no money, so the\n        \\* twelve-hour total of what was TRANSFERRED is $0 either way.\n        ARefusedAttemptDoesNotConsumeTheBudget ==\n            Allowed(scenario)\n\nThe policy does not mean what the property says it means. The state above is the\nrequest that breaks the claim, and the claim is quoted beneath it -- read the two\ntogether, because a violated invariant says which direction failed only when you can\nsee what it asserted.",
+      "output": "no --event-schema given, so every answer below uses Dogwood's own default\n  reading: callerPrincipal pinned on every kind, so a temporal condition sees\n  only the requesting principal's events. Pass --event-schema for your\n  deployment's real one, or --unpinned if it has no universal pin.\n\nagent-policy.dw against CumulativeCap.tla: 7 rule(s)\n\n  BROKEN  Invariant ARefusedAttemptDoesNotConsumeTheBudget is violated by the initial state:\n      scenario = \"afterRefused\"\n        \\* A $1 transfer is permitted in both sessions. The refused $60,000 moved no money, so the\n        \\* twelve-hour total of what was TRANSFERRED is $0 either way.\n        ARefusedAttemptDoesNotConsumeTheBudget ==\n            Allowed(scenario)\n\nThe policy does not mean what the property says it means. The state above is the\nrequest that breaks the claim, and the claim is quoted beneath it -- read the two\ntogether, because a violated invariant says which direction failed only when you can\nsee what it asserted.",
       "error": ""
     }
   },
   "smoke": 3000,
+  "reading": "pinned",
   "unpaired": [],
   "inputScan": {
     "files": [

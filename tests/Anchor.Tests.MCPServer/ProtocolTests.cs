@@ -57,8 +57,8 @@ public class ProtocolTests : TestsRuntime, IAsyncLifetime
     /// <summary>
     /// The tool is advertised, and advertised with the guidance that makes it usable. The
     /// description is not decoration: an agent that cannot see that VACUOUS is bounded, or that the
-    /// unpinned reading is not the deployed one, will report a verdict more confidently than the
-    /// verdict deserves.
+    /// default reading is right only for a deployment that keeps Dogwood's default, will report a
+    /// verdict more confidently than the verdict deserves.
     /// </summary>
     [PolicyCheck]
     public async Task TheCheckerIsAdvertisedWithItsCaveats()
@@ -71,7 +71,8 @@ public class ProtocolTests : TestsRuntime, IAsyncLifetime
         var description = check.Description ?? "";
         Assert.Contains("VACUOUS", description);
         Assert.Contains("THE BOUND IS REAL", description);
-        Assert.Contains("UNPINNED", description);
+        Assert.Contains("PASS `eventSchema` WHENEVER ONE EXISTS", description);
+        Assert.Contains("Dogwood's own default", description);
 
         // The one required argument, and the optional ones an agent needs to know exist.
         var schema = check.JsonSchema.ToString();
@@ -212,8 +213,9 @@ public class ProtocolTests : TestsRuntime, IAsyncLifetime
         Assert.Contains("DEAD", text);
         Assert.Contains("forbid", text);
 
-        // The caveat has to survive serialisation too, not merely exist on the record.
-        Assert.Contains("UNPINNED", text, StringComparison.OrdinalIgnoreCase);
+        // The caveat has to survive serialisation too, not merely exist on the record. Matched on
+        // words with no apostrophe: the JSON encoder writes one as '.
+        Assert.Contains("callerPrincipal pinned", text, StringComparison.Ordinal);
     }
 
     /// <summary>

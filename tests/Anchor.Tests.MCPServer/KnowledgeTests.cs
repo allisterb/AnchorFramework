@@ -65,7 +65,8 @@ public class KnowledgeTests : TestsRuntime
 
         // The two caveats that make a verdict honest, not merely present.
         Assert.Contains("bound", article!.Content, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("UNPINNED", article.Content, StringComparison.OrdinalIgnoreCase);
+        // The reading: which one a verdict was computed under, and that it is Dogwood's default.
+        Assert.Contains("callerPrincipal", article.Content, StringComparison.Ordinal);
     }
 
     /// <summary>

@@ -16,7 +16,7 @@ using ModelContextProtocol.Server;
 /// <para>
 /// Tool descriptions can carry a rule. They cannot carry the reasoning behind it, and the reasoning
 /// is what stops a bounded answer being repeated as a proof. These articles hold the parts that do
-/// not fit: why a refusal is not a pass, why the unpinned reading is not the deployed one, why a
+/// not fit: why a refusal is not a pass, why a verdict is only as good as its reading, why a
 /// smoke run may never claim a rule is inert.
 /// </para>
 /// <para>

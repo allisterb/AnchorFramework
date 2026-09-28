@@ -42,6 +42,13 @@ public partial class PolicyTools : Runtime
     /// <summary>The Anchor tree the checker is run from. Null lets <see cref="PythonProcess"/> find it.</summary>
     public string? AnchorRoot { get; }
 
+    /// <summary>
+    /// Where the checker's progress lines go as each TLC run starts, or null for none. The CLI
+    /// sets it; the MCP server does not, because an agent reads the answer rather than a running
+    /// commentary, and the stderr a refusal is parsed from then stays exactly as it was.
+    /// </summary>
+    public Action<string>? Progress { get; init; }
+
     #endregion
 
     #region Methods
@@ -58,17 +65,24 @@ public partial class PolicyTools : Runtime
         "THE BOUND IS REAL. VACUOUS means 'no session of up to `attempts` attempts makes it fire', not " +
         "'never'. Raise `attempts` to trade runtime for confidence, and report the bound alongside the " +
         "verdict rather than stating the verdict flatly.\n\n" +
-        "PASS `eventSchema` WHENEVER ONE EXISTS. Without it every answer assumes the UNPINNED reading " +
-        "(one global trace), and the shipped default partitions history by principal. A rule reported " +
-        "live under the unpinned reading may never fire under the deployed one. The tool echoes which " +
-        "reading it used; do not drop that from your summary.\n\n" +
+        "PASS `eventSchema` WHENEVER ONE EXISTS. Without it every answer uses Dogwood's own default " +
+        "reading -- callerPrincipal pinned, so a temporal condition sees only the requesting " +
+        "principal's events -- which is right only if the deployment keeps that default. If its " +
+        "schema has no universal pin, pass `pinned: false`. The tool echoes which reading it used; do " +
+        "not drop that from your summary.\n\n" +
         "This runs TLC once per rule, so expect seconds to minutes, not milliseconds. It is not a " +
         "linter and it is not a retry-on-timeout call.\n\n" +
         "IF IT DOES NOT FINISH, use `smoke` rather than lowering `attempts`. See that argument.")]
     public async Task<PolicyCheckResult> CheckPolicyAsync(
         [Description("Path to the .dw policy file, relative to the project directory.")] string policy,
         [Description("Optional second .dw file -- the version being replaced. Given one, the tool stops checking rules and instead reports whether `policy` is MORE PERMISSIVE, LESS PERMISSIVE, EQUIVALENT or INCOMPARABLE to it, with a witness session for each direction. This is the question to ask about an EDIT. Report the direction, never just that they differ: a permission removed is a support ticket, a permission silently added is an incident.")] string? against = null,
-        [Description("Path to the .dwschema event schema the policy is deployed under. Pass it whenever one exists; see the note above about the unpinned reading.")] string? eventSchema = null,
+        [Description("Path to the .dwschema event schema the policy is deployed under. Pass it whenever one exists; see the note above about the default reading.")] string? eventSchema = null,
+        [Description(
+            "The event-schema reading, when there is no `eventSchema` to pass. Omitted or `true` is " +
+            "Dogwood's own default -- callerPrincipal pinned, so a temporal condition sees only the " +
+            "requesting principal's events. `false` is the unpinned reading, global-trace semantics, " +
+            "for a deployment whose schema has no universal pin. Refused together with " +
+            "`eventSchema`: they are two answers to one question.")] bool? pinned = null,
         [Description("Path to a TLA+ module of your own that extends PolicyUnderTest and states what this policy is SUPPOSED to mean, with a companion .cfg naming its invariants. Use this for a claim the three built-in findings cannot express, such as 'SSH from the local range is permitted and every external source is denied', or any claim about TIMING, which the built-in questions cannot reach.\n\nPASS THE PATH AND NOTHING ELSE. You do not need to read the module first and you must not ask the user to paste it; this tool reads it. When an invariant is violated the reply quotes its definition back to you, which is what tells you WHICH DIRECTION failed -- a violated claim of the form `X => allowed` means the policy DENIED, and the name alone will not tell you that.")] string? property = null,
         [Description("Session length bound (default 3). This is the number that makes VACUOUS provisional.")] int? attempts = null,
         [Description("Numeric domain for input fields, 1..N (default 2).")] int? amount = null,
@@ -135,6 +149,7 @@ public partial class PolicyTools : Runtime
 
         Add(args, "--against", against, nameof(against));
         Add(args, "--event-schema", eventSchema, nameof(eventSchema));
+        if (pinned is bool p) args.Add(p ? "--pinned" : "--unpinned");
         Add(args, "--property", property, nameof(property));
 
         if (attempts is int a) args.AddRange(["--attempts", a.ToString()]);
@@ -160,7 +175,18 @@ public partial class PolicyTools : Runtime
 
         var timeout = TimeSpan.FromSeconds(timeoutSeconds ?? 600);
         var r = await PythonProcess.RunAsync(CheckerScript, [.. args], root: AnchorRoot,
-            timeout: timeout, ct: cancellationToken);
+            timeout: timeout, ct: cancellationToken,
+            // Only the progress lines: the rest of stderr is the refusal and error text, which is
+            // reported with the result and would otherwise be printed twice.
+            onError: Progress is null ? null : line =>
+            {
+                if (line.StartsWith("  TLC ", StringComparison.Ordinal) ||
+                    line.StartsWith("        Progress", StringComparison.Ordinal))
+                {
+                    Progress(line);
+                }
+            },
+            environment: Progress is null ? null : new Dictionary<string, string> { ["ANCHOR_PROGRESS"] = "1" });
 
         if (!r.IsSuccess)
         {
@@ -508,8 +534,8 @@ public partial class PolicyTools : Runtime
     /// </summary>
     /// <remarks>
     /// Kept as its own field because it is the single most droppable part of the output and the most
-    /// expensive to drop: a verdict computed for the unpinned reading, reported without it, reads as
-    /// a verdict about the deployed configuration.
+    /// expensive to drop: a verdict computed under one reading, reported without it, reads as a
+    /// verdict about whatever deployment the reader has in mind.
     /// </remarks>
     public static string? Reading(string output)
     {
@@ -519,9 +545,12 @@ public partial class PolicyTools : Runtime
         {
             return match.Value.Trim();
         }
-        return text.Contains("assumes the UNPINNED reading")
-            ? "no event schema given, so every answer assumes the UNPINNED reading (global trace); " +
-              "the shipped default partitions by principal, under which a rule reported live here may never fire"
+        // The default, which the checker words as a default so nobody mistakes it for a choice.
+        return text.Contains("uses Dogwood's own default")
+            ? "no event schema given, so every answer uses Dogwood's own default reading: callerPrincipal " +
+              "pinned, so a temporal condition sees only the requesting principal's events. Right only if " +
+              "the deployment keeps that default; pass eventSchema for its real one, or pinned: false if " +
+              "it has no universal pin"
             : null;
     }
 

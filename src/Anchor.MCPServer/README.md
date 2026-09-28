@@ -112,8 +112,9 @@ The descriptions are written for the model that reads them rather than as API do
 they carry deliberately, because a verdict repeated without them is more confident than it deserves:
 
 - **the bound is real** — VACUOUS means "no session of up to `attempts` attempts", not "never";
-- **pass `eventSchema` whenever one exists** — without it every answer assumes the unpinned reading,
-  and the shipped default partitions history by principal;
+- **pass `eventSchema` whenever one exists** — without it every answer uses Dogwood's own default,
+  `callerPrincipal` pinned, which is right only for a deployment that keeps it (`pinned: false` for
+  one whose schema has no universal pin);
 - **a refusal is not a pass** — a policy outside the modelled subset comes back with `Answered`
   false and a reason, which is a different thing from a policy with no findings.
 

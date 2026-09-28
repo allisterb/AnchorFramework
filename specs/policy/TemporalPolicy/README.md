@@ -634,14 +634,27 @@ standing scenarios in `dogwood_replay.py`.
 
 #### Checking under the schema you deploy
 
-`anchor check` takes `--event-schema` now. Without it every answer assumes the **unpinned** reading,
-which is not the shipped default, and the tool says so rather than leaving it implicit:
+`anchor check` takes `--event-schema`, the schema a policy set is deployed under. Without one it uses
+**Dogwood's own default reading, `callerPrincipal` pinned**. Until 0.1.3 Anchor's default was the
+opposite, unpinned, which answered about a deployment nobody gets unless they ask for it.
+`--unpinned` checks global-trace semantics, for a deployment whose schema has no universal pin, and
+`--pinned` states the default explicitly. Only one of the three may be given. They work on a
+directory audit too, whose report states the reading in every run, and the MCP tool takes the same
+choice as `pinned`. With no schema the tool still says which reading it used, because a default the
+reader does not know was chosen for them is one they cannot question:
 
 ```
-no --event-schema given, so every answer below assumes the UNPINNED reading
-  (global trace). The shipped DEFAULT partitions by principal, under which a rule
-  reported live here may never fire.
+no --event-schema given, so every answer below uses Dogwood's own default
+  reading: callerPrincipal pinned on every kind, so a temporal condition sees
+  only the requesting principal's events. Pass --event-schema for your
+  deployment's real one, or --unpinned if it has no universal pin.
 ```
+
+**Every witness replay is handed the same reading, as a file.** `dogwood replay` gets
+`pinned.dwschema` or `unpinned.dwschema`, copied from Dogwood's shipped schemas, so the engine
+confirms a counterexample under the reading the model found it under. Before 0.1.3 it was given no
+schema whenever the caller had none, so the engine fell back to its own pinned default and confirmed
+a model built unpinned: two readings, agreeing only because every session had one principal.
 
 Wiring it in found a crash that had been latent since the checker was written. A scope bind —
 `callerPrincipal: principal`, the ordinary "same principal did it" — killed TLC, because the

@@ -111,6 +111,7 @@ mean "no problems found". See `the-modelled-subset`.
 ## Before you trust any of it, check the reading
 
 Every verdict is computed under one interpretation of history, and the tool tells you which in its
-`Reading` field. Without an event schema that interpretation is the **unpinned** one, which is *not*
-the shipped default. A rule reported `live` under the unpinned reading may never fire in deployment.
-See `event-schemas-and-pins`.
+`Reading` field. Without an event schema that interpretation is Dogwood's own default,
+**`callerPrincipal` pinned**, which is right only if the deployment keeps that default. Under a
+different schema a rule reported `live` here may never fire, or one reported inert may. See
+`event-schemas-and-pins`.

@@ -34,6 +34,7 @@
 | policy sets | 33 |
 | stated intentions (`.tla`) | 5 |
 | questions answered | 0 |
+| event-schema reading | pinned by `callerPrincipal`, Dogwood's default |
 
 ## Modules not run
 

@@ -19,6 +19,7 @@
 | policy sets | 7 |
 | stated intentions (`.tla`) | 3 |
 | questions answered | 0 |
+| event-schema reading | pinned by `callerPrincipal`, Dogwood's default |
 
 ## Per policy set
 
@@ -85,7 +86,7 @@ with prereq = "freshPriceOnly", the Dogwood engine ALLOWS this session at t=40, 
 Run it yourself, from `traces/agent-policy-TradeGate/witness`:
 
 ```bash
-dogwood replay --policy-schema generated.cedarschema --trace FreshPriceAloneIsNotEnough.log agent-policy.dw
+dogwood replay --policy-schema generated.cedarschema --event-schema pinned.dwschema --trace FreshPriceAloneIsNotEnough.log agent-policy.dw
 ```
 
 **`TrustDecay.tla` — KeepsWriteWhileAdvisorEngaged** (`gap = 1`)
@@ -100,7 +101,7 @@ with gap = 1, the Dogwood engine REFUSES this session at t=2, where `KeepsWriteW
 Run it yourself, from `traces/07-trust-decay-TrustDecay/witness`:
 
 ```bash
-dogwood replay --policy-schema generated.cedarschema --trace KeepsWriteWhileAdvisorEngaged.log 07-trust-decay.dw
+dogwood replay --policy-schema generated.cedarschema --event-schema pinned.dwschema --trace KeepsWriteWhileAdvisorEngaged.log 07-trust-decay.dw
 ```
 
 **`TrustDecay10.tla` — LosesWriteAfter10m** (`gap = 960`)
@@ -115,7 +116,7 @@ with gap = 960, the Dogwood engine ALLOWS this session at t=961, where `LosesWri
 Run it yourself, from `traces/07-trust-decay-TrustDecay10/witness`:
 
 ```bash
-dogwood replay --policy-schema generated.cedarschema --trace LosesWriteAfter10m.log 07-trust-decay.dw
+dogwood replay --policy-schema generated.cedarschema --event-schema pinned.dwschema --trace LosesWriteAfter10m.log 07-trust-decay.dw
 ```
 
 

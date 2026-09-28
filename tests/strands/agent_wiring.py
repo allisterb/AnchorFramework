@@ -194,7 +194,7 @@ def main() -> int:
         # reported as a proof.
         verdicts = client.read_resource_sync("anchor://knowledge/reading-verdicts")
         verdicts_text = str(verdicts)
-        for phrase in ("VACUOUS", "bound", "unpinned"):
+        for phrase in ("VACUOUS", "bound", "callerPrincipal"):
             check(f"reading-verdicts carries `{phrase}`", phrase.lower() in verdicts_text.lower())
 
         # --- a real check, so the whole tool path is exercised ------------------------------------
@@ -202,7 +202,7 @@ def main() -> int:
                                        {"policy": "tests/policies/dead_forbid.dw"})
         text = str(result)
         check("CheckPolicy reports the DEAD forbid", "DEAD" in text)
-        check("CheckPolicy carries the unpinned caveat", "UNPINNED" in text.upper())
+        check("CheckPolicy carries the reading caveat", "DOGWOOD'S OWN DEFAULT" in text.upper())
 
         # --- containment, which exists for exactly this caller ------------------------------------
         escaped = str(client.call_tool_sync("wiring-escape", "CheckPolicy",

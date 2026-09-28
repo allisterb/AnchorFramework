@@ -30,7 +30,7 @@ check that does not know what it was meant to do.
 | `agent-policy.dw` | the same policies as a **set**, with the read actions permitted, which is how they would be deployed |
 | `TrustDecay.tla` / `.cfg` | what policy 7 is *supposed* to mean, stated as invariants |
 | `TradeGate.tla` / `.cfg` | what the trade protections are supposed to mean *together* |
-| `traces/` | one directory per run: the generated model, the config it used, the raw TLC output, and a README with the command to re-run it. Named `<policy>` for a derived run and `<policy>-<module>` for a property one. Regenerated wholesale by `anchor check <directory>` |
+| `traces/` | one directory per run: the generated model, the config it used, the raw TLC output, and a README with the command to re-run it. Named `<policy>` for a derived run and `<policy>-<module>` for a property one. Regenerated wholesale by `anchor check <directory> --full` |
 | [`questions.md`](questions.md) | the five questions in plain language, as somebody would actually ask them |
 | [`transcript.md`](transcript.md) | the agent answering all five, with **every tool call and its full reply** |
 | `TrustDecay10.tla` / `.cfg` | the ten-minute claim on its own, because TLC stops at the first violated invariant |
@@ -201,6 +201,9 @@ python src/agent/policy_agent.py examples/aws1/07-trust-decay.dw \
 > history by principal (which is the shipped default), a rule that might appear to be live here
 > could behave differently in deployment.
 
+*Recorded before 0.1.3, when a check with no event schema used the unpinned reading. The default is
+now Dogwood's own, `callerPrincipal` pinned, and the same caveat now names that reading instead.*
+
 **The second paragraph was not asked for.** The system prompt does not restate the caveats — it
 says a knowledge base exists and must be consulted before reporting a verdict. The agent read
 [`event-schemas-and-pins`](../../src/Anchor.MCPServer/knowledge/event-schemas-and-pins.md) and
@@ -210,11 +213,12 @@ describes, and this is it passing on a policy nobody wrote for it.
 ## Everything above, from one command
 
 ```bash
-anchor check examples/aws1
+anchor check examples/aws1 --full
 ```
 
-Finds the policies by globbing, pairs each `.tla` with the policy its header names, runs every
-check, then puts the questions in [`questions.md`](questions.md) to the agent. Writes
+Finds the policy sets by globbing, pairs each `.tla` with the policy set its header names, runs every
+check, then puts the questions in [`questions.md`](questions.md) to the agent. Without `--full` it
+runs only the rule-by-rule checks, prints them, writes nothing, and lists what `--full` would add. Writes
 [`findings.md`](findings.md), `results.json`, [`transcript.md`](transcript.md) and `traces/`.
 Exits **1** when there is something to look at, so it can gate a pipeline; **2** when the run could
 not happen at all.

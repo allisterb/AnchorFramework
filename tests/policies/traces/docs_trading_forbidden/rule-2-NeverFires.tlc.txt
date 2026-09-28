@@ -1,7 +1,7 @@
 TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
 Warning: Please run the Java VM which executes TLC with a throughput optimized garbage collector by passing the "-XX:+UseParallelGC" property.
 (Use the -nowarning option to disable this warning.)
-Running breadth-first search Model-Checking with fp 126 and seed -2031799372075992124 with 1 worker on 8 cores with 16344MB heap and 64MB offheap memory [pid: 8372] (Windows 10 10.0 amd64, Microsoft 11.0.16.1 x86_64, MSBDiskFPSet, DiskStateQueue).
+Running breadth-first search Model-Checking with fp 52 and seed -7906398308455419689 with 1 worker on 8 cores with 16344MB heap and 64MB offheap memory [pid: 2620] (Windows 10 10.0 amd64, Microsoft 11.0.16.1 x86_64, MSBDiskFPSet, DiskStateQueue).
 Parsing file C:\Projects\Anchor\tests\policies\traces\docs_trading_forbidden\Vacuity.tla
 Parsing file C:\Projects\Anchor\tests\policies\traces\docs_trading_forbidden\Integers.tla
 Parsing file C:\Projects\Anchor\tests\policies\traces\docs_trading_forbidden\Sequences.tla
@@ -18,14 +18,14 @@ Semantic processing of module PolicyUnderTest
 Semantic processing of module TLC
 Semantic processing of module DogwoodSemantics
 Semantic processing of module Vacuity
-Starting... (2026-09-28 04:46:58)
+Starting... (2026-09-28 11:17:20)
 Computing initial states...
-Finished computing initial states: 1 distinct state generated at 2026-09-28 04:46:59.
+Finished computing initial states: 1 distinct state generated at 2026-09-28 11:17:20.
 Model checking completed. No error has been found.
   Estimates of the probability that TLC did not check all reachable states
   because two distinct states had the same fingerprint:
-  calculated (optimistic):  val = 3.9E-16
-169 states generated, 85 distinct states found, 0 states left on queue.
+  calculated (optimistic):  val = 1.9E-14
+1169 states generated, 585 distinct states found, 0 states left on queue.
 The depth of the complete state graph search is 4.
-The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 4 and the 95th percentile is 4).
-Finished in 02s at (2026-09-28 04:46:59)
+The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 8 and the 95th percentile is 8).
+Finished in 01s at (2026-09-28 11:17:21)

@@ -12,7 +12,7 @@ events come from the `.log` through the translator's own reader, and the verdict
 because that is a claim about what the policy was for and no tool can derive it.
 
 WHAT IT WRITES. findings.html beside the findings.md of every policy set it finds a witness in --
-one self-contained page per set. `anchor check <dir>` writes the same page as part of an audit; this
+one self-contained page per set. `anchor check <dir> --full` writes the same page as part of an audit; this
 redraws it from the witnesses already there, without re-running any check.
 
 Usage:
@@ -216,7 +216,11 @@ def replay(witness: Path, log: Path, policy: Path, schema: Path) -> tuple[list[d
     same stance is taken in `witness.py` -- a picture without verdicts is worth drawing, a
     picture with invented ones is not.
     """
-    cmd = ["replay", "--policy-schema", schema.name, "--trace", log.name, policy.name]
+    # The event schema kept beside the witness, when there is one: it is the reading the finding
+    # was confirmed under, and replaying without it would ask the engine's own default instead.
+    events = next(iter(sorted(witness.glob("*.dwschema"))), None)
+    cmd = ["replay", "--policy-schema", schema.name,
+           *(["--event-schema", events.name] if events else []), "--trace", log.name, policy.name]
     if not available():
         return [], f"{DOGWOOD} not built, so no verdicts were recorded"
 
@@ -317,8 +321,13 @@ def build(witness: Path) -> dict:
             "witness": located(witness),
             "set": located(policy_set(witness)),
             "trace": log.name,
-            "replay": f"dogwood replay --policy-schema {schema.name} "
-                      f"--trace {log.name} {policy.name}",
+            # The command that produced the verdicts above, event schema included: printed without
+            # it, a reader re-running it would get the engine's own default reading instead.
+            "replay": " ".join(["dogwood replay --policy-schema", schema.name,
+                                *(["--event-schema", kept_schema.name]
+                                  if (kept_schema := next(iter(sorted(witness.glob("*.dwschema"))), None))
+                                  else []),
+                                "--trace", log.name, policy.name]),
             "verdictsMissing": why_not,
             "shapesMissing": why_unparsed,
         },
@@ -462,7 +471,8 @@ def scan_panel(report, notes: list[str]) -> str:
 
 
 def write_report(out: Path, *, inputs: Path | None = None, datas: list[dict] | None = None,
-                 findings: list[str] | None = None, notes: list[str] | None = None) -> Path:
+                 findings: list[str] | None = None, notes: list[str] | None = None,
+                 scanned: "screen.Report | None" = None) -> Path:
     """findings.html beside findings.md: one page, needing nothing beside it.
 
     ONE FILE, so it can be attached to a ticket or sent to someone, and opens the same from disk as
@@ -475,13 +485,15 @@ def write_report(out: Path, *, inputs: Path | None = None, datas: list[dict] | N
     the first layer, and this is the one that holds if escaping ever misses.
 
     `inputs` is where the policies are, for the input scan -- the same place as `out` unless the
-    audit was pointed elsewhere with --output-dir.
+    audit was pointed elsewhere with --output-dir -- or the one policy set a single-set audit is
+    about. `scanned` is the scan the audit already ran: passed in, the page reports exactly what
+    the audit acted on, rather than a second scan of a place that may be wider.
     """
     inputs = inputs or out
     if datas is None:
         found = witnesses(out / "traces") if (out / "traces").is_dir() else []
         datas = [build(w) for w in found]
-    screen_report = screen.scan([inputs], relative_to=inputs)
+    screen_report = scanned or screen.scan([inputs], relative_to=inputs)
     js, css = asset("timeline.js"), asset("timeline.css")
     e = html.escape
 

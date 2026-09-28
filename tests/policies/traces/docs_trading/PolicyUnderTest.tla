@@ -26,7 +26,7 @@ AllValues    == {[k |-> "n", v |-> 1], [k |-> "n", v |-> 2], [k |-> "b", v |-> F
 \* The fields a universal pin partitions on. Empty means global-trace semantics -- which is the
 \* `unpinned` preset, NOT the shipped default. Vacuity.tla gives a session two callers when this
 \* is non-empty, so a partition has something to exclude.
-PinKeys == {}
+PinKeys == {"principal"}
 
 \* ---- for a property module extending this one --------------------------------------------
 \* Scalars are TAGGED with their kind so TLC refuses a cross-kind comparison rather than quietly
@@ -70,7 +70,7 @@ Request(action, input) == Ev(action, DecisionKind, input, NoFields, 1)
 Policies ==
   <<
     [effect |-> "permit", actions |-> {"ApproveSale"}, cond |-> [op |-> "true", args |-> <<>>, term |-> [op |-> "formerly", window |-> 0, atom |-> [op |-> "pred", pred |-> [action |-> "", kind |-> "", binds |-> <<>>], var |-> "", args |-> <<>>, field |-> "", cmp |-> "", value |-> [k |-> "s", v |-> ""], other |-> "", pattern |-> <<>>, net |-> <<>>, prefix |-> 0], left |-> [op |-> "pred", pred |-> [action |-> "", kind |-> "", binds |-> <<>>], var |-> "", args |-> <<>>, field |-> "", cmp |-> "", value |-> [k |-> "s", v |-> ""], other |-> "", pattern |-> <<>>, net |-> <<>>, prefix |-> 0], leftNeg |-> FALSE, keys |-> <<>>]]],
-    [effect |-> "permit", actions |-> {"SellShares"}, cond |-> [op |-> "term", args |-> <<>>, term |-> [op |-> "formerly", window |-> 3600, atom |-> [op |-> "pred", pred |-> [action |-> "ApproveSale", kind |-> "response", binds |-> <<[side |-> "input", field |-> "stock", kind |-> "ctx", name |-> "stock", value |-> [k |-> "s", v |-> ""]], [side |-> "output", field |-> "approved", kind |-> "lit", name |-> "", value |-> [k |-> "b", v |-> TRUE]]>>], var |-> "", args |-> <<>>, field |-> "", cmp |-> "", value |-> [k |-> "s", v |-> ""], other |-> "", pattern |-> <<>>, net |-> <<>>, prefix |-> 0], left |-> [op |-> "pred", pred |-> [action |-> "ApproveSale", kind |-> "response", binds |-> <<[side |-> "input", field |-> "stock", kind |-> "ctx", name |-> "stock", value |-> [k |-> "s", v |-> ""]], [side |-> "output", field |-> "approved", kind |-> "lit", name |-> "", value |-> [k |-> "b", v |-> TRUE]]>>], var |-> "", args |-> <<>>, field |-> "", cmp |-> "", value |-> [k |-> "s", v |-> ""], other |-> "", pattern |-> <<>>, net |-> <<>>, prefix |-> 0], leftNeg |-> FALSE, keys |-> <<>>]]]
+    [effect |-> "permit", actions |-> {"SellShares"}, cond |-> [op |-> "term", args |-> <<>>, term |-> [op |-> "formerly", window |-> 3600, atom |-> [op |-> "pred", pred |-> [action |-> "ApproveSale", kind |-> "response", binds |-> <<[side |-> "input", field |-> "stock", kind |-> "ctx", name |-> "stock", value |-> [k |-> "s", v |-> ""]], [side |-> "output", field |-> "approved", kind |-> "lit", name |-> "", value |-> [k |-> "b", v |-> TRUE]]>>], var |-> "", args |-> <<>>, field |-> "", cmp |-> "", value |-> [k |-> "s", v |-> ""], other |-> "", pattern |-> <<>>, net |-> <<>>, prefix |-> 0], left |-> [op |-> "pred", pred |-> [action |-> "ApproveSale", kind |-> "response", binds |-> <<[side |-> "input", field |-> "stock", kind |-> "ctx", name |-> "stock", value |-> [k |-> "s", v |-> ""]], [side |-> "output", field |-> "approved", kind |-> "lit", name |-> "", value |-> [k |-> "b", v |-> TRUE]]>>], var |-> "", args |-> <<>>, field |-> "", cmp |-> "", value |-> [k |-> "s", v |-> ""], other |-> "", pattern |-> <<>>, net |-> <<>>, prefix |-> 0], leftNeg |-> FALSE, keys |-> <<"principal">>]]]
   >>
 
 Other == Policies

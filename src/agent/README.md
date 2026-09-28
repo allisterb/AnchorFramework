@@ -227,7 +227,7 @@ Writes `anchor/<policy>/findings.md` per policy and `anchor/summary.md` over the
 
 | | who writes the property module | how to run it |
 |---|---|---|
-| `check` | you | `anchor check policy.dw --property claim.tla`, or a directory to audit |
+| `check` | you | `anchor check policy.dw --property claim.tla`, or `--full` to audit a policy set or a directory |
 | `auto` | the agent, unattended | `anchor auto policy.dw --intent "..."` |
 | `hitl` | the agent, with you | `anchor hitl policy.dw` |
 

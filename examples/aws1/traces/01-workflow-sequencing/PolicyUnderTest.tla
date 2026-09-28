@@ -26,7 +26,7 @@ AllValues    == {}
 \* The fields a universal pin partitions on. Empty means global-trace semantics -- which is the
 \* `unpinned` preset, NOT the shipped default. Vacuity.tla gives a session two callers when this
 \* is non-empty, so a partition has something to exclude.
-PinKeys == {}
+PinKeys == {"principal"}
 
 \* ---- for a property module extending this one --------------------------------------------
 \* Scalars are TAGGED with their kind so TLC refuses a cross-kind comparison rather than quietly
@@ -69,8 +69,8 @@ Request(action, input) == Ev(action, DecisionKind, input, NoFields, 1)
 
 Policies ==
   <<
-    [effect |-> "permit", actions |-> {"load_portfolio"}, cond |-> [op |-> "term", args |-> <<>>, term |-> [op |-> "formerly", window |-> 300, atom |-> [op |-> "pred", pred |-> [action |-> "get_client_profile", kind |-> "response", binds |-> <<>>], var |-> "", args |-> <<>>, field |-> "", cmp |-> "", value |-> [k |-> "s", v |-> ""], other |-> "", pattern |-> <<>>, net |-> <<>>, prefix |-> 0], left |-> [op |-> "pred", pred |-> [action |-> "get_client_profile", kind |-> "response", binds |-> <<>>], var |-> "", args |-> <<>>, field |-> "", cmp |-> "", value |-> [k |-> "s", v |-> ""], other |-> "", pattern |-> <<>>, net |-> <<>>, prefix |-> 0], leftNeg |-> FALSE, keys |-> <<>>]]],
-    [effect |-> "permit", actions |-> {"rebalance_portfolio"}, cond |-> [op |-> "term", args |-> <<>>, term |-> [op |-> "formerly", window |-> 300, atom |-> [op |-> "pred", pred |-> [action |-> "load_portfolio", kind |-> "response", binds |-> <<>>], var |-> "", args |-> <<>>, field |-> "", cmp |-> "", value |-> [k |-> "s", v |-> ""], other |-> "", pattern |-> <<>>, net |-> <<>>, prefix |-> 0], left |-> [op |-> "pred", pred |-> [action |-> "load_portfolio", kind |-> "response", binds |-> <<>>], var |-> "", args |-> <<>>, field |-> "", cmp |-> "", value |-> [k |-> "s", v |-> ""], other |-> "", pattern |-> <<>>, net |-> <<>>, prefix |-> 0], leftNeg |-> FALSE, keys |-> <<>>]]]
+    [effect |-> "permit", actions |-> {"load_portfolio"}, cond |-> [op |-> "term", args |-> <<>>, term |-> [op |-> "formerly", window |-> 300, atom |-> [op |-> "pred", pred |-> [action |-> "get_client_profile", kind |-> "response", binds |-> <<>>], var |-> "", args |-> <<>>, field |-> "", cmp |-> "", value |-> [k |-> "s", v |-> ""], other |-> "", pattern |-> <<>>, net |-> <<>>, prefix |-> 0], left |-> [op |-> "pred", pred |-> [action |-> "get_client_profile", kind |-> "response", binds |-> <<>>], var |-> "", args |-> <<>>, field |-> "", cmp |-> "", value |-> [k |-> "s", v |-> ""], other |-> "", pattern |-> <<>>, net |-> <<>>, prefix |-> 0], leftNeg |-> FALSE, keys |-> <<"principal">>]]],
+    [effect |-> "permit", actions |-> {"rebalance_portfolio"}, cond |-> [op |-> "term", args |-> <<>>, term |-> [op |-> "formerly", window |-> 300, atom |-> [op |-> "pred", pred |-> [action |-> "load_portfolio", kind |-> "response", binds |-> <<>>], var |-> "", args |-> <<>>, field |-> "", cmp |-> "", value |-> [k |-> "s", v |-> ""], other |-> "", pattern |-> <<>>, net |-> <<>>, prefix |-> 0], left |-> [op |-> "pred", pred |-> [action |-> "load_portfolio", kind |-> "response", binds |-> <<>>], var |-> "", args |-> <<>>, field |-> "", cmp |-> "", value |-> [k |-> "s", v |-> ""], other |-> "", pattern |-> <<>>, net |-> <<>>, prefix |-> 0], leftNeg |-> FALSE, keys |-> <<"principal">>]]]
   >>
 
 Other == Policies

@@ -68,6 +68,33 @@ from checker.explain import (Module, Rec, Seq, Tag, Unknown, parse,  # noqa: E40
                              read, show_value)
 from translator import parse_schema, parse_tla_value  # noqa: E402
 
+# THE TWO READINGS DOGWOOD SHIPS, as files `dogwood replay` can be handed. Every replay gets one,
+# so the engine confirms a counterexample under the SAME reading the model found it under. It
+# used to be given none whenever the caller had no schema file, which meant Dogwood's built-in
+# default -- pinned -- confirming a model built unpinned: two readings, agreeing only because
+# every session so far had one principal. Passing the file also stops the confirmation leaning
+# on the binary's built-in default, and puts the reading in the command a witness README prints.
+#
+# The declarations are Dogwood's own, from `dogwood-language/configuration/event-schemas/
+# {pinned,unpinned}.dwschema` at the pinned commit (Apache-2.0, (c) Amazon.com, Inc.; see NOTICES.md
+# and ext/dogwood/NOTICE). Copied rather than read from the submodule because the container image
+# carries the binary and not the tree. tests/strands/event_schema_readings.py fails if either copy
+# drifts from the shipped file.
+READING_SCHEMAS = {
+    "pinned": ("// Dogwood's shipped pinned.dwschema (the DEFAULT): callerPrincipal pinned on every\n"
+               "// kind, so a temporal predicate sees only the requesting principal's events.\n\n"
+               'decision event <A>::request {\n    ...inputs(A),\n    pin callerPrincipal: principalType(A) = principal,\n    callerResource:    resourceType(A),\n    requestId:         String,\n    sessionId:         String,\n}\n\nevent <A>::response {\n    ...inputs(A),\n    ...outputs(A),\n    pin callerPrincipal: principalType(A) = principal,\n    callerResource:    resourceType(A),\n    requestId:         String,\n    sessionId:         String,\n}\n\nevent <A>::error {\n    ...inputs(A),\n    pin callerPrincipal: principalType(A) = principal,\n    callerResource:    resourceType(A),\n    requestId:         String,\n    sessionId:         String,\n}\n'),
+    "unpinned": ("// Dogwood's shipped unpinned.dwschema: no pins, so global-trace semantics.\n\n"
+                 'decision event <A>::request {\n    ...inputs(A),\n    callerPrincipal:   principalType(A),\n    callerResource:    resourceType(A),\n    requestId:         String,\n    sessionId:         String,\n}\n\nevent <A>::response {\n    ...inputs(A),\n    ...outputs(A),\n    callerPrincipal:   principalType(A),\n    callerResource:    resourceType(A),\n    requestId:         String,\n    sessionId:         String,\n}\n\nevent <A>::error {\n    ...inputs(A),\n    callerPrincipal:   principalType(A),\n    callerResource:    resourceType(A),\n    requestId:         String,\n    sessionId:         String,\n}\n'),
+}
+
+
+def reading_schema(reading: str, into: Path) -> Path:
+    """Write the event schema for `reading` ("pinned" or "unpinned") into `into`; its path."""
+    path = into / f"{reading}.dwschema"
+    path.write_text(READING_SCHEMAS[reading], encoding="utf-8")
+    return path
+
 # A state conjunct as TLC prints it, and the invariant line above it.
 VIOLATION = re.compile(r"Invariant (\w+) is violated")
 BINDING = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*) = (.+)$")
@@ -613,6 +640,13 @@ def confirm(policy: Path, module: Path, tlc_output: str, *,
             here_policy, here_schema = work / policy.name, None
             if keep:
                 shutil.copyfile(policy, here_policy)
+                # EXACTLY ONE SCHEMA, the one this verdict was reached under. An audit re-run into
+                # the same traces/ under another reading used to leave the last run's beside it,
+                # and a later replay picking by name would then confirm under the wrong one. Only
+                # .dwschema files are removed, and only here, where this code wrote them.
+                for stale in work.glob("*.dwschema"):
+                    if event_schema is None or stale.name != event_schema.name:
+                        stale.unlink()
                 if event_schema is not None:
                     shutil.copyfile(event_schema, here_schema := work / event_schema.name)
 
@@ -692,7 +726,10 @@ def main() -> int:
                            "--property", str(args.module)],
                           cwd=REPO, capture_output=True, text=True, encoding="utf-8", errors="replace",
                           env={**os.environ, "PYTHONUTF8": "1"}, timeout=3600)
-    found = confirm(args.policy, args.module, proc.stdout + proc.stderr, keep=args.keep)
+    # The checker ran under its default reading, pinned, so the engine is told the same.
+    with tempfile.TemporaryDirectory(prefix="anchor-reading-") as scratch:
+        found = confirm(args.policy, args.module, proc.stdout + proc.stderr, keep=args.keep,
+                        event_schema=reading_schema("pinned", Path(scratch)))
 
     if args.json:
         print(json.dumps([{

@@ -42,8 +42,10 @@ that is not compiled in.
 
 ## It answers about the reading you gave it
 
-Without an event schema, answers assume the **unpinned** reading, which is not the shipped default.
-See `event-schemas-and-pins`. This is the single most common way a verdict gets over-reported.
+Without an event schema, answers use Dogwood's own default reading, **`callerPrincipal` pinned**. A
+deployment whose schema differs — no universal pin, or a pin on something else such as `sessionId`
+— may decide differently. See `event-schemas-and-pins`. Leaving the reading out is the single most
+common way a verdict gets over-reported.
 
 ## Under `smoke`, it answers less
 
@@ -54,5 +56,6 @@ A smoke run settles only `live`. See `smoke-vs-exhaustive`.
 Include, in one sentence: the verdict, the bound it holds within, and the reading it was computed
 under. For example —
 
-> `permit #2` is VACUOUS within 3 attempts under the unpinned reading (no event schema was
-> supplied; the deployed default partitions by principal, which is stricter). It grants nothing.
+> `permit #2` is VACUOUS within 3 attempts under Dogwood's default reading (no event schema was
+> supplied, so `callerPrincipal` is pinned; a deployment with a different schema could differ). It
+> grants nothing.

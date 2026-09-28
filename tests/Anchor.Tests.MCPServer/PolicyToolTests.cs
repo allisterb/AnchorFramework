@@ -117,18 +117,19 @@ public class PolicyToolTests : TestsRuntime
     }
 
     /// <summary>
-    /// Without an event schema the checker says every answer assumes the unpinned reading, and the
-    /// tool must carry that out separately. It is the single most droppable line in the output and
-    /// the most expensive to drop.
+    /// Without an event schema the checker says every answer is under Dogwood's default reading, and
+    /// the tool must carry that out separately. It is the single most droppable line in the output
+    /// and the most expensive to drop.
     /// </summary>
     [PolicyCheck]
-    public async Task TheUnpinnedCaveatSurvivesTheToolBoundary()
+    public async Task TheReadingCaveatSurvivesTheToolBoundary()
     {
         var tool = await Tools().CheckPolicyAsync(Path.Combine("tests", "policies", "dead_forbid.dw"));
 
         Assert.True(tool.Answered, tool.Error);
         Assert.NotNull(tool.Reading);
-        Assert.Contains("UNPINNED", tool.Reading, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Dogwood's own default", tool.Reading, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("callerPrincipal", tool.Reading, StringComparison.Ordinal);
     }
 
     /// <summary>

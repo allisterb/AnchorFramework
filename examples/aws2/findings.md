@@ -26,6 +26,7 @@
 | policy sets | 6 |
 | stated intentions (`.tla`) | 1 |
 | questions answered | 0 |
+| event-schema reading | pinned by `callerPrincipal`, Dogwood's default |
 
 ## Per policy set
 
@@ -80,7 +81,7 @@ with scenario = "afterRefused", the Dogwood engine REFUSES this session at t=4, 
 Run it yourself, from `traces/agent-policy-CumulativeCap/witness`:
 
 ```bash
-dogwood replay --policy-schema generated.cedarschema --trace ARefusedAttemptDoesNotConsumeTheBudget.log agent-policy.dw
+dogwood replay --policy-schema generated.cedarschema --event-schema pinned.dwschema --trace ARefusedAttemptDoesNotConsumeTheBudget.log agent-policy.dw
 ```
 
 

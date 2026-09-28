@@ -157,42 +157,166 @@ public static class Program
     /// </remarks>
     static async Task<int> CheckAsync(CheckOptions opts)
     {
-        // THE ARGUMENT'S SHAPE DECIDES, not a flag. A directory is audited; a file is checked rule
-        // by rule. `pipeline.sweep()` already reads a path both ways, and a flag would be a second
-        // thing to get wrong beside a path that already says which it is.
-        if (Directory.Exists(opts.Policy))
+        // Opposite readings, refused here because the checker is handed one tri-state rather than
+        // two flags, and "both" is not a state it can be given.
+        if (opts.Pinned && opts.Unpinned)
         {
-            return await AuditAsync(opts);
+            Console.Error.WriteLine("--pinned and --unpinned are opposite readings; pass one.");
+            return BadUsage;
         }
 
-        // Refused rather than ignored. These do nothing for a single policy set, and an option that
-        // silently does nothing is worse than one that is not there.
-        foreach (var (name, given) in new[]
-                 {
-                     ("--output-dir", !string.IsNullOrWhiteSpace(opts.OutputDir)),
-                     ("--no-llm", opts.NoLlm),
-                     ("--provider", !string.IsNullOrWhiteSpace(opts.Provider)),
-                     ("--llm", !string.IsNullOrWhiteSpace(opts.Llm))
-                 })
+        // ONE FLAG, ONE MEANING, WHICHEVER THE SHAPE. Without --full a policy set or a directory is
+        // checked rule by rule and printed, and nothing is written; with it, either is audited and
+        // written up. The shape used to decide -- a directory was always audited -- which left a
+        // single policy set with no way to be audited and read as though it could not use an LLM.
+        // Every option that means something in only one mode is refused in the other, never
+        // ignored: an option that silently does nothing is worse than one that is not there.
+        if (opts.Full)
+        {
+            // --property joins an audit of ONE policy set; for a directory there is no telling which
+            // set it is about, and a module whose header says so is found without it.
+            return Refused(WithoutFullOnly(opts), "applies to a check without --full")
+                ?? (Directory.Exists(opts.Policy)
+                    ? Refused([("--property", !string.IsNullOrWhiteSpace(opts.Property))],
+                              "applies to a single policy set file, not a directory")
+                    : null)
+                ?? await AuditAsync(opts);
+        }
+        if (Refused(FullOnly(opts), "applies only with --full") is int notFull)
+        {
+            return notFull;
+        }
+        if (Directory.Exists(opts.Policy))
+        {
+            return Refused(PolicySetOnly(opts), "applies to a single policy set file, not a directory")
+                ?? await CheckDirectoryAsync(opts);
+        }
+
+        var code = await CheckOneAsync(opts, opts.Policy);
+        await ListAvailableAsync(opts, opts.Policy);
+        return code;
+    }
+
+    /// <summary>
+    /// A plain check of every policy set in a directory, one after another, then what --full would
+    /// add. The worst answer wins: exit codes are ordered so that the larger is the worse, and one
+    /// policy set that could not be checked leaves the directory unanswered.
+    /// </summary>
+    static async Task<int> CheckDirectoryAsync(CheckOptions opts)
+    {
+        // By extension rather than by pattern alone: Windows matches "*.dw" loosely, and the audit
+        // this mirrors globs exactly.
+        var sets = Directory.GetFiles(opts.Policy, "*.dw")
+            .Where(f => Path.GetExtension(f).Equals(".dw", StringComparison.OrdinalIgnoreCase))
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        if (sets.Length == 0)
+        {
+            Console.Error.WriteLine($"no .dw policy sets in {opts.Policy}");
+            return CouldNotRun;
+        }
+
+        var worst = Ok;
+        foreach (var set in sets)
+        {
+            Console.WriteLine($"==== {Path.GetFileName(set)} ".PadRight(78, '='));
+            worst = Math.Max(worst, await CheckOneAsync(opts, set));
+            Console.WriteLine();
+        }
+        await ListAvailableAsync(opts, opts.Policy);
+        return worst;
+    }
+
+    /// <summary>
+    /// What --full would add: the property modules and questions a plain check skipped. Found by the
+    /// audit's own discovery, so the list and the audit cannot disagree about what is there.
+    /// </summary>
+    static async Task ListAvailableAsync(CheckOptions opts, string target)
+    {
+        var r = await PythonProcess.RunAsync(PolicyTools.AuditScript, [Path.GetFullPath(target), "--list"],
+            root: Blank(opts.AnchorRoot), timeout: TimeSpan.FromMinutes(1));
+        if (!r.IsSuccess || !r.Value.Succeeded)
+        {
+            // Not fatal -- the verdicts above stand -- and not silent either.
+            Console.Error.WriteLine("(could not list the property modules and questions --full would use)");
+            return;
+        }
+        if (!string.IsNullOrWhiteSpace(r.Value.Output))
+        {
+            Console.WriteLine();
+            Console.Write(r.Value.Output);
+        }
+    }
+
+    /// <summary>The first option given that does not apply here, reported, as an exit code; or null.</summary>
+    static int? Refused(IEnumerable<(string Name, bool Given)> options, string why)
+    {
+        foreach (var (name, given) in options)
         {
             if (given)
             {
-                Console.Error.WriteLine($"{name} applies to a directory, not a single policy set.");
+                Console.Error.WriteLine($"{name} {why}.");
                 return BadUsage;
             }
         }
+        return null;
+    }
 
+    /// <summary>What only an audit uses: where it writes, and the LLM it asks.</summary>
+    static (string, bool)[] FullOnly(CheckOptions o) =>
+    [
+        ("--output-dir", !string.IsNullOrWhiteSpace(o.OutputDir)),
+        ("--no-llm", o.NoLlm),
+        ("--provider", !string.IsNullOrWhiteSpace(o.Provider)),
+        ("--llm", !string.IsNullOrWhiteSpace(o.Llm)),
+        ("--allow-flagged-input", o.AllowFlaggedInput)
+    ];
+
+    /// <summary>What names one policy set's own inputs or outputs, so means nothing for many.</summary>
+    static (string, bool)[] PolicySetOnly(CheckOptions o) =>
+    [
+        ("--against", !string.IsNullOrWhiteSpace(o.Against)),
+        ("--property", !string.IsNullOrWhiteSpace(o.Property)),
+        ("--explain", o.Explain),
+        ("--witness", o.Witness),
+        ("--trace", o.Trace),
+        ("--keep", !string.IsNullOrWhiteSpace(o.Keep))
+    ];
+
+    /// <summary>
+    /// What an audit does not take: the single-set options it replaces with its own witnesses and
+    /// traces/, and the knobs its checker runs do not expose. Not --property, which an audit of one
+    /// policy set adds to the modules it finds.
+    /// </summary>
+    static (string, bool)[] WithoutFullOnly(CheckOptions o) =>
+    [
+        .. PolicySetOnly(o).Where(option => option.Item1 != "--property"),
+        ("--syntax", o.Syntax),
+        ("--verbose", o.Verbose),
+        ("--amount", o.Amount is not null),
+        ("--timeout", o.Timeout is not null)
+    ];
+
+    /// <summary>One policy set, checked rule by rule and printed. Writes nothing.</summary>
+    static async Task<int> CheckOneAsync(CheckOptions opts, string policy)
+    {
         // No containment unless asked for: a person running this on their own machine is not the
         // agent that the MCP server's project directory exists to fence in.
-        var tools = new PolicyTools(Blank(opts.ProjectDir), Blank(opts.AnchorRoot));
+        var tools = new PolicyTools(Blank(opts.ProjectDir), Blank(opts.AnchorRoot))
+        {
+            // Which TLC run is starting, as it starts: a policy set with many rules is a minute of
+            // silence otherwise. On stderr, so the verdicts on stdout stay exactly as they were.
+            Progress = Console.Error.WriteLine
+        };
 
         PolicyCheckResult result;
         try
         {
             result = await tools.CheckPolicyAsync(
-                opts.Policy,
+                policy,
                 against: Blank(opts.Against),
                 eventSchema: Blank(opts.EventSchema),
+                pinned: opts.Pinned ? true : opts.Unpinned ? false : null,
                 property: Blank(opts.Property),
                 attempts: opts.Attempts,
                 amount: opts.Amount,
@@ -229,7 +353,7 @@ public static class Program
     }
 
     /// <summary>
-    /// Audit a directory of policies unattended, and write the findings into it.
+    /// Audit a policy set or a directory of them unattended, and write the findings up: <c>check --full</c>.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -239,7 +363,7 @@ public static class Program
     /// collapsing those would make this useless in a pipeline.
     /// </para>
     /// <para>
-    /// <b>It answers to <c>check &lt;directory&gt;</c> rather than to a verb of its own.</b> It was
+    /// <b>It answers to <c>check --full</c> rather than to a verb of its own.</b> It was
     /// <c>auto</c>, and that name claimed the wrong thing: "auto" means autoformalization in this
     /// field and nothing here formalizes anything — every intentional claim it checks is a
     /// <c>.tla</c> module a person wrote by hand. What was automated was the running.
@@ -247,30 +371,37 @@ public static class Program
     /// </remarks>
     static async Task<int> AuditAsync(CheckOptions opts)
     {
-        var args = new List<string> { opts.Policy };
+        // FULL PATHS, because the script runs from the Anchor root -- /app in the container -- and
+        // a path as typed is relative to wherever the user is. `check my-policies --full` from /work
+        // looked for /app/my-policies.
+        var args = new List<string> { Path.GetFullPath(opts.Policy) };
 
-        if (!string.IsNullOrWhiteSpace(opts.OutputDir)) args.AddRange(["--output-dir", opts.OutputDir]);
+        if (!string.IsNullOrWhiteSpace(opts.OutputDir)) args.AddRange(["--output-dir", Path.GetFullPath(opts.OutputDir)]);
+        if (!string.IsNullOrWhiteSpace(opts.EventSchema)) args.AddRange(["--event-schema", Path.GetFullPath(opts.EventSchema)]);
+        if (!string.IsNullOrWhiteSpace(opts.Property)) args.AddRange(["--property", Path.GetFullPath(opts.Property)]);
         if (!string.IsNullOrWhiteSpace(opts.Provider)) args.AddRange(["--provider", opts.Provider]);
         if (!string.IsNullOrWhiteSpace(opts.Llm)) args.AddRange(["--llm", opts.Llm]);
         if (opts.Attempts is int a) args.AddRange(["--attempts", a.ToString()]);
         if (opts.Smoke is int sm) args.AddRange(["--smoke", sm.ToString()]);
         if (opts.MaxFields is int mf) args.AddRange(["--max-fields", mf.ToString()]);
+        if (opts.Pinned) args.Add("--pinned");
+        if (opts.Unpinned) args.Add("--unpinned");
         if (opts.NoLlm) args.Add("--no-llm");
         if (opts.AllowFlaggedInput) args.Add("--allow-flagged-input");
 
         // No timeout of our own: a directory of policies is minutes of TLC per policy, and a cap
         // here would kill a run that was working. The script bounds each check itself.
+        // STREAMED, not printed at the end: an audit is minutes of TLC, and printing its progress
+        // only once it had finished made every line of it arrive together, after a long silence.
         var r = await PythonProcess.RunAsync(PolicyTools.AuditScript, [.. args],
-            root: Blank(opts.AnchorRoot), timeout: TimeSpan.FromHours(6));
+            root: Blank(opts.AnchorRoot), timeout: TimeSpan.FromHours(6),
+            onOutput: Console.WriteLine, onError: Console.Error.WriteLine);
 
         if (!r.IsSuccess)
         {
-            Console.Error.WriteLine(r.Message ?? "the directory audit could not be run");
+            Console.Error.WriteLine(r.Message ?? "the audit could not be run");
             return CouldNotRun;
         }
-
-        if (!string.IsNullOrWhiteSpace(r.Value.Output)) Console.Write(r.Value.Output);
-        if (!string.IsNullOrWhiteSpace(r.Value.ErrorOutput)) Console.Error.Write(r.Value.ErrorOutput);
         return r.Value.ExitCode;
     }
 

@@ -39,8 +39,13 @@ public class PythonProcess : Runtime
     /// <param name="script">Path to the script, relative to the Anchor root.</param>
     /// <param name="args">Arguments, one per element so that none of them is re-parsed.</param>
     /// <param name="timeout">Ten minutes by default: a checker run is many TLC invocations.</param>
+    /// <param name="onOutput">Each stdout line as it arrives, as well as in the result.</param>
+    /// <param name="onError">Each stderr line as it arrives, as well as in the result.</param>
+    /// <param name="environment">Variables added to the child's environment.</param>
     public static async Task<Result<PythonRun>> RunAsync(string script, string[]? args = null,
-        string? python = null, string? root = null, TimeSpan? timeout = null, CancellationToken ct = default)
+        string? python = null, string? root = null, TimeSpan? timeout = null, CancellationToken ct = default,
+        Action<string>? onOutput = null, Action<string>? onError = null,
+        IReadOnlyDictionary<string, string>? environment = null)
     {
         if (!FindRoot(root).Succeeded(out var tree))
         {
@@ -92,12 +97,28 @@ public class PythonProcess : Runtime
         // by everything.
         info.Environment["PYTHONUNBUFFERED"] = "1";
         info.Environment["PYTHONUTF8"] = "1";
+        foreach (var (name, value) in environment ?? new Dictionary<string, string>())
+        {
+            info.Environment[name] = value;
+        }
 
+        // Collected either way; passed on as well when a caller wants to show a long run as it
+        // happens rather than all at once at the end.
         var output = new StringBuilder();
         var errors = new StringBuilder();
         using var process = new Process { StartInfo = info };
-        process.OutputDataReceived += (_, e) => { if (e.Data is not null) output.AppendLine(e.Data); };
-        process.ErrorDataReceived += (_, e) => { if (e.Data is not null) errors.AppendLine(e.Data); };
+        process.OutputDataReceived += (_, e) =>
+        {
+            if (e.Data is null) return;
+            output.AppendLine(e.Data);
+            onOutput?.Invoke(e.Data);
+        };
+        process.ErrorDataReceived += (_, e) =>
+        {
+            if (e.Data is null) return;
+            errors.AppendLine(e.Data);
+            onError?.Invoke(e.Data);
+        };
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         cts.CancelAfter(timeout ?? TimeSpan.FromMinutes(10));

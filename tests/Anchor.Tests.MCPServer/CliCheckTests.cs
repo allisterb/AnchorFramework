@@ -41,7 +41,7 @@ public class CliCheckTests : TestsRuntime
         Assert.Contains("DEAD", stdout);
 
         // The caveat that makes the verdict honest travels with it.
-        Assert.Contains("UNPINNED", stdout, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("uses Dogwood's own default", stdout, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -119,6 +119,134 @@ public class CliCheckTests : TestsRuntime
         Assert.Contains("Unrecognised command", stderr);
         Assert.Contains("frobnicate", stderr);
         Assert.Empty(stdout);
+    }
+
+    /// <summary>
+    /// Without --full, a check writes nothing and asks no LLM, and says what an audit would add:
+    /// the property modules and questions it did not use. Before --full existed nothing told a
+    /// reader that a policy set had stated intentions beside it at all.
+    /// </summary>
+    [CliPolicyFact]
+    public async Task APlainCheckWritesNothingAndListsWhatFullWouldUse()
+    {
+        var folder = Path.Combine(StdioTransportTests.Repo, "examples", "aws1", "07-trust-decay-findings");
+        var (exit, stdout, stderr) = await RunAsync("check", "examples/aws1/07-trust-decay.dw");
+
+        Assert.Equal(0, exit);
+
+        // Each TLC run announced as it starts, on stderr: a policy set with many rules is minutes
+        // of TLC, and silence reads as a hang. The verdicts on stdout are untouched by it.
+        Assert.Contains("TLC 1/2  permit #1: does deleting it change any verdict?", stderr);
+        Assert.Contains("TLC 2/2  permit #1: can it grant anything at all?", stderr);
+        Assert.DoesNotContain("TLC 1/2", stdout);
+
+        Assert.Contains("Not checked, and available to --full", stdout);
+        Assert.Contains("TrustDecay.tla", stdout);
+        Assert.Contains("TrustDecay10.tla", stdout);
+        Assert.Contains("uses an LLM", stdout);
+        Assert.False(Directory.Exists(folder), "a plain check wrote a report");
+    }
+
+    /// <summary>
+    /// An option that means something in only one mode is refused in the other, never ignored.
+    /// Several used to be dropped silently -- `--event-schema` for a directory among them, which
+    /// checked under a reading the caller had not asked for.
+    /// </summary>
+    [CliFact]
+    public async Task OptionsThatDoNotApplyAreRefusedNotIgnored()
+    {
+        foreach (var (args, why) in new[]
+                 {
+                     (new[] { "check", "tests/policies/dead_forbid.dw", "--no-llm" },
+                      "--no-llm applies only with --full"),
+                     (new[] { "check", "tests/policies/dead_forbid.dw", "--allow-flagged-input" },
+                      "--allow-flagged-input applies only with --full"),
+                     (new[] { "check", "examples/aws1", "--property", "x.tla" },
+                      "--property applies to a single policy set file, not a directory"),
+                     (new[] { "check", "examples/aws1", "--full", "--keep", "x" },
+                      "--keep applies to a check without --full"),
+                     (new[] { "check", "examples/aws1", "--full", "--property", "x.tla" },
+                      "--property applies to a single policy set file, not a directory")
+                 })
+        {
+            var (exit, _, stderr) = await RunAsync(args);
+
+            Assert.True(exit == 2, $"{string.Join(' ', args)} exited {exit}: {stderr}");
+            Assert.Contains(why, stderr);
+        }
+    }
+
+    /// <summary>
+    /// --full audits a single policy set as it would a directory -- its own modules, found by
+    /// header -- and writes the report into a folder of its own, so it cannot overwrite the report
+    /// for the directory the policy set sits in.
+    /// </summary>
+    [CliPolicyFact]
+    public async Task FullAuditsASinglePolicySetIntoItsOwnFolder()
+    {
+        var aws1 = Path.Combine(StdioTransportTests.Repo, "examples", "aws1");
+        var work = Directory.CreateTempSubdirectory("anchor-full-").FullName;
+        try
+        {
+            foreach (var name in new[] { "07-trust-decay.dw", "TrustDecay.tla", "TrustDecay.cfg",
+                                         "TrustDecay10.tla", "TrustDecay10.cfg" })
+            {
+                File.Copy(Path.Combine(aws1, name), Path.Combine(work, name));
+            }
+
+            var (exit, _, stderr) = await RunAsync("check", Path.Combine(work, "07-trust-decay.dw"),
+                "--full", "--no-llm");
+
+            // 1: the audit has findings -- both trust-decay claims are broken.
+            Assert.True(exit == 1, $"exited {exit}: {stderr}");
+
+            var report = Path.Combine(work, "07-trust-decay-findings", "findings.md");
+            Assert.True(File.Exists(report), $"no report at {report}: {stderr}");
+            Assert.False(File.Exists(Path.Combine(work, "findings.md")), "the directory's report was written");
+
+            var text = File.ReadAllText(report);
+            Assert.Contains("# Findings — `07-trust-decay.dw`", text);
+            Assert.Contains("does not satisfy TrustDecay.tla", text);
+            Assert.Contains("does not satisfy TrustDecay10.tla", text);
+            Assert.Contains("| event-schema reading |", text);
+        }
+        finally
+        {
+            try { Directory.Delete(work, recursive: true); } catch (IOException) { /* scratch */ }
+        }
+    }
+
+    /// <summary>
+    /// --property with --full ADDS a module to the ones found by header rather than replacing them,
+    /// and the report says which was which: a reader should know why a module is there.
+    /// </summary>
+    [CliPolicyFact]
+    public async Task FullAddsAGivenPropertyToTheModulesItFinds()
+    {
+        var aws1 = Path.Combine(StdioTransportTests.Repo, "examples", "aws1");
+        var work = Directory.CreateTempSubdirectory("anchor-full-").FullName;
+        try
+        {
+            // TrustDecay10 beside the policy set, found by its header; TrustDecay left where it is
+            // and named instead.
+            foreach (var name in new[] { "07-trust-decay.dw", "TrustDecay10.tla", "TrustDecay10.cfg" })
+            {
+                File.Copy(Path.Combine(aws1, name), Path.Combine(work, name));
+            }
+
+            var (exit, _, stderr) = await RunAsync("check", Path.Combine(work, "07-trust-decay.dw"),
+                "--full", "--no-llm", "--property", Path.Combine(aws1, "TrustDecay.tla"));
+
+            Assert.True(exit == 1, $"exited {exit}: {stderr}");
+            var text = File.ReadAllText(Path.Combine(work, "07-trust-decay-findings", "findings.md"));
+            Assert.Contains("`TrustDecay.tla` (given with `--property`)", text);
+            Assert.Contains("| `TrustDecay10.tla` |", text);
+            Assert.Contains("| stated intentions (`.tla`) | 2 |", text);
+        }
+        finally
+        {
+            try { Directory.Delete(work, recursive: true); } catch (IOException) { /* scratch */ }
+        }
     }
 
     static async Task<(int Exit, string Stdout, string Stderr)> RunAsync(params string[] args)

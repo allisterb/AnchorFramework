@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import shutil
 import sys
@@ -72,6 +73,17 @@ INVARIANT TypeOK
 \\* See the header of Vacuity.tla for why the reading is inverted.
 INVARIANT {invariant}
 """
+
+
+def progress(message: str) -> None:
+    """A line on stderr saying which TLC run is starting, when a caller asked for them.
+
+    Asked for with ANCHOR_PROGRESS. The audit and the CLI set it, because a policy set with many
+    rules is minutes of TLC and silence reads as a hang. The MCP server does not: an agent reads the
+    answer, not a running commentary, and the stderr it parses for a refusal stays as it was.
+    """
+    if os.environ.get("ANCHOR_PROGRESS"):
+        print(message, file=sys.stderr, flush=True)
 
 
 @contextmanager
@@ -425,11 +437,16 @@ def blame(work: Path, policies: list[dict], vocab: dict, keys, index: int,
     # First the question that makes the rest worth asking: would it be inert with NO condition?
     # If so the condition is not the reason, and minimising within it would produce a confident
     # answer pointing at the wrong thing.
+    rule = f"{policies[index - 1]['effect']} #{index}"
+    progress(f"  TLC  {rule} is {verdict}: would it still be with no condition at all?")
     if still_inert(work, policies, vocab, keys, index, [], invariant, args):
         return "structural", []
 
     core = list(terms)
     for term in terms:
+        shown = describe_term(term)
+        progress(f"  TLC  {rule} is {verdict}: is it still, without "
+                 f"`{shown if len(shown) <= 60 else shown[:57] + '...'}`?")
         trial = [t for t in core if t is not term]
         if still_inert(work, policies, vocab, keys, index, trial, invariant, args):
             core = trial
@@ -585,14 +602,18 @@ def prove(args, policies: list[dict], vocab: dict, keys: list[str] | None = None
     # to a module a tool may have drafted; this is the session it stands for, in Dogwood, with the
     # reference engine's verdict on it where the engine is available to ask.
     if args.witness:
-        from checker.witness import confirm, render     # noqa: PLC0415  -- one direction only
+        from checker.witness import confirm, reading_schema, render  # noqa: PLC0415  -- one direction only
 
         # THE EVENT SCHEMA GOES WITH IT. TLC found this counterexample under whatever reading the
         # schema imposes, and replaying it against the engine's default would be answering about a
         # different deployment -- confidently, and with the reference implementation's authority.
-        found = confirm(args.policy, args.property_module, out,
-                        keep=args.keep / "witness" if args.keep else None,
-                        event_schema=args.event_schema)
+        # With no schema file the reading is still a definite one, pinned or --unpinned, and the
+        # engine is handed it as a file rather than left to its own default.
+        with tempfile.TemporaryDirectory(prefix="anchor-reading-") as scratch:
+            found = confirm(args.policy, args.property_module, out,
+                            keep=args.keep / "witness" if args.keep else None,
+                            event_schema=args.event_schema or reading_schema(
+                                "unpinned" if args.unpinned else "pinned", Path(scratch)))
         if found:
             print("\nIn Dogwood's own terms:\n")
             print(render(found))
@@ -903,6 +924,7 @@ def check_property(work: Path, module: Path) -> tuple[bool, str]:
 
     shutil.copyfile(module, work / module.name)
     shutil.copyfile(cfg, work / cfg.name)
+    progress(f"  TLC  {module.name}: every claim, in every state it ranges over")
     return run_tlc(module.stem, work, work)
 
 
@@ -1336,8 +1358,10 @@ def main() -> int:
                     help="a TLA+ module of your own, extending PolicyUnderTest, stating what the "
                          "policy is supposed to mean. Needs a companion .cfg naming its invariants")
     ap.add_argument("--event-schema", type=Path, metavar="FILE.dwschema",
-                    help="the event schema the policy is deployed under. Without it every answer "
-                         "assumes the UNPINNED reading, which is not the shipped default")
+                    help="the .dwschema the policy set is deployed under. Without one, Anchor uses "
+                         "Dogwood's own default: callerPrincipal pinned, so a temporal condition "
+                         "sees only the requesting principal's earlier events. Pass the real schema "
+                         "if you have one, or --unpinned if yours has no universal pin")
     ap.add_argument("--verbose", action="store_true", help="print the TLC output for each permit")
     ap.add_argument("--json", action="store_true",
                     help="emit the result as JSON, including the witness SESSION as structured "
@@ -1377,13 +1401,13 @@ def main() -> int:
                          "it checks nothing -- it answers what a value IS, which is the question "
                          "you otherwise have to write an invariant and run a check to find out")
     ap.add_argument("--pinned", action="store_true",
-                    help="check under DOGWOOD'S OWN DEFAULT reading: callerPrincipal pinned on "
-                         "every event kind, so a temporal predicate sees only its own principal's "
-                         "events. Anchor's no-schema default is the opposite (global trace), so "
-                         "this is the flag that answers 'does this finding survive deployment?'")
+                    help="Dogwood's own default reading, and Anchor's, stated explicitly: "
+                         "callerPrincipal pinned on every event kind, so a temporal predicate sees "
+                         "only its own principal's events")
     ap.add_argument("--unpinned", action="store_true",
-                    help="check under global-trace semantics, stated explicitly. Same as giving "
-                         "no schema, and worth passing when the reading matters to the reader")
+                    help="check under global-trace semantics: no pins, so a temporal predicate "
+                         "sees every principal's events in the session. For a deployment whose "
+                         "event schema has no universal pin")
     ap.add_argument("--decision-probe", action="store_true",
                     help="with --property: ask whether the policy's answer VARIES over the states "
                          "this module ranges over, and stop. Two TLC runs, seconds. A property "
@@ -1414,6 +1438,15 @@ def main() -> int:
                          "name for this policy -- actions, fields, domains, constructors -- plus a "
                          "skeleton module that already runs. Checks nothing")
     args = ap.parse_args()
+
+    # ONE READING PER RUN. --event-schema, --pinned and --unpinned are three answers to the same
+    # question, and taking the first one given while ignoring the rest -- which is what happened
+    # -- reports a verdict under a reading the caller did not ask for, without saying so.
+    chosen = [flag for flag, given in (("--event-schema", args.event_schema is not None),
+                                       ("--pinned", args.pinned), ("--unpinned", args.unpinned))
+              if given]
+    if len(chosen) > 1:
+        ap.error(f"{' and '.join(chosen)} each choose the event-schema reading; pass one")
 
     for f in (args.policy, args.against):
         if f is not None and not f.exists():
@@ -1455,17 +1488,17 @@ def main() -> int:
         # The event schema, which decides what the policy MEANS before anything is checked about
         # what it says. Both halves, and they are different jobs: a partial pin becomes an
         # ordinary conjunct, a universal one a partition key stamped onto every term.
-        # `--pinned` / `--unpinned` build the dict rather than reading Dogwood's shipped schemas,
-        # so trying the other reading needs neither a file nor the submodule checked out. The
+        # WITHOUT A SCHEMA, DOGWOOD'S OWN DEFAULT: callerPrincipal pinned. That is what a policy
+        # deployed with no schema of its own actually gets, so it is the reading an unconfigured
+        # check should answer about; `--unpinned` opts out. Both are built as the dict rather
+        # than read from Dogwood's shipped files, so neither needs a file or the submodule; the
         # values are what `parse_schema` returns for `configuration/event-schemas/{pinned,
-        # unpinned}.dwschema`, which is checked by tests/strands/event_schema_readings.py.
-        if args.pinned or args.unpinned:
-            schema = {"keys": ["principal"] if args.pinned else [], "partial": {}, "paths": {},
-                      "max_window": DEFAULT_MAX_WINDOW}
+        # unpinned}.dwschema`, which tests/strands/event_schema_readings.py checks.
+        if args.event_schema is not None:
+            schema = parse_schema(args.event_schema.read_text(encoding="utf-8"))
         else:
-            schema = ({"keys": [], "partial": {}, "max_window": DEFAULT_MAX_WINDOW}
-                      if args.event_schema is None
-                      else parse_schema(args.event_schema.read_text(encoding="utf-8")))
+            schema = {"keys": [] if args.unpinned else ["principal"], "partial": {}, "paths": {},
+                      "max_window": DEFAULT_MAX_WINDOW}
         for rules in (policies, other):
             if rules is not None:
                 apply_pins(rules, schema)
@@ -1490,22 +1523,22 @@ def main() -> int:
             print(extra, file=sys.stderr)
         return 2
 
-    # Say which reading produced the answers. Leaving it implicit is how a verdict computed for
-    # `unpinned` gets read as one for the deployed configuration.
+    # Say which reading produced the answers. Leaving it implicit is how a verdict computed under
+    # one reading gets read as one about another deployment.
     where = args.event_schema.name if args.event_schema is not None else (
-        "--pinned" if args.pinned else "--unpinned")
-    if schema["keys"]:
+        "--unpinned" if args.unpinned else "--pinned")
+    if args.event_schema is None and not args.pinned and not args.unpinned:
+        # The default, said as a default: the reader may not know one was chosen for them, or
+        # that their deployment may use another.
+        reading = ("no --event-schema given, so every answer below uses Dogwood's own default\n"
+                   "  reading: callerPrincipal pinned on every kind, so a temporal condition sees\n"
+                   "  only the requesting principal's events. Pass --event-schema for your\n"
+                   "  deployment's real one, or --unpinned if it has no universal pin.")
+    elif schema["keys"]:
         reading = (f"under {where}: partitioned by "
                    f"{', '.join(schema['keys'])} -- a temporal predicate sees only its own partition")
-    elif args.event_schema is not None or args.unpinned:
-        reading = f"under {where}: no universal pin, so global-trace semantics"
     else:
-        # THE DEFAULTS DIFFER, and saying only what ours is leaves the reader to assume they agree.
-        reading = ("no --event-schema given, so every answer below assumes the UNPINNED reading\n"
-                   "  (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal\n"
-                   "  on every kind, so a deployed rule sees only its own principal's events and one\n"
-                   "  reported live here may never fire. Pass --pinned to check that reading, or\n"
-                   "  --event-schema for a real one.")
+        reading = f"under {where}: no universal pin, so global-trace semantics"
 
     # Before the preamble is printed, because the description is JSON and a prose line above it
     # would make the whole document unparseable.
@@ -1560,12 +1593,18 @@ def main() -> int:
         for module in ("Vacuity.tla", "DogwoodSemantics.tla"):
             shutil.copyfile(SPECS / module, work / module)
 
+        # Counted up front so each progress line can say how far along it is: two runs for a
+        # permit, whose sharper question is asked too, and one for a forbid.
+        total = sum(2 if r["effect"] == "permit" else 1 for r in policies)
+        done = 0
         for i, rule in enumerate(policies, 1):
             shown = " | ".join(rule["actions"]) or "(any)"
             label = f'{rule["effect"]} #{i}  action == {shown}'
 
             # Does deleting this rule change any verdict? One question, both shapes: a forbid
             # that never denies, and a permit some other permit always covers.
+            done += 1
+            progress(f"  TLC {done}/{total}  {rule['effect']} #{i}: does deleting it change any verdict?")
             matters, out = check_one(work, i, args.attempts, args.amount, "NeverMatters",
                                      smoke=args.smoke)
             # One config and one output PER RULE, because each run sets a different `Target`.
@@ -1578,6 +1617,8 @@ def main() -> int:
             # useful thing to be told than "something else covers it".
             fires = None
             if rule["effect"] == "permit":
+                done += 1
+                progress(f"  TLC {done}/{total}  permit #{i}: can it grant anything at all?")
                 fires, fout = check_one(work, i, args.attempts, args.amount, "NeverFires",
                                         smoke=args.smoke)
                 keep_run(args, work, f"rule-{i}-NeverFires", fout)

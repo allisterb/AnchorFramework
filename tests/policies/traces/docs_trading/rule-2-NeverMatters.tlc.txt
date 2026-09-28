@@ -1,7 +1,7 @@
 TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
 Warning: Please run the Java VM which executes TLC with a throughput optimized garbage collector by passing the "-XX:+UseParallelGC" property.
 (Use the -nowarning option to disable this warning.)
-Running breadth-first search Model-Checking with fp 107 and seed -6757082446919582226 with 1 worker on 8 cores with 16344MB heap and 64MB offheap memory [pid: 54292] (Windows 10 10.0 amd64, Microsoft 11.0.16.1 x86_64, MSBDiskFPSet, DiskStateQueue).
+Running breadth-first search Model-Checking with fp 17 and seed 2807619525217950812 with 1 worker on 8 cores with 16344MB heap and 64MB offheap memory [pid: 23292] (Windows 10 10.0 amd64, Microsoft 11.0.16.1 x86_64, MSBDiskFPSet, DiskStateQueue).
 Parsing file C:\Projects\Anchor\tests\policies\traces\docs_trading\Vacuity.tla
 Parsing file C:\Projects\Anchor\tests\policies\traces\docs_trading\Integers.tla
 Parsing file C:\Projects\Anchor\tests\policies\traces\docs_trading\Sequences.tla
@@ -18,9 +18,9 @@ Semantic processing of module PolicyUnderTest
 Semantic processing of module TLC
 Semantic processing of module DogwoodSemantics
 Semantic processing of module Vacuity
-Starting... (2026-09-28 04:46:48)
+Starting... (2026-09-28 11:17:12)
 Computing initial states...
-Finished computing initial states: 1 distinct state generated at 2026-09-28 04:46:49.
+Finished computing initial states: 1 distinct state generated at 2026-09-28 11:17:12.
 Error: Invariant NeverMatters is violated.
 Error: The behavior up to this point is:
 State 1: <Initial predicate>
@@ -40,7 +40,7 @@ State 2: <Attempt line 239, col 5 to line 263, col 90 of module Vacuity>
      principal |-> [k |-> "s", v |-> "caller"],
      resource |-> [k |-> "s", v |-> "caller"],
      session |-> [k |-> "s", v |-> "caller"],
-     pins |-> << >> ],
+     pins |-> [principal |-> [k |-> "s", v |-> "caller"]] ],
    [ action |-> "ApproveSale",
      kind |-> "response",
      input |-> [stock |-> [k |-> "n", v |-> 1]],
@@ -49,7 +49,7 @@ State 2: <Attempt line 239, col 5 to line 263, col 90 of module Vacuity>
      principal |-> [k |-> "s", v |-> "caller"],
      resource |-> [k |-> "s", v |-> "caller"],
      session |-> [k |-> "s", v |-> "caller"],
-     pins |-> << >> ] >>
+     pins |-> [principal |-> [k |-> "s", v |-> "caller"]] ] >>
 /\ narrowed = FALSE
 
 State 3: <Attempt line 239, col 5 to line 263, col 90 of module Vacuity>
@@ -63,7 +63,7 @@ State 3: <Attempt line 239, col 5 to line 263, col 90 of module Vacuity>
      principal |-> [k |-> "s", v |-> "caller"],
      resource |-> [k |-> "s", v |-> "caller"],
      session |-> [k |-> "s", v |-> "caller"],
-     pins |-> << >> ],
+     pins |-> [principal |-> [k |-> "s", v |-> "caller"]] ],
    [ action |-> "ApproveSale",
      kind |-> "response",
      input |-> [stock |-> [k |-> "n", v |-> 1]],
@@ -72,7 +72,7 @@ State 3: <Attempt line 239, col 5 to line 263, col 90 of module Vacuity>
      principal |-> [k |-> "s", v |-> "caller"],
      resource |-> [k |-> "s", v |-> "caller"],
      session |-> [k |-> "s", v |-> "caller"],
-     pins |-> << >> ],
+     pins |-> [principal |-> [k |-> "s", v |-> "caller"]] ],
    [ action |-> "SellShares",
      kind |-> "request",
      input |-> [stock |-> [k |-> "n", v |-> 1]],
@@ -81,7 +81,7 @@ State 3: <Attempt line 239, col 5 to line 263, col 90 of module Vacuity>
      principal |-> [k |-> "s", v |-> "caller"],
      resource |-> [k |-> "s", v |-> "caller"],
      session |-> [k |-> "s", v |-> "caller"],
-     pins |-> << >> ],
+     pins |-> [principal |-> [k |-> "s", v |-> "caller"]] ],
    [ action |-> "SellShares",
      kind |-> "response",
      input |-> [stock |-> [k |-> "n", v |-> 1]],
@@ -90,10 +90,10 @@ State 3: <Attempt line 239, col 5 to line 263, col 90 of module Vacuity>
      principal |-> [k |-> "s", v |-> "caller"],
      resource |-> [k |-> "s", v |-> "caller"],
      session |-> [k |-> "s", v |-> "caller"],
-     pins |-> << >> ] >>
+     pins |-> [principal |-> [k |-> "s", v |-> "caller"]] ] >>
 /\ narrowed = FALSE
 
-43 states generated, 33 distinct states found, 26 states left on queue.
+83 states generated, 63 distinct states found, 56 states left on queue.
 The depth of the complete state graph search is 3.
-The average outdegree of the complete state graph is 6 (minimum is 6, the maximum 6 and the 95th percentile is 6).
-Finished in 01s at (2026-09-28 04:46:49)
+The average outdegree of the complete state graph is 12 (minimum is 12, the maximum 12 and the 95th percentile is 12).
+Finished in 01s at (2026-09-28 11:17:12)

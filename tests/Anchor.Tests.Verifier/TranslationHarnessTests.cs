@@ -167,8 +167,9 @@ public class TranslationHarnessTests : TestsRuntime
     /// <para>
     /// Two things are at stake. Every finding we publish is scoped to a reading, and one that
     /// holds under only one of them is a weaker claim than it looks. And Anchor's own default with
-    /// no schema is the <b>opposite</b> of Dogwood's — a verification tool whose default differs
-    /// from the deployed default can report something that does not reproduce.
+    /// no schema was the <b>opposite</b> of Dogwood's until 0.1.3 — a verification tool whose
+    /// default differs from the deployed default can report something that does not reproduce. It
+    /// is now Dogwood's, pinned, and this holds it there.
     /// </para>
     /// <para>
     /// Runs <c>--quick</c>: the full sweep is 48 checker runs and about three and a half minutes,
@@ -187,7 +188,12 @@ public class TranslationHarnessTests : TestsRuntime
 
         // The equivalence that lets --pinned exist without the submodule checked out.
         Assert.Contains("ok    --pinned agrees with the shipped pinned.dwschema", run.Output);
-        Assert.Contains("ok    Anchor's no-schema default agrees with the shipped UNPINNED", run.Output);
+        Assert.Contains("ok    Anchor's no-schema default agrees with the shipped PINNED", run.Output);
+
+        // The copies the witness replay hands the engine, which the container needs because it
+        // carries the dogwood binary and not the tree those files come from.
+        Assert.Contains("ok    the replay's pinned schema is Dogwood's pinned.dwschema", run.Output);
+        Assert.Contains("ok    the replay's unpinned schema is Dogwood's unpinned.dwschema", run.Output);
 
         // The derived half must be MEASURED, not merely equal: a column of zeroes would agree for
         // the wrong reason, so at least one policy compared here carries a known defect.

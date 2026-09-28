@@ -10,6 +10,7 @@ than take it on trust — and disagree with it if it is wrong.
 |---|---|
 | `07-trust-decay.dw` | the policy, copied verbatim so this directory answers for itself |
 | `generated.cedarschema` | a Cedar schema built from the policy's own actions and field types. `replay` requires one; writing it by hand would be a second description of the policy to keep in step |
+| `pinned.dwschema` | the event schema the policy is deployed under. **Not optional**: a universal pin changes what history a temporal predicate can see, so the same trace means something different without it |
 | `LosesWriteAfter10m.log` | the session that breaks `LosesWriteAfter10m` — the engine answered **ALLOW** at `t=961` |
 
 ## Re-running
@@ -17,7 +18,7 @@ than take it on trust — and disagree with it if it is wrong.
 From inside this directory, with the `dogwood` binary on your PATH:
 
 ```bash
-dogwood replay --policy-schema generated.cedarschema --trace LosesWriteAfter10m.log 07-trust-decay.dw
+dogwood replay --policy-schema generated.cedarschema --event-schema pinned.dwschema --trace LosesWriteAfter10m.log 07-trust-decay.dw
 ```
 
 ## Reading the result

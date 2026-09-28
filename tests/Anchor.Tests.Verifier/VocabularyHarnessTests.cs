@@ -199,10 +199,11 @@ public class VocabularyHarnessTests : TestsRuntime
     /// when event schemas were wired in.
     /// </para>
     /// <para>
-    /// The second half asserts the checker now states which reading produced its answers. Every
-    /// verdict it had ever printed assumed the <b>unpinned</b> posture while the shipped default
-    /// is <c>pinned</c>, and it said nothing about that. A tool that answers a different question
-    /// than the one asked should at least say which question it answered.
+    /// The second half asserts the checker states which reading produced its answers. Every verdict
+    /// it had ever printed assumed the <b>unpinned</b> posture while the shipped default is
+    /// <c>pinned</c>, and it said nothing about that. The default is now Dogwood's own, and it
+    /// still says so: a default the reader does not know was chosen for them is a choice they
+    /// cannot question.
     /// </para>
     /// </remarks>
     [PythonHarness("properties.py")]
@@ -215,8 +216,9 @@ public class VocabularyHarnessTests : TestsRuntime
         Assert.Matches(@"permit #1\s+action == Trade\s+live", bare.Output);
         Assert.DoesNotContain("nonexistent field", bare.Output);
 
-        // Without a schema it must say so — the answers are for the unpinned reading.
-        Assert.Contains("UNPINNED", bare.Output);
+        // Without a schema it must say so — the answers are under Dogwood's default, pinned.
+        Assert.Contains("uses Dogwood's own default", bare.Output);
+        Assert.Contains("callerPrincipal pinned", bare.Output);
 
         // With one, it names the partition the deployment imposes.
         var pinned = await PythonHarness.RunAsync(
