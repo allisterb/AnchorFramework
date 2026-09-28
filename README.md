@@ -99,7 +99,7 @@ a fresh clone needs one of these before its first build.
 
 | | |
 |---|---|
-| `-c` / `-Configuration` | `Debug` (default) or `Release` |
+| `-c` / `-Configuration` | `Release` (default) or `Debug`. The launchers prefer a Release build, so the default is what they run |
 | `-t` / `-Test` | run the tests after building |
 | `-s` / `-SkipDependencies` | don't download; files already present are still verified |
 | `-f` / `-Force` | re-download even when present and matching |
@@ -240,6 +240,11 @@ Bedrock AgentCore service, which answers `POST /invocations` rather than taking 
 ```bash
 [./]anchor check my_policy.dw
 ```
+
+**Vocabulary.** A **policy** is one `permit` or `forbid` statement, and a `.dw` file is a **policy
+set** — Dogwood's term, after Cedar's `PolicySet`. Anchor also calls a policy a **rule**, as AWS's own
+Dogwood posts often do, because "the policy" is otherwise ambiguous between one statement and the
+file. Every question below is about what the whole set decides.
 
 Three questions about a Dogwood policy set, each answered with a **witness session** or a bounded
 no — nothing to configure, and no statement of intent required:

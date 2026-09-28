@@ -20,6 +20,13 @@ says *rule* wherever *policy* would be ambiguous, and *policy set* for the file.
 the point of all three questions above: each is about what the **set** decides, and none of them
 can be answered by reading a statement on its own.
 
+*Policy set* is Dogwood's own term, not ours: its CLI guide says every command "takes the policy
+set as a positional argument (a `.dw` file"
+([`dogwood-docs/guide/12-cli.md`](https://github.com/dogwood-policy/dogwood/blob/c6237c88099b3f492ecc5fcee42df06a19224b97/dogwood-docs/guide/12-cli.md),
+at the commit `ext/dogwood` pins), and its parser produces a `ParsedPolicySet` and a
+`LoweredPolicySet`, after Cedar's `PolicySet`. AWS's AgentCore posts say *policy document* for the
+natural-language text a policy set is authored *from* — the brief here — never for the `.dw` file.
+
 **Point it at any `.dw` file:**
 
 ```bash

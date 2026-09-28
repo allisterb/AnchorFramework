@@ -3,6 +3,10 @@
 Anchor needs four runtimes — .NET, a JVM, CPython and a Rust binary — so there is a container that
 carries all of them. Nothing is installed on your machine and nothing is cloned.
 
+**Vocabulary.** A *policy* is one `permit` or `forbid` statement, and a `.dw` file is a *policy set*
+— Dogwood's term, after Cedar's. This page also says *rule* for one policy, as AWS's own Dogwood
+posts often do, because "the policy" is otherwise ambiguous between one statement and the file.
+
 ## Getting it
 
 ```bash
@@ -82,11 +86,11 @@ OK: validation passed with no errors or warnings.
 ```
 
 That is the reference implementation, in the same image, agreeing the file is fine. The difference
-is not analysis versus none — it is **one rule at a time versus the whole rule set**.
+is not analysis versus none — it is **one rule at a time versus the whole policy set**.
 
 This mode runs three questions per rule, each answered with a concrete witness session or a bounded
 no: *can this permit ever grant anything*, *is this rule doing anything*, and with `--against`,
-*do two versions of a policy decide differently*.
+*do two versions of a policy set decide differently*.
 
 ## 2. The question that needs you  — *12 seconds, no API key*
 

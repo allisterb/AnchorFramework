@@ -1,7 +1,13 @@
 # `checker` — what follows from a policy
 
-[`translator`](../translator) decides what a policy *says*. This decides what follows from it, by
+[`translator`](../translator) decides what a policy set *says*. This decides what follows from it, by
 asking TLC questions the policy text cannot answer about itself.
+
+**Vocabulary.** A *policy* is one `permit` or `forbid` statement and a `.dw` file is a *policy set*,
+which is Dogwood's term (see
+[TemporalPolicy](../../specs/policy/TemporalPolicy/README.md) for the sources). This README says
+*rule* for one policy, as AWS's own Dogwood posts often do, because every verdict here is about one
+statement's effect on the whole set.
 
 Also reachable as `anchor check`, which finds the interpreter and the Anchor tree itself and
 passes the exit code straight through — see [`Anchor.CLI`](../Anchor.CLI).
@@ -83,9 +89,9 @@ records; the only difference is that it explores sessions and a per-request clai
 REDUNDANT permit #1   it fires, but another permit always would too
 ```
 
-which is **true**, and whose advice — delete the redundant rule — shrinks the policy and leaves the
-hole exactly where it was. The redundancy is a *symptom* of the over-broad permit, and a check that
-cannot know what the policy was for cannot tell you which of the two rules is the mistake.
+which is **true**, and whose advice — delete the redundant rule — shrinks the policy set and leaves
+the hole exactly where it was. The redundancy is a *symptom* of the over-broad permit, and a check
+that cannot know what the policy set was for cannot tell you which of the two rules is the mistake.
 
 The property can, because it was told:
 
@@ -145,7 +151,7 @@ So the two gates catch different things and neither replaces the other:
 
 **`--mutants N` takes a prefix, so the ORDER of the mutants decides which rules ever get broken.**
 They are generated breadth first — every rule's deletion, then every inversion, then the dropped
-conditions — so the default cap of 8 still touches every rule of a 7-rule policy. Grouped by rule,
+conditions — so the default cap of 8 still touches every rule of a 7-rule policy set. Grouped by rule,
 as they were, those 8 went entirely to rules 1–3 and **rules 4–7 were never damaged**: a property
 about a later rule survived every mutant tried and was told it "is not constraining this policy at
 all", which is false and is the worst thing this gate can say. Measured on

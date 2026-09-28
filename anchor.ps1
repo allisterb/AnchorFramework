@@ -82,8 +82,8 @@ $HelpOrder = @('help', 'check', 'auto', 'hitl', 'explain', 'timeline', 'scan', '
 # The Python verbs' help lines. The CLI's own help cannot mention verbs it does not have, so this
 # script merges these into it.
 $PythonVerbHelp = [ordered]@{
-    auto     = 'Draft the property module from a natural language brief and check it, unattended.'
-    hitl     = 'Draft the property module from a natural language brief, with a human answering when a gate turns a draft away.'
+    auto     = 'Draft the property module for a policy set from a natural language brief and check it, unattended.'
+    hitl     = 'Draft the property module for a policy set from a natural language brief, with a human answering when a gate turns a draft away.'
     timeline = 'Redraw findings.html from the witnesses a check left, without re-running the checks.'
     scan     = "Look for hidden text, instructions aimed at an LLM and markup in a policy's inputs, before an LLM reads them."
 }

@@ -22,11 +22,12 @@ public class Options
     #endregion
 }
 
-/// <summary>Model-check a Dogwood policy.</summary>
+/// <summary>Model-check a Dogwood policy set.</summary>
 [Verb("check", HelpText =
-    "Model-check a Dogwood policy, rule by rule: is each one effective, or is it VACUOUS, " +
+    "Model-check a Dogwood policy set (a .dw file of one or more permit/forbid policies, called " +
+    "rules here) rule by rule: does each one change a verdict of the set, or is it VACUOUS, " +
     "REDUNDANT or DEAD? Runs TLC once per rule, so can take seconds to complete. Given a directory path " +
-    "it will audit every .dw in it, pairing each with the .tla module whose header names it, and " +
+    "it will audit every .dw in it, pairing each with every .tla property module whose header names it, and " +
     "writes findings.md, findings.html, results.json and traces/ beside them, after scanning " +
     "the inputs for hidden text and instructions aimed at an LLM. Exit codes: \n" +
     "0: answered or nothing to look at.\n1: a --property claim is BROKEN or there are findings.\n2: no verdict.\n3: could not run.")]
@@ -36,7 +37,7 @@ public class CheckOptions : Options
 
     /// <summary>
     /// A .dw file, or a DIRECTORY of them. The shape decides which run happens, rather than a flag:
-    /// one policy is checked rule by rule and printed; a directory is audited and written up.
+    /// one policy set is checked rule by rule and printed; a directory is audited and written up.
     /// </summary>
     /// <remarks>
     /// This used to be a separate <c>auto</c> verb, and that name claimed the wrong thing — "auto"
@@ -44,25 +45,25 @@ public class CheckOptions : Options
     /// intentional claim it checks is a <c>.tla</c> a person wrote. Branching on the argument
     /// rather than on a flag follows <c>pipeline.sweep()</c>, which already reads a path both ways.
     /// </remarks>
-    [Value(0, MetaName = "policy-or-directory", Required = true,
-        HelpText = "A .dw policy file, or a directory of them to audit.")]
+    [Value(0, MetaName = "policy-set-or-directory", Required = true,
+        HelpText = "A .dw policy set, or a directory of them to audit.")]
     public string Policy { get; set; } = string.Empty;
 
     [Option("against", Required = false, MetaValue = "OTHER.dw",
-        HelpText = "A second .dw file — the version being replaced. Reports whether this policy is " +
+        HelpText = "A second .dw file: the policy set this one replaces. Reports whether this policy set is " +
                    "MORE PERMISSIVE, LESS PERMISSIVE, EQUIVALENT or INCOMPARABLE to it, with a " +
                    "witness session for each direction, instead of checking each rule. The question " +
-                   "to ask before replacing a policy: a permission removed is a support ticket, a " +
+                   "to ask before replacing a policy set: a permission removed is a support ticket, a " +
                    "permission silently added is an incident.")]
     public string Against { get; set; } = string.Empty;
 
     [Option("event-schema", Required = false, MetaValue = "FILE.dwschema",
-        HelpText = "The .dwschema the policy is deployed under. PASS IT IF YOU HAVE ONE: without it " +
+        HelpText = "The .dwschema the policy set is deployed under. PASS IT IF YOU HAVE ONE: without it " +
                    "every answer assumes the unpinned reading, which is not the shipped default.")]
     public string EventSchema { get; set; } = string.Empty;
 
     [Option("property", Required = false, MetaValue = "FILE.tla",
-        HelpText = "Your own claim about what the policy means, as a TLA+ module extending " +
+        HelpText = "Your own claim about what the policy set means, as a TLA+ module extending " +
                    "PolicyUnderTest, with a companion .cfg naming its invariants.")]
     public string Property { get; set; } = string.Empty;
 
@@ -74,7 +75,7 @@ public class CheckOptions : Options
     public int? Amount { get; set; }
 
     [Option("max-fields", Required = false,
-        HelpText = "Refuse a policy reading more than N input/output fields (default 4). The request " +
+        HelpText = "Refuse a policy set reading more than N input/output fields (default 4). The request " +
                    "space is the product of their domains.")]
     public int? MaxFields { get; set; }
 
@@ -93,7 +94,7 @@ public class CheckOptions : Options
     public bool Verbose { get; set; }
 
     // --- a DIRECTORY only -----------------------------------------------------------------------
-    // Refused with a message when the argument is a single policy, rather than ignored: an option
+    // Refused with a message when the argument is a single policy set, rather than ignored: an option
     // that silently does nothing is worse than one that is not there.
 
     [Option("output-dir", Required = false, MetaValue = "DIR",
@@ -108,7 +109,7 @@ public class CheckOptions : Options
 
     [Option("allow-flagged-input", Required = false,
         HelpText = "DIRECTORY ONLY. Ask the LLM its questions even when the input scan found " +
-                   "high-severity text in the policies — hidden characters, instructions aimed at " +
+                   "high-severity text in the inputs — hidden characters, instructions aimed at " +
                    "an LLM, markup. For findings you have read and judged benign; the report " +
                    "records that it was used. The checks themselves always run.")]
     public bool AllowFlaggedInput { get; set; }
@@ -121,7 +122,7 @@ public class CheckOptions : Options
     public string Llm { get; set; } = string.Empty;
 
     [Option("syntax", Required = false,
-        HelpText = "Put the policy to the reference implementation (`dogwood check-parse`) before " +
+        HelpText = "Put the policy set to the reference implementation (`dogwood check-parse`) before " +
                    "checking anything, and stop if it will not parse — pointing at the token. A " +
                    "syntax error is not a verification finding, but it is why a run produces none. " +
                    "Exits 2 (no verdict). ~35ms; skipped with a note when the binary is not built.")]
@@ -158,11 +159,10 @@ public class CheckOptions : Options
     #endregion
 }
 
-/// <summary>Check a whole directory of policies, unattended.</summary>
 /// <summary>Say in English what a property module forbids, before anything is checked.</summary>
 /// <remarks>
 /// Its own verb rather than a flag on <c>check</c> because it is used at a different moment and by
-/// a different person. <c>check</c> answers "is this policy what the property says"; this answers
+/// a different person. <c>check</c> answers "is this policy set what the property says"; this answers
 /// "is the property what I meant", which is the one question in the pipeline nothing downstream
 /// verifies — and the moment to ask it is before a run, when disagreeing is still free.
 /// </remarks>

@@ -47,7 +47,7 @@ z3_sha256_windows="53aca6c734e7d012ec07fe626bba1e3921269777133ce58784d26c4552e3f
 z3_sha256_linux="22214e518eed9eec867d18b485e7b2570d09cbf1d94a47c8eec6ec4de0287eff"
 z3_sha256_macos=""
 
-configuration="Debug"
+configuration="Release"
 run_tests=0
 skip_dependencies=0
 force=0
@@ -56,11 +56,12 @@ usage() {
     cat <<EOF
 Fetch Anchor's native dependencies and build the solution.
 
-Usage: ./build.sh [-c Debug|Release] [-t] [-s] [-f] [-h]
+Usage: ./build.sh [-c Release|Debug] [-t] [-s] [-f] [-h]
 
   -c <cfg>
-      Build configuration, Debug (default) or Release. Passed to dotnet build, and to
-      dotnet test when -t is given, so both act on the same output.
+      Build configuration, Release (default) or Debug. Passed to dotnet build, and to
+      dotnet test when -t is given, so both act on the same output. The launchers
+      prefer a Release build, so the default is the one they run.
 
   -t
       Run the test suite after a successful build. The Dafny tests shell out to z3 and
@@ -83,9 +84,9 @@ Usage: ./build.sh [-c Debug|Release] [-t] [-s] [-f] [-h]
 
 Examples:
 
-  ./build.sh                  fetch whatever is missing, then build Debug
+  ./build.sh                  fetch whatever is missing, then build Release
   ./build.sh -t               the same, then run the tests
-  ./build.sh -c Release -t    build and test Release
+  ./build.sh -c Debug -t      build and test Debug
   ./build.sh -s               build without touching the network
   ./build.sh -f               re-download both dependencies, then build
 

@@ -23,8 +23,9 @@
     so the build checks for a JVM and stops if there is none. Installing one is up to you.
 
 .PARAMETER Configuration
-    Build configuration, Debug (default) or Release. Passed to dotnet build, and to dotnet test
-    when -Test is given, so both act on the same output.
+    Build configuration, Release (default) or Debug. Passed to dotnet build, and to dotnet test
+    when -Test is given, so both act on the same output. The launchers prefer a Release build, so
+    the default is the one they run.
 
 .PARAMETER Test
     Run the test suite after a successful build. The Dafny tests shell out to z3 and the TLA+ tests
@@ -46,15 +47,15 @@
 
 .EXAMPLE
     ./build.ps1
-    Fetch whatever is missing, then build Debug.
+    Fetch whatever is missing, then build Release.
 
 .EXAMPLE
     ./build.ps1 -Test
     The same, then run the tests.
 
 .EXAMPLE
-    ./build.ps1 -Configuration Release -Test
-    Build and test Release.
+    ./build.ps1 -Configuration Debug -Test
+    Build and test Debug.
 
 .EXAMPLE
     ./build.ps1 -SkipDependencies
@@ -67,7 +68,7 @@
 [CmdletBinding()]
 param(
     [ValidateSet('Debug', 'Release')]
-    [string] $Configuration = 'Debug',
+    [string] $Configuration = 'Release',
     [switch] $Test,
     [switch] $SkipDependencies,
     [switch] $Force,

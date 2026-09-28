@@ -165,7 +165,7 @@ public static class Program
             return await AuditAsync(opts);
         }
 
-        // Refused rather than ignored. These do nothing for a single policy, and an option that
+        // Refused rather than ignored. These do nothing for a single policy set, and an option that
         // silently does nothing is worse than one that is not there.
         foreach (var (name, given) in new[]
                  {
@@ -177,7 +177,7 @@ public static class Program
         {
             if (given)
             {
-                Console.Error.WriteLine($"{name} applies to a directory, not a single policy.");
+                Console.Error.WriteLine($"{name} applies to a directory, not a single policy set.");
                 return BadUsage;
             }
         }
