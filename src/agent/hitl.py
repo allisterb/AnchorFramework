@@ -361,9 +361,9 @@ def ask_about(run: Run) -> Ask | None:
         return Ask(
             "discrimination",
             "The claim holds -- but it also holds of every deliberately broken version of this "
-            "policy that was tried: rules deleted, permits turned into forbids, conditions "
-            "dropped. So it is not constraining this policy at all.\n\n"
-            "Breaking a policy mostly takes permissions AWAY, and a claim that something must be "
+            "policy set that was tried: rules deleted, permits turned into forbids, conditions "
+            "dropped. So it is not constraining this policy set at all.\n\n"
+            "Breaking a policy set mostly takes permissions AWAY, and a claim that something must be "
             "refused survives that. What catches it is a claim about something that must go "
             "THROUGH.",
             "Name two things: one this policy must NEVER allow, and one it MUST allow -- a request "

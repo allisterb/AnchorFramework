@@ -1,7 +1,7 @@
 TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
 Warning: Please run the Java VM which executes TLC with a throughput optimized garbage collector by passing the "-XX:+UseParallelGC" property.
 (Use the -nowarning option to disable this warning.)
-Running breadth-first search Model-Checking with fp 70 and seed -6873515696332732398 with 1 worker on 8 cores with 16344MB heap and 64MB offheap memory [pid: 28496] (Windows 10 10.0 amd64, Microsoft 11.0.16.1 x86_64, MSBDiskFPSet, DiskStateQueue).
+Running breadth-first search Model-Checking with fp 48 and seed -249144597799498511 with 1 worker on 8 cores with 16344MB heap and 64MB offheap memory [pid: 52004] (Windows 10 10.0 amd64, Microsoft 11.0.16.1 x86_64, MSBDiskFPSet, DiskStateQueue).
 Parsing file C:\Projects\Anchor\examples\aws1\traces\07-trust-decay-TrustDecay\TrustDecay.tla
 Parsing file C:\Projects\Anchor\examples\aws1\traces\07-trust-decay-TrustDecay\Integers.tla
 Parsing file C:\Projects\Anchor\examples\aws1\traces\07-trust-decay-TrustDecay\Sequences.tla
@@ -18,9 +18,9 @@ Semantic processing of module PolicyUnderTest
 Semantic processing of module TLC
 Semantic processing of module DogwoodSemantics
 Semantic processing of module TrustDecay
-Starting... (2026-09-14 17:35:35)
+Starting... (2026-09-28 04:45:16)
 Computing initial states...
 Error: Invariant KeepsWriteWhileAdvisorEngaged is violated by the initial state:
 gap = 1
 
-Finished in 01s at (2026-09-14 17:35:35)
+Finished in 01s at (2026-09-28 04:45:17)

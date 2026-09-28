@@ -528,16 +528,16 @@ class Confirmation:
         want = "REFUSE" if not self.demanded else "ALLOW"
         where = ", ".join(f"{k} = {v}" for k, v in self.state.items())
         if self.engine is None:
-            return (f"your policy must {want} the session below ({where}), and the model says it "
+            return (f"your policy set must {want} the session below ({where}), and the model says it "
                     f"does not. {self.why}".strip())
 
         did = "ALLOWS" if self.engine == "allow" else "REFUSES"
         if self.agreed:
             return (f"with {where}, the Dogwood engine {did} this session at t={self.at}, where "
-                    f"`{self.invariant}` says your policy must {want} it")
+                    f"`{self.invariant}` says your policy set must {want} it")
         return (f"the Dogwood engine does {want} this session at t={self.at}, which is what "
                 f"`{self.invariant}` asked for, so our model and the engine disagree about this "
-                f"policy. That is a defect in Anchor, not a finding about your policy")
+                f"policy set. That is a defect in Anchor, not a finding about your policy set")
 
 
 def confirm(policy: Path, module: Path, tlc_output: str, *,

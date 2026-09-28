@@ -1,13 +1,13 @@
 ****** SANY2 Version 2.1 created 24 February 2014
 
 Parsing file C:\Projects\Anchor\tests\policies\traces\firewall-firewall\firewall.tla
-Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-6pwi6bo9\Integers.tla
-Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-6pwi6bo9\Sequences.tla
-Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-6pwi6bo9\FiniteSets.tla
+Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-4nsbubmo\Integers.tla
+Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-4nsbubmo\Sequences.tla
+Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-4nsbubmo\FiniteSets.tla
 Parsing file C:\Projects\Anchor\tests\policies\traces\firewall-firewall\PolicyUnderTest.tla
-Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-6pwi6bo9\Naturals.tla
+Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-4nsbubmo\Naturals.tla
 Parsing file C:\Projects\Anchor\tests\policies\traces\firewall-firewall\DogwoodSemantics.tla
-Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-6pwi6bo9\TLC.tla
+Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-4nsbubmo\TLC.tla
 Semantic processing of module Naturals
 Semantic processing of module Integers
 Semantic processing of module Sequences

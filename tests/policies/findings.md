@@ -1,5 +1,7 @@
 # Findings — `policies`
 
+**Input scan.** 48 input files scanned: clean.
+
 **22 thing(s) to look at.**
 
 1. **firewall.dw does not satisfy firewall_bad_field.tla** — a stated intention is not met
@@ -29,18 +31,18 @@
 
 | | |
 |---|---|
-| policies | 33 |
+| policy sets | 33 |
 | stated intentions (`.tla`) | 5 |
 | questions answered | 0 |
 
 ## Modules not run
 
-- `eval_join.tla` — its header names no policy in this directory -- add `<policy>.dw` to it
-- `tagged_session.tla` — its header names no policy in this directory -- add `<policy>.dw` to it
+- `eval_join.tla` — its header names no policy set in this directory -- add `<policy-set>.dw` to it
+- `tagged_session.tla` — its header names no policy set in this directory -- add `<policy-set>.dw` to it
 
-## Per policy
+## Per policy set
 
-| policy | rules | verdicts |
+| policy set | rules | verdicts |
 |---|---|---|
 | `added_action.dw` | 2 | live |
 | `aggregate_cap.dw` | 2 | DEAD, live |
@@ -78,7 +80,7 @@
 
 ## Stated intentions
 
-| policy | module | |
+| policy set | module | |
 |---|---|---|
 | `aggregate_cap.dw` | `aggregate_cap.tla` | holds |
 | `firewall.dw` | `firewall.tla` | holds |

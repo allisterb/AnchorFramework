@@ -1,13 +1,13 @@
 ****** SANY2 Version 2.1 created 24 February 2014
 
 Parsing file C:\Projects\Anchor\examples\aws1\traces\07-trust-decay-TrustDecay\TrustDecay.tla
-Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-iy0zsntk\Integers.tla
-Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-iy0zsntk\Sequences.tla
-Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-iy0zsntk\FiniteSets.tla
+Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-hskv6hgf\Integers.tla
+Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-hskv6hgf\Sequences.tla
+Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-hskv6hgf\FiniteSets.tla
 Parsing file C:\Projects\Anchor\examples\aws1\traces\07-trust-decay-TrustDecay\PolicyUnderTest.tla
-Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-iy0zsntk\Naturals.tla
+Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-hskv6hgf\Naturals.tla
 Parsing file C:\Projects\Anchor\examples\aws1\traces\07-trust-decay-TrustDecay\DogwoodSemantics.tla
-Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-iy0zsntk\TLC.tla
+Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-hskv6hgf\TLC.tla
 Semantic processing of module Naturals
 Semantic processing of module Integers
 Semantic processing of module Sequences

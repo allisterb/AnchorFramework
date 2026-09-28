@@ -1,7 +1,7 @@
 TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
 Warning: Please run the Java VM which executes TLC with a throughput optimized garbage collector by passing the "-XX:+UseParallelGC" property.
 (Use the -nowarning option to disable this warning.)
-Running breadth-first search Model-Checking with fp 28 and seed -5908290003572369002 with 1 worker on 8 cores with 16344MB heap and 64MB offheap memory [pid: 62964] (Windows 10 10.0 amd64, Microsoft 11.0.16.1 x86_64, MSBDiskFPSet, DiskStateQueue).
+Running breadth-first search Model-Checking with fp 51 and seed 2057387392422432770 with 1 worker on 8 cores with 16344MB heap and 64MB offheap memory [pid: 50304] (Windows 10 10.0 amd64, Microsoft 11.0.16.1 x86_64, MSBDiskFPSet, DiskStateQueue).
 Parsing file C:\Projects\Anchor\tests\policies\traces\vacuous_two_terms\Vacuity.tla
 Parsing file C:\Projects\Anchor\tests\policies\traces\vacuous_two_terms\Integers.tla
 Parsing file C:\Projects\Anchor\tests\policies\traces\vacuous_two_terms\Sequences.tla
@@ -18,9 +18,9 @@ Semantic processing of module PolicyUnderTest
 Semantic processing of module TLC
 Semantic processing of module DogwoodSemantics
 Semantic processing of module Vacuity
-Starting... (2026-09-14 10:12:18)
+Starting... (2026-09-28 04:49:26)
 Computing initial states...
-Finished computing initial states: 1 distinct state generated at 2026-09-14 10:12:19.
+Finished computing initial states: 1 distinct state generated at 2026-09-28 04:49:26.
 Model checking completed. No error has been found.
   Estimates of the probability that TLC did not check all reachable states
   because two distinct states had the same fingerprint:
@@ -28,4 +28,4 @@ Model checking completed. No error has been found.
 1885 states generated, 1885 distinct states found, 0 states left on queue.
 The depth of the complete state graph search is 4.
 The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 12 and the 95th percentile is 12).
-Finished in 02s at (2026-09-14 10:12:20)
+Finished in 01s at (2026-09-28 04:49:27)

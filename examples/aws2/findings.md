@@ -1,10 +1,12 @@
 # Findings — `aws2`
 
+**Input scan.** 9 input files scanned: clean.
+
 **1 thing(s) to look at.**
 
-1. **agent-policy.dw does not satisfy CumulativeCap.tla** — with scenario = "afterRefused", the Dogwood engine REFUSES this session at t=4, where `ARefusedAttemptDoesNotConsumeTheBudget` says your policy must ALLOW it
+1. **agent-policy.dw does not satisfy CumulativeCap.tla** — with scenario = "afterRefused", the Dogwood engine REFUSES this session at t=4, where `ARefusedAttemptDoesNotConsumeTheBudget` says your policy set must ALLOW it
 
-> **This run was `--smoke 3000`.** Each policy was explored as 3000 random
+> **This run was `--smoke 3000`.** Each policy set was explored as 3000 random
 > behaviours instead of exhaustively, because this set's request space is the product
 > of its field domains and too large to exhaust. That changes what the verdicts mean:
 >
@@ -21,13 +23,13 @@
 
 | | |
 |---|---|
-| policies | 6 |
+| policy sets | 6 |
 | stated intentions (`.tla`) | 1 |
 | questions answered | 0 |
 
-## Per policy
+## Per policy set
 
-| policy | rules | verdicts |
+| policy set | rules | verdicts |
 |---|---|---|
 | `01-business-hours.dw` | 1 | live |
 | `02-identity-verification.dw` | 1 | unknown |
@@ -38,7 +40,7 @@
 
 ## Stated intentions
 
-| policy | module | |
+| policy set | module | |
 |---|---|---|
 | `agent-policy.dw` | `CumulativeCap.tla` | **BROKEN** |
 
@@ -55,18 +57,18 @@ tested what you meant.
 ### The session that breaks it
 
 Each of these is a concrete history, in Dogwood's own trace syntax, that
-the policy decides the opposite way from the claim about it. Where a
+the policy set decides the opposite way from the claim about it. Where a
 verdict is shown it is the **Dogwood engine's**, not ours — the finding
 does not rest on our reading of the language.
 
 **Every file the engine needs is kept beside each finding**, so you can run
 it yourself rather than take this on trust — the trace, a Cedar schema
-generated from the policy's own actions, and a copy of the policy. Each
+generated from the policy set's own actions, and a copy of the policy set. Each
 directory has a README and answers for itself if you move it.
 
 **`CumulativeCap.tla` — ARefusedAttemptDoesNotConsumeTheBudget** (`scenario = "afterRefused"`)
 
-with scenario = "afterRefused", the Dogwood engine REFUSES this session at t=4, where `ARefusedAttemptDoesNotConsumeTheBudget` says your policy must ALLOW it
+with scenario = "afterRefused", the Dogwood engine REFUSES this session at t=4, where `ARefusedAttemptDoesNotConsumeTheBudget` says your policy set must ALLOW it
 
 ```
 @1 scope(principal: AgentCore::OAuthUser::"agent", resource: AgentCore::Gateway::"gw") AgentCore::Action::"verify_identity"::response(input: { account: "a1" }, output: { verified: true }, callerPrincipal: AgentCore::OAuthUser::"agent", callerResource: AgentCore::Gateway::"gw", requestId: "e1")

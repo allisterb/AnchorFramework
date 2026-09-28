@@ -1,7 +1,7 @@
 TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
 Warning: Please run the Java VM which executes TLC with a throughput optimized garbage collector by passing the "-XX:+UseParallelGC" property.
 (Use the -nowarning option to disable this warning.)
-Running Random Simulation with seed 0 with 1 worker on 8 cores with 16344MB heap and 64MB offheap memory [pid: 75744] (Windows 10 10.0 amd64, Microsoft 11.0.16.1 x86_64).
+Running Random Simulation with seed 0 with 1 worker on 8 cores with 16344MB heap and 64MB offheap memory [pid: 52120] (Windows 10 10.0 amd64, Microsoft 11.0.16.1 x86_64).
 Parsing file C:\Projects\Anchor\examples\aws2\traces\agent-policy\Vacuity.tla
 Parsing file C:\Projects\Anchor\examples\aws2\traces\agent-policy\Integers.tla
 Parsing file C:\Projects\Anchor\examples\aws2\traces\agent-policy\Sequences.tla
@@ -18,7 +18,7 @@ Semantic processing of module PolicyUnderTest
 Semantic processing of module TLC
 Semantic processing of module DogwoodSemantics
 Semantic processing of module Vacuity
-Starting... (2026-09-13 12:55:20)
+Starting... (2026-09-28 04:53:49)
 Computed 1 initial states...
 Error: Invariant NeverFires is violated.
 Error: The behavior up to this point is:
@@ -55,4 +55,4 @@ State 5: <Attempt line 239, col 5 to line 263, col 90 of module Vacuity>
 The number of states generated: 1313
 Simulation using seed 0 and aril 0
 Progress: 1314 states checked.
-Finished in 09s at (2026-09-13 12:55:29)
+Finished in 07s at (2026-09-28 04:53:55)

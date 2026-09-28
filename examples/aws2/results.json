@@ -4,7 +4,7 @@
     "01-business-hours.dw": {
       "kind": "derived",
       "policy": "01-business-hours.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). The shipped DEFAULT partitions by principal, under which a rule reported live here may never fire.",
+      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
       "bound": {
         "attempts": 5,
         "amount": 2,
@@ -180,7 +180,7 @@
     "02-identity-verification.dw": {
       "kind": "derived",
       "policy": "02-identity-verification.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). The shipped DEFAULT partitions by principal, under which a rule reported live here may never fire.",
+      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
       "bound": {
         "attempts": 5,
         "amount": 2,
@@ -211,7 +211,7 @@
     "03-cumulative-cap.dw": {
       "kind": "derived",
       "policy": "03-cumulative-cap.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). The shipped DEFAULT partitions by principal, under which a rule reported live here may never fire.",
+      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
       "bound": {
         "attempts": 5,
         "amount": 2,
@@ -242,7 +242,7 @@
     "04-refund-rate-limit.dw": {
       "kind": "derived",
       "policy": "04-refund-rate-limit.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). The shipped DEFAULT partitions by principal, under which a rule reported live here may never fire.",
+      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
       "bound": {
         "attempts": 5,
         "amount": 2,
@@ -273,7 +273,7 @@
     "06-supervisor-approval.dw": {
       "kind": "derived",
       "policy": "06-supervisor-approval.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). The shipped DEFAULT partitions by principal, under which a rule reported live here may never fire.",
+      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
       "bound": {
         "attempts": 5,
         "amount": 2,
@@ -304,7 +304,7 @@
     "agent-policy.dw": {
       "kind": "derived",
       "policy": "agent-policy.dw",
-      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). The shipped DEFAULT partitions by principal, under which a rule reported live here may never fire.",
+      "reading": "no --event-schema given, so every answer below assumes the UNPINNED reading (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal on every kind, so a deployed rule sees only its own principal's events and one reported live here may never fire. Pass --pinned to check that reading, or --event-schema for a real one.",
       "bound": {
         "attempts": 5,
         "amount": 2,
@@ -1117,7 +1117,7 @@
             }
           ],
           "why": "",
-          "sentence": "with scenario = \"afterRefused\", the Dogwood engine REFUSES this session at t=4, where `ARefusedAttemptDoesNotConsumeTheBudget` says your policy must ALLOW it",
+          "sentence": "with scenario = \"afterRefused\", the Dogwood engine REFUSES this session at t=4, where `ARefusedAttemptDoesNotConsumeTheBudget` says your policy set must ALLOW it",
           "trace": "@1 scope(principal: AgentCore::OAuthUser::\"agent\", resource: AgentCore::Gateway::\"gw\") AgentCore::Action::\"verify_identity\"::response(input: { account: \"a1\" }, output: { verified: true }, callerPrincipal: AgentCore::OAuthUser::\"agent\", callerResource: AgentCore::Gateway::\"gw\", requestId: \"e1\")\n@2 scope(principal: AgentCore::OAuthUser::\"agent\", resource: AgentCore::Gateway::\"gw\") request_context(input: { account: \"a1\", amount: 60000 }) AgentCore::Action::\"initiate_transfer\"::request(input: { account: \"a1\", amount: 60000 }, callerPrincipal: AgentCore::OAuthUser::\"agent\", callerResource: AgentCore::Gateway::\"gw\", requestId: \"e2\")\n@3 scope(principal: AgentCore::OAuthUser::\"agent\", resource: AgentCore::Gateway::\"gw\") AgentCore::Action::\"initiate_transfer\"::error(input: { account: \"a1\", amount: 60000 }, callerPrincipal: AgentCore::OAuthUser::\"agent\", callerResource: AgentCore::Gateway::\"gw\", requestId: \"e3\")\n@4 scope(principal: AgentCore::OAuthUser::\"agent\", resource: AgentCore::Gateway::\"gw\") request_context(input: { account: \"a1\", amount: 1 }) AgentCore::Action::\"initiate_transfer\"::request(input: { account: \"a1\", amount: 1 }, callerPrincipal: AgentCore::OAuthUser::\"agent\", callerResource: AgentCore::Gateway::\"gw\", requestId: \"e4\")\n",
           "directory": "examples\\aws2\\traces\\agent-policy-CumulativeCap\\witness",
           "command": "dogwood replay --policy-schema generated.cedarschema --trace ARefusedAttemptDoesNotConsumeTheBudget.log agent-policy.dw"
@@ -1126,10 +1126,32 @@
       "kind": "property",
       "held": false,
       "exitCode": 1,
-      "output": "no --event-schema given, so every answer below assumes the UNPINNED reading\n  (global trace). The shipped DEFAULT partitions by principal, under which a rule\n  reported live here may never fire.\n\nagent-policy.dw against CumulativeCap.tla: 7 rule(s)\n\n  BROKEN  Invariant ARefusedAttemptDoesNotConsumeTheBudget is violated by the initial state:\n      scenario = \"afterRefused\"\n        \\* A $1 transfer is permitted in both sessions. The refused $60,000 moved no money, so the\n        \\* twelve-hour total of what was TRANSFERRED is $0 either way.\n        ARefusedAttemptDoesNotConsumeTheBudget ==\n            Allowed(scenario)\n\nThe policy does not mean what the property says it means. The state above is the\nrequest that breaks the claim, and the claim is quoted beneath it -- read the two\ntogether, because a violated invariant says which direction failed only when you can\nsee what it asserted.",
+      "output": "no --event-schema given, so every answer below assumes the UNPINNED reading\n  (global trace). DOGWOOD'S OWN DEFAULT IS THE OPPOSITE: it pins callerPrincipal\n  on every kind, so a deployed rule sees only its own principal's events and one\n  reported live here may never fire. Pass --pinned to check that reading, or\n  --event-schema for a real one.\n\nagent-policy.dw against CumulativeCap.tla: 7 rule(s)\n\n  BROKEN  Invariant ARefusedAttemptDoesNotConsumeTheBudget is violated by the initial state:\n      scenario = \"afterRefused\"\n        \\* A $1 transfer is permitted in both sessions. The refused $60,000 moved no money, so the\n        \\* twelve-hour total of what was TRANSFERRED is $0 either way.\n        ARefusedAttemptDoesNotConsumeTheBudget ==\n            Allowed(scenario)\n\nThe policy does not mean what the property says it means. The state above is the\nrequest that breaks the claim, and the claim is quoted beneath it -- read the two\ntogether, because a violated invariant says which direction failed only when you can\nsee what it asserted.",
       "error": ""
     }
   },
   "smoke": 3000,
-  "unpaired": []
+  "unpaired": [],
+  "inputScan": {
+    "files": [
+      "01-business-hours.dw",
+      "02-identity-verification.dw",
+      "03-cumulative-cap.dw",
+      "04-refund-rate-limit.dw",
+      "06-supervisor-approval.dw",
+      "agent-policy.dw",
+      "CumulativeCap.cfg",
+      "CumulativeCap.tla",
+      "intents.md"
+    ],
+    "unreadable": [],
+    "summary": "9 input files scanned: clean",
+    "high": 0,
+    "medium": 0,
+    "hits": [],
+    "census": {
+      "U+2014": 2
+    },
+    "modelWithheld": false
+  }
 }

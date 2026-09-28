@@ -1,13 +1,13 @@
 ****** SANY2 Version 2.1 created 24 February 2014
 
 Parsing file C:\Projects\Anchor\examples\aws1\traces\agent-policy-TradeGate\TradeGate.tla
-Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-n6bw8f7h\Integers.tla
-Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-n6bw8f7h\Sequences.tla
-Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-n6bw8f7h\FiniteSets.tla
+Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-flhf5s_p\Integers.tla
+Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-flhf5s_p\Sequences.tla
+Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-flhf5s_p\FiniteSets.tla
 Parsing file C:\Projects\Anchor\examples\aws1\traces\agent-policy-TradeGate\PolicyUnderTest.tla
-Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-n6bw8f7h\Naturals.tla
+Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-flhf5s_p\Naturals.tla
 Parsing file C:\Projects\Anchor\examples\aws1\traces\agent-policy-TradeGate\DogwoodSemantics.tla
-Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-n6bw8f7h\TLC.tla
+Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-flhf5s_p\TLC.tla
 Semantic processing of module Naturals
 Semantic processing of module Integers
 Semantic processing of module Sequences

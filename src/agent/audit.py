@@ -143,7 +143,7 @@ def discover(directory: Path) -> Plan:
         target = next((by_name[n] for n in named if n in by_name), None)
         if target is None:
             plan.unpaired.append(
-                (module, "its header names no policy in this directory -- add `<policy>.dw` to it"))
+                (module, "its header names no policy set in this directory -- add `<policy-set>.dw` to it"))
             continue
         plan.properties.append((module, target))
 
@@ -270,7 +270,7 @@ def findings_of(results: dict) -> list[str]:
     for name, r in results.get("properties", {}).items():
         for claim in (r.get("claims") or {}).get("vacuous", []):
             out.append(f"**{name}: `{claim}` cannot fail** — it is already true in every state it "
-                       f"ranges over, before the policy is consulted. It holds, and it tested "
+                       f"ranges over, before the policy set is consulted. It holds, and it tested "
                        f"nothing")
 
     for name, r in results.get("derived", {}).items():
@@ -308,7 +308,7 @@ def report(plan: Plan, results: dict, findings: list[str], *, model_used: bool,
         lines += [f"{i}. {f}" for i, f in enumerate(findings, 1)]
     elif smoke:
         lines += [f"**Nothing to report, and that is a weaker statement than usual.** This was a",
-                  f"SMOKE sweep — {smoke} random behaviours per policy rather than an exhaustive",
+                  f"SMOKE sweep — {smoke} random behaviours per policy set rather than an exhaustive",
                   "search — so no rule here could have been reported inert even if it were. See",
                   "the note below.", ""]
     elif plan.properties:
@@ -319,12 +319,12 @@ def report(plan: Plan, results: dict, findings: list[str], *, model_used: bool,
         # true, and a report whose headline is a vacuous truth is the exact failure this project
         # exists to catch. Say what was actually established.
         lines += ["**No inert rules found**, within the bounds each check reports. Nothing here",
-                  "says the policies do what they were meant to do — see below.", ""]
+                  "says the policy sets do what they were meant to do — see below.", ""]
     lines.append("")
 
     if smoke:
         lines += [
-            f"> **This run was `--smoke {smoke}`.** Each policy was explored as {smoke} random",
+            f"> **This run was `--smoke {smoke}`.** Each policy set was explored as {smoke} random",
             "> behaviours instead of exhaustively, because this set's request space is the product",
             "> of its field domains and too large to exhaust. That changes what the verdicts mean:",
             ">",
@@ -344,7 +344,7 @@ def report(plan: Plan, results: dict, findings: list[str], *, model_used: bool,
 
     lines += ["## What was checked", "",
               "| | |", "|---|---|",
-              f"| policies | {len(plan.policies)} |",
+              f"| policy sets | {len(plan.policies)} |",
               f"| stated intentions (`.tla`) | {len(plan.properties)} |",
               f"| questions answered | {len(plan.questions) if model_used else 0} |", ""]
 
@@ -355,9 +355,9 @@ def report(plan: Plan, results: dict, findings: list[str], *, model_used: bool,
         lines += [
             "> **No stated intentions were found in this directory**, so only the questions that",
             "> can be asked WITHOUT knowing intent were answered: is any rule inert, does any",
-            "> edit widen. Those would pass a policy that does the exact opposite of what its",
+            "> edit widen. Those would pass a policy set that does the exact opposite of what its",
             "> author wanted — a rule that fires is a rule that fires, whichever way round its",
-            "> condition reads. Write what the policy is supposed to mean as a `.tla` module",
+            "> condition reads. Write what the policy set is supposed to mean as a `.tla` module",
             "> beside it, and this report can check that too.", ""]
 
     if plan.unpaired:
@@ -365,7 +365,7 @@ def report(plan: Plan, results: dict, findings: list[str], *, model_used: bool,
         lines += [f"- `{u['module']}` — {u['why']}" for u in results.get("unpaired", [])]
         lines.append("")
 
-    lines += ["## Per policy", "", "| policy | rules | verdicts |", "|---|---|---|"]
+    lines += ["## Per policy set", "", "| policy set | rules | verdicts |", "|---|---|---|"]
     for name, r in results.get("derived", {}).items():
         if r.get("_failed"):
             lines.append(f"| `{name}` | — | could not be checked |")
@@ -376,7 +376,7 @@ def report(plan: Plan, results: dict, findings: list[str], *, model_used: bool,
     lines.append("")
 
     if plan.properties:
-        lines += ["## Stated intentions", "", "| policy | module | |", "|---|---|---|"]
+        lines += ["## Stated intentions", "", "| policy set | module | |", "|---|---|---|"]
         for name, r in results.get("properties", {}).items():
             lines.append(f"| `{r['policy']}` | `{name}` | "
                          f"{'holds' if r.get('held') else '**BROKEN**'} |")
@@ -424,12 +424,12 @@ def report(plan: Plan, results: dict, findings: list[str], *, model_used: bool,
         if witnessed:
             lines += ["### The session that breaks it", "",
                       "Each of these is a concrete history, in Dogwood's own trace syntax, that",
-                      "the policy decides the opposite way from the claim about it. Where a",
+                      "the policy set decides the opposite way from the claim about it. Where a",
                       "verdict is shown it is the **Dogwood engine's**, not ours — the finding",
                       "does not rest on our reading of the language.", "",
                       "**Every file the engine needs is kept beside each finding**, so you can run",
                       "it yourself rather than take this on trust — the trace, a Cedar schema",
-                      "generated from the policy's own actions, and a copy of the policy. Each",
+                      "generated from the policy set's own actions, and a copy of the policy set. Each",
                       "directory has a README and answers for itself if you move it.", ""]
             for name, r in witnessed:
                 for w in r["witness"]:
@@ -479,7 +479,7 @@ def ask_model(plan: Plan, results: dict, out: Path, provider: str, model: str | 
         target = plan.directory / q.policy if q.policy else (
             plan.policies[0] if plan.policies else None)
         if target is None or not target.exists():
-            print(f"  skipping {q.heading!r}: names no policy in this directory", file=sys.stderr)
+            print(f"  skipping {q.heading!r}: names no policy set in this directory", file=sys.stderr)
             continue
 
         request = f"{q.text}\n\nThe policy file is {target}."
@@ -528,7 +528,7 @@ def scan_note(scan: screen.Report, *, withheld: bool, overridden: bool) -> dict[
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("directory", type=Path, help="a directory of .dw policies")
+    ap.add_argument("directory", type=Path, help="a directory of .dw policy sets")
     ap.add_argument("--output-dir", type=Path, default=None,
                     help="where to write findings.md, results.json and traces/ "
                          "(default: the directory itself)")
@@ -540,13 +540,13 @@ def main() -> int:
                     help="the LLM's model id; defaults to the provider's own")
     ap.add_argument("--attempts", type=int, default=None, help="session length bound")
     ap.add_argument("--smoke", type=int, nargs="?", const=1000, default=None, metavar="N",
-                    help="explore each policy as a random walk of N behaviours (default 1000) "
+                    help="explore each policy set as a random walk of N behaviours (default 1000) "
                          "instead of exhaustively -- for a set whose request space is too big to "
                          "exhaust. Reports `live` or `unknown` and NEVER vacuous, redundant or "
                          "dead: those are claims of absence, and a random walk cannot establish "
                          "one. The report says so")
     ap.add_argument("--max-fields", type=int, default=None, metavar="N",
-                    help="refuse a policy reading more than N input/output fields (default 4). "
+                    help="refuse a policy set reading more than N input/output fields (default 4). "
                          "The request space is the product of their domains, so raising this "
                          "trades runtime for reach rather than soundness")
     ap.add_argument("--allow-flagged-input", action="store_true",
@@ -564,10 +564,10 @@ def main() -> int:
 
     plan = discover(args.directory)
     if not plan.policies:
-        print(f"no .dw policies in {args.directory}", file=sys.stderr)
+        print(f"no .dw policy sets in {args.directory}", file=sys.stderr)
         return 3
 
-    print(f"{len(plan.policies)} polic(ies), {len(plan.properties)} stated intention(s), "
+    print(f"{len(plan.policies)} policy set(s), {len(plan.properties)} stated intention(s), "
           f"{len(plan.questions)} question(s)\n", file=sys.stderr)
 
     # THE INPUT SCAN, BEFORE ANYTHING READS THE INPUTS. The checks run in full whatever it finds:

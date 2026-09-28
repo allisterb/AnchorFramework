@@ -1,7 +1,7 @@
 TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
 Warning: Please run the Java VM which executes TLC with a throughput optimized garbage collector by passing the "-XX:+UseParallelGC" property.
 (Use the -nowarning option to disable this warning.)
-Running breadth-first search Model-Checking with fp 14 and seed 5087358399841694775 with 1 worker on 8 cores with 16344MB heap and 64MB offheap memory [pid: 63812] (Windows 10 10.0 amd64, Microsoft 11.0.16.1 x86_64, MSBDiskFPSet, DiskStateQueue).
+Running breadth-first search Model-Checking with fp 114 and seed -4238250227825114346 with 1 worker on 8 cores with 16344MB heap and 64MB offheap memory [pid: 24292] (Windows 10 10.0 amd64, Microsoft 11.0.16.1 x86_64, MSBDiskFPSet, DiskStateQueue).
 Parsing file C:\Projects\Anchor\tests\policies\traces\business_hours\Vacuity.tla
 Parsing file C:\Projects\Anchor\tests\policies\traces\business_hours\Integers.tla
 Parsing file C:\Projects\Anchor\tests\policies\traces\business_hours\Sequences.tla
@@ -18,9 +18,9 @@ Semantic processing of module PolicyUnderTest
 Semantic processing of module TLC
 Semantic processing of module DogwoodSemantics
 Semantic processing of module Vacuity
-Starting... (2026-09-14 10:08:44)
+Starting... (2026-09-28 04:46:26)
 Computing initial states...
-Finished computing initial states: 1 distinct state generated at 2026-09-14 10:08:44.
+Finished computing initial states: 1 distinct state generated at 2026-09-28 04:46:27.
 Error: Invariant NeverFires is violated.
 Error: The behavior up to this point is:
 State 1: <Initial predicate>
@@ -54,4 +54,4 @@ State 2: <Attempt line 239, col 5 to line 263, col 90 of module Vacuity>
 
 3 states generated, 3 distinct states found, 1 states left on queue.
 The depth of the complete state graph search is 2.
-Finished in 01s at (2026-09-14 10:08:44)
+Finished in 01s at (2026-09-28 04:46:27)

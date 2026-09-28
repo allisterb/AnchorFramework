@@ -42,5 +42,5 @@ still has to agree with — see `anchor explain` for it in English.
 
 ### `LosesWriteAfter10m`
 
-with gap = 960, the Dogwood engine ALLOWS this session at t=961, where `LosesWriteAfter10m` says your policy must REFUSE it
+with gap = 960, the Dogwood engine ALLOWS this session at t=961, where `LosesWriteAfter10m` says your policy set must REFUSE it
 

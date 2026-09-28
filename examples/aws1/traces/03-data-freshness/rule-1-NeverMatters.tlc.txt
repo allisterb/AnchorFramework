@@ -1,7 +1,7 @@
 TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
 Warning: Please run the Java VM which executes TLC with a throughput optimized garbage collector by passing the "-XX:+UseParallelGC" property.
 (Use the -nowarning option to disable this warning.)
-Running breadth-first search Model-Checking with fp 64 and seed 1793030010398117316 with 1 worker on 8 cores with 16344MB heap and 64MB offheap memory [pid: 21572] (Windows 10 10.0 amd64, Microsoft 11.0.16.1 x86_64, MSBDiskFPSet, DiskStateQueue).
+Running breadth-first search Model-Checking with fp 12 and seed 3411321881852440206 with 1 worker on 8 cores with 16344MB heap and 64MB offheap memory [pid: 37356] (Windows 10 10.0 amd64, Microsoft 11.0.16.1 x86_64, MSBDiskFPSet, DiskStateQueue).
 Parsing file C:\Projects\Anchor\examples\aws1\traces\03-data-freshness\Vacuity.tla
 Parsing file C:\Projects\Anchor\examples\aws1\traces\03-data-freshness\Integers.tla
 Parsing file C:\Projects\Anchor\examples\aws1\traces\03-data-freshness\Sequences.tla
@@ -18,9 +18,9 @@ Semantic processing of module PolicyUnderTest
 Semantic processing of module TLC
 Semantic processing of module DogwoodSemantics
 Semantic processing of module Vacuity
-Starting... (2026-09-14 18:59:34)
+Starting... (2026-09-28 04:44:26)
 Computing initial states...
-Finished computing initial states: 1 distinct state generated at 2026-09-14 18:59:35.
+Finished computing initial states: 1 distinct state generated at 2026-09-28 04:44:26.
 Model checking completed. No error has been found.
   Estimates of the probability that TLC did not check all reachable states
   because two distinct states had the same fingerprint:
@@ -28,4 +28,4 @@ Model checking completed. No error has been found.
 15 states generated, 15 distinct states found, 0 states left on queue.
 The depth of the complete state graph search is 4.
 The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 2 and the 95th percentile is 2).
-Finished in 01s at (2026-09-14 18:59:35)
+Finished in 01s at (2026-09-28 04:44:26)

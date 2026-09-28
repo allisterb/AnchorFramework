@@ -1069,7 +1069,7 @@ def mutation_report(args, policies: list[dict], vocab: dict, keys, held: bool) -
 
     if total and caught == 0:
         print("\nTHE PROPERTY CAUGHT NOTHING. It holds of the policy, and it holds of every broken\n"
-              "version of the policy too -- so it is not constraining this policy at all. Either it\n"
+              "version of the policy set too -- so it is not constraining this policy set at all. Either it\n"
               "ranges over requests the policy never sees, or it asserts something trivially true.\n"
               "A property nothing can violate is not a check.")
         # ITS OWN EXIT CODE, not 1. "Your property is broken" and "your property is weak" are
@@ -1346,7 +1346,7 @@ def main() -> int:
     ap.add_argument("--mutation-score", action="store_true",
                     help="after a --property check that HOLDS, break the policy in small ways and "
                          "report which breakages the property notices. A property that survives "
-                         "every one of them is not constraining this policy -- it holds, and it "
+                         "every one of them is not constraining this policy set -- it holds, and it "
                          "would hold of anything")
     ap.add_argument("--mutants", type=int, default=None, metavar="N",
                     help="cap the number of mutants tried (default: all of them)")

@@ -42,5 +42,5 @@ still has to agree with — see `anchor explain` for it in English.
 
 ### `FreshPriceAloneIsNotEnough`
 
-with prereq = "freshPriceOnly", the Dogwood engine ALLOWS this session at t=40, where `FreshPriceAloneIsNotEnough` says your policy must REFUSE it
+with prereq = "freshPriceOnly", the Dogwood engine ALLOWS this session at t=40, where `FreshPriceAloneIsNotEnough` says your policy set must REFUSE it
 

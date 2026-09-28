@@ -42,5 +42,5 @@ still has to agree with — see `anchor explain` for it in English.
 
 ### `KeepsWriteWhileAdvisorEngaged`
 
-with gap = 1, the Dogwood engine REFUSES this session at t=2, where `KeepsWriteWhileAdvisorEngaged` says your policy must ALLOW it
+with gap = 1, the Dogwood engine REFUSES this session at t=2, where `KeepsWriteWhileAdvisorEngaged` says your policy set must ALLOW it
 

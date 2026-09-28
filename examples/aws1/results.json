@@ -812,7 +812,7 @@
             }
           ],
           "why": "",
-          "sentence": "with prereq = \"freshPriceOnly\", the Dogwood engine ALLOWS this session at t=40, where `FreshPriceAloneIsNotEnough` says your policy must REFUSE it",
+          "sentence": "with prereq = \"freshPriceOnly\", the Dogwood engine ALLOWS this session at t=40, where `FreshPriceAloneIsNotEnough` says your policy set must REFUSE it",
           "trace": "@11 scope(principal: AgentCore::OAuthUser::\"agent\", resource: AgentCore::Gateway::\"gw\") AgentCore::Action::\"get_market_price\"::response(input: { }, output: { }, callerPrincipal: AgentCore::OAuthUser::\"agent\", callerResource: AgentCore::Gateway::\"gw\", requestId: \"e1\")\n@40 scope(principal: AgentCore::OAuthUser::\"agent\", resource: AgentCore::Gateway::\"gw\") request_context(input: { profile_id: 1 }) AgentCore::Action::\"execute_trade\"::request(input: { profile_id: 1 }, callerPrincipal: AgentCore::OAuthUser::\"agent\", callerResource: AgentCore::Gateway::\"gw\", requestId: \"e2\")\n",
           "directory": "examples\\aws1\\traces\\agent-policy-TradeGate\\witness",
           "command": "dogwood replay --policy-schema generated.cedarschema --trace FreshPriceAloneIsNotEnough.log agent-policy.dw"
@@ -923,7 +923,7 @@
             }
           ],
           "why": "",
-          "sentence": "with gap = 1, the Dogwood engine REFUSES this session at t=2, where `KeepsWriteWhileAdvisorEngaged` says your policy must ALLOW it",
+          "sentence": "with gap = 1, the Dogwood engine REFUSES this session at t=2, where `KeepsWriteWhileAdvisorEngaged` says your policy set must ALLOW it",
           "trace": "@1 scope(principal: AgentCore::OAuthUser::\"agent\", resource: AgentCore::Gateway::\"gw\") AgentCore::Action::\"interact_advisor\"::response(input: { }, output: { }, callerPrincipal: AgentCore::OAuthUser::\"agent\", callerResource: AgentCore::Gateway::\"gw\", requestId: \"e1\")\n@2 scope(principal: AgentCore::OAuthUser::\"agent\", resource: AgentCore::Gateway::\"gw\") request_context(input: { }) AgentCore::Action::\"execute_trade\"::request(input: { }, callerPrincipal: AgentCore::OAuthUser::\"agent\", callerResource: AgentCore::Gateway::\"gw\", requestId: \"e2\")\n",
           "directory": "examples\\aws1\\traces\\07-trust-decay-TrustDecay\\witness",
           "command": "dogwood replay --policy-schema generated.cedarschema --trace KeepsWriteWhileAdvisorEngaged.log 07-trust-decay.dw"
@@ -998,7 +998,7 @@
             }
           ],
           "why": "",
-          "sentence": "with gap = 960, the Dogwood engine ALLOWS this session at t=961, where `LosesWriteAfter10m` says your policy must REFUSE it",
+          "sentence": "with gap = 960, the Dogwood engine ALLOWS this session at t=961, where `LosesWriteAfter10m` says your policy set must REFUSE it",
           "trace": "@1 scope(principal: AgentCore::OAuthUser::\"agent\", resource: AgentCore::Gateway::\"gw\") AgentCore::Action::\"interact_advisor\"::response(input: { }, output: { }, callerPrincipal: AgentCore::OAuthUser::\"agent\", callerResource: AgentCore::Gateway::\"gw\", requestId: \"e1\")\n@961 scope(principal: AgentCore::OAuthUser::\"agent\", resource: AgentCore::Gateway::\"gw\") request_context(input: { }) AgentCore::Action::\"execute_trade\"::request(input: { }, callerPrincipal: AgentCore::OAuthUser::\"agent\", callerResource: AgentCore::Gateway::\"gw\", requestId: \"e2\")\n",
           "directory": "examples\\aws1\\traces\\07-trust-decay-TrustDecay10\\witness",
           "command": "dogwood replay --policy-schema generated.cedarschema --trace LosesWriteAfter10m.log 07-trust-decay.dw"
@@ -1012,5 +1012,33 @@
     }
   },
   "smoke": null,
-  "unpaired": []
+  "unpaired": [],
+  "inputScan": {
+    "files": [
+      "01-workflow-sequencing.dw",
+      "02-output-to-input.dw",
+      "03-data-freshness.dw",
+      "04-cumulative-budget-cap.dw",
+      "05-human-approval.dw",
+      "07-trust-decay.dw",
+      "agent-policy.dw",
+      "intents.md",
+      "questions.md",
+      "TradeGate.cfg",
+      "TradeGate.tla",
+      "TrustDecay.cfg",
+      "TrustDecay.tla",
+      "TrustDecay10.cfg",
+      "TrustDecay10.tla"
+    ],
+    "unreadable": [],
+    "summary": "15 input files scanned: clean",
+    "high": 0,
+    "medium": 0,
+    "hits": [],
+    "census": {
+      "U+2014": 4
+    },
+    "modelWithheld": false
+  }
 }

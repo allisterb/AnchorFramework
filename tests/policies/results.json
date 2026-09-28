@@ -2151,7 +2151,7 @@
       "kind": "derived",
       "_failed": true,
       "exitCode": 2,
-      "_why": "REFUSED: syntax_broken.dw is outside the modelled subset\n  expected '::', got '{'\n\nAND IT IS NOT VALID DOGWOOD EITHER. The reference implementation refuses to parse\nthis file, so the refusal above is not a limit of the modelled subset -- there is a\nsyntax error in the policy. `dogwood check-parse` says:\n\n    \u00c3\u2014 unexpected token `{`, expected comparison operator\n        \u00e2\u2022\u00ad\u00e2\u201d\u20ac[20:9]\n     19 \u00e2\u201d\u201a         context.input.profit < 0 && temporal {\n     20 \u00e2\u201d\u201a \u00e2\u2022\u00ad\u00e2\u201d\u20ac\u00e2\u2013\u00b6         formerly within 24h (\n     21 \u00e2\u201d\u201a \u00e2\u201d\u201a               AgentCore::Action::\"execute_buy\"{\n     22 \u00e2\u201d\u201a \u00e2\u201d\u201a                   stock_symbol: context.input.stock_symbol}\n     23 \u00e2\u201d\u201a \u00e2\u201d\u201a           )\n     24 \u00e2\u201d\u201a \u00e2\u201d\u0153\u00e2\u201d\u20ac\u00e2\u2013\u00b6     }\n        \u00c2\u00b7 \u00e2\u2022\u00b0\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac unexpected token `{`, expected comparison operator\n     25 \u00e2\u201d\u201a     };\n        \u00e2\u2022\u00b0\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac\u00e2\u201d\u20ac"
+      "_why": ""
     },
     "vacuous_two_terms.dw": {
       "kind": "derived",
@@ -2471,11 +2471,73 @@
   "unpaired": [
     {
       "module": "eval_join.tla",
-      "why": "its header names no policy in this directory -- add `<policy>.dw` to it"
+      "why": "its header names no policy set in this directory -- add `<policy-set>.dw` to it"
     },
     {
       "module": "tagged_session.tla",
-      "why": "its header names no policy in this directory -- add `<policy>.dw` to it"
+      "why": "its header names no policy set in this directory -- add `<policy-set>.dw` to it"
     }
-  ]
+  ],
+  "inputScan": {
+    "files": [
+      "added_action.dw",
+      "aggregate_cap.cfg",
+      "aggregate_cap.dw",
+      "aggregate_cap.tla",
+      "anchor.cedarschema",
+      "approval_gate_error.dw",
+      "approval_gate_request.dw",
+      "approval_gate_response.dw",
+      "business_hours.dw",
+      "business_hours_impossible.dw",
+      "dead_forbid.dw",
+      "docs_trading.dw",
+      "docs_trading_forbidden.dw",
+      "edit_diverges_both_ways.dw",
+      "edit_diverges_both_ways_old.dw",
+      "eval_join.cfg",
+      "eval_join.dw",
+      "eval_join.tla",
+      "firewall.cfg",
+      "firewall.dw",
+      "firewall.tla",
+      "firewall_bad_field.cfg",
+      "firewall_bad_field.tla",
+      "firewall_ip.cfg",
+      "firewall_ip.dw",
+      "firewall_ip.tla",
+      "firewall_ip_narrow.dw",
+      "firewall_noperm.dw",
+      "firewall_open.dw",
+      "firewall_unparseable.cfg",
+      "firewall_unparseable.tla",
+      "like_impossible.dw",
+      "like_prefix.dw",
+      "like_two_patterns.dw",
+      "long_overflow.dw",
+      "order_decimal.dw",
+      "order_long.dw",
+      "ordering_live.dw",
+      "overridden_permit.dw",
+      "redundant_permit.dw",
+      "redundant_permit_minimal.dw",
+      "scope_bind.dw",
+      "session_gate.dw",
+      "string_output.dw",
+      "syntax_broken.dw",
+      "tagged_session.cfg",
+      "tagged_session.tla",
+      "vacuous_two_terms.dw"
+    ],
+    "unreadable": [],
+    "summary": "48 input files scanned: clean",
+    "high": 0,
+    "medium": 0,
+    "hits": [],
+    "census": {
+      "U+2014": 3,
+      "U+00D7": 1
+    },
+    "modelWithheld": false
+  }
 }
