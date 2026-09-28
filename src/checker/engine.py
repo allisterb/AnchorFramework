@@ -64,8 +64,12 @@ def check_parse(policy: Path, *, dogwood: Path = DOGWOOD, timeout: int = 60) -> 
         return {"ran": False, "ok": False,
                 "output": f"no dogwood binary at {_short(dogwood)} -- {BUILD_IT}"}
     try:
+        # UTF-8, stated: dogwood is Rust and writes UTF-8 -- its diagnostics draw boxes and arrows
+        # -- while `text=True` alone decodes with the locale, cp1252 on Windows. That returned
+        # mojibake, and on a byte cp1252 has no mapping for, lost the diagnostic entirely.
         proc = subprocess.run([str(dogwood), "check-parse", str(policy)],
-                              capture_output=True, text=True, timeout=timeout)
+                              capture_output=True, text=True, encoding="utf-8", errors="replace",
+                              timeout=timeout)
     except (OSError, subprocess.SubprocessError) as e:
         return {"ran": False, "ok": False, "output": f"could not run {_short(dogwood)}: {e}"}
 

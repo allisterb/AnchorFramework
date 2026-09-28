@@ -109,7 +109,10 @@ def checker(args: list[str], *, timeout: int = 900) -> subprocess.CompletedProce
         reused += 1
         return hit
 
-    proc = subprocess.run(cmd, cwd=REPO, capture_output=True, text=True, timeout=timeout)
+    # UTF-8 both ways: PYTHONUTF8 makes the child WRITE it, and the encoding makes us READ it.
+    # Either half alone breaks on Windows, whose locale default is cp1252.
+    proc = subprocess.run(cmd, cwd=REPO, capture_output=True, text=True, encoding="utf-8", errors="replace",
+                          env={**os.environ, "PYTHONUTF8": "1"}, timeout=timeout)
     ran += 1
 
     # A TIMEOUT IS NOT CACHED, because `subprocess.run` raises rather than returning and there is

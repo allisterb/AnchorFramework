@@ -221,7 +221,7 @@ def replay(witness: Path, log: Path, policy: Path, schema: Path) -> tuple[list[d
         return [], f"{DOGWOOD} not built, so no verdicts were recorded"
 
     proc = subprocess.run([str(DOGWOOD), *cmd], cwd=witness, capture_output=True,
-                          text=True, timeout=120)
+                          text=True, encoding="utf-8", errors="replace", timeout=120)
     out = proc.stdout + proc.stderr
     decisions = [
         {

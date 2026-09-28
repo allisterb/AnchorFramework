@@ -68,12 +68,12 @@ def run_tlc(module: str, cwd: Path, scratch: Path | None = None,
     with (tempfile.TemporaryDirectory(prefix="anchor-tlc-") if scratch is None
           else nullcontext(str(scratch))) as tmp:
         proc = subprocess.run(
-            ["java", *java_options(), f"-Djava.io.tmpdir={tmp}",
+            ["java", *JAVA_UTF8, *java_options(), f"-Djava.io.tmpdir={tmp}",
              "-cp", str(find_jar()), "tlc2.TLC", "-cleanup",
              "-metadir", str(Path(tmp) / "states"),
              *(extra or []),
              "-config", f"{module}.cfg", f"{module}.tla"],
-            cwd=cwd, capture_output=True, text=True)
+            cwd=cwd, capture_output=True, text=True, encoding="utf-8", errors="replace")
         return proc.returncode == 0, proc.stdout + proc.stderr
 
 
@@ -93,9 +93,9 @@ def run_sany(module: str, cwd: Path) -> tuple[bool, str]:
     """
     with tempfile.TemporaryDirectory(prefix="anchor-sany-") as tmp:
         proc = subprocess.run(
-            ["java", *java_options(), f"-Djava.io.tmpdir={tmp}",
+            ["java", *JAVA_UTF8, *java_options(), f"-Djava.io.tmpdir={tmp}",
              "-cp", str(find_jar()), "tla2sany.SANY", f"{module}.tla"],
-            cwd=cwd, capture_output=True, text=True)
+            cwd=cwd, capture_output=True, text=True, encoding="utf-8", errors="replace")
 
     out = proc.stdout + proc.stderr
     broken = ("*** Errors" in out or "*** Abort" in out or "Could not parse" in out
@@ -161,11 +161,11 @@ def run_eval(expr: str, extends: str, cwd: Path, spec: str | None = "Spec") -> t
 
     with tempfile.TemporaryDirectory(prefix="anchor-eval-") as tmp:
         proc = subprocess.run(
-            ["java", *java_options(), f"-Djava.io.tmpdir={tmp}",
+            ["java", *JAVA_UTF8, *java_options(), f"-Djava.io.tmpdir={tmp}",
              "-cp", str(find_jar()), "tlc2.TLC", "-deadlock", "-cleanup",
              "-metadir", str(Path(tmp) / "states"),
              "-config", f"{name}.cfg", f"{name}.tla"],
-            cwd=cwd, capture_output=True, text=True)
+            cwd=cwd, capture_output=True, text=True, encoding="utf-8", errors="replace")
 
     out = proc.stdout + proc.stderr
     lines = out.splitlines()
@@ -179,6 +179,15 @@ def run_eval(expr: str, extends: str, cwd: Path, spec: str | None = "Spec") -> t
 
     return True, "\n".join(lines[first + 1:last]).strip()
 
+
+# UTF-8 in and out, whatever the platform: the .tla files are UTF-8, and so is how we read
+# what TLC prints. Java's default charset is the platform's -- cp1252 on Windows -- so without
+# these a non-ASCII string in a module was read as cp1252 and printed back as mojibake, while
+# Linux, and so CI and the container, already said the same thing correctly. `file.encoding`
+# governs both directions on Java 11-17; 18 made UTF-8 the default for files but left stdout
+# on the platform encoding until `stdout.encoding` and `stderr.encoding` arrived in 19. A JVM
+# that does not know a property simply ignores it, so all three are safe everywhere.
+JAVA_UTF8 = ["-Dfile.encoding=UTF-8", "-Dstdout.encoding=UTF-8", "-Dstderr.encoding=UTF-8"]
 
 # The JVM flags to start TLC with, and there is deliberately no default.
 JAVA_OPTIONS = "ANCHOR_TLC_JAVA_OPTS"

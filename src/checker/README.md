@@ -7,7 +7,11 @@ asking TLC questions the policy text cannot answer about itself.
 which is Dogwood's term (see
 [TemporalPolicy](../../specs/policy/TemporalPolicy/README.md) for the sources). This README says
 *rule* for one policy, as AWS's own Dogwood posts often do, because every verdict here is about one
-statement's effect on the whole set.
+statement's effect on the whole set. A *session* is one AgentCore
+[*policy session*](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/policy-temporal.html):
+the history of related requests a temporal condition can see. Every verdict here ranges over all
+sessions up to `--attempts` attempts long (3 by default), which is the bound a VACUOUS verdict is
+provisional on.
 
 Also reachable as `anchor check`, which finds the interpreter and the Anchor tree itself and
 passes the exit code straight through — see [`Anchor.CLI`](../Anchor.CLI).

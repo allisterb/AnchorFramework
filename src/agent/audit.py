@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -178,7 +179,10 @@ def run_checker(policy: Path, *, against: Path | None = None, property_module: P
     if smoke is not None and property_module is None:
         args += ["--smoke", str(smoke)]
 
-    proc = subprocess.run(args, cwd=REPO, capture_output=True, text=True, timeout=timeout)
+    # UTF-8 both ways: PYTHONUTF8 makes the child WRITE it, and the encoding makes us READ it.
+    # Either half alone breaks on Windows, whose locale default is cp1252.
+    proc = subprocess.run(args, cwd=REPO, capture_output=True, text=True, encoding="utf-8", errors="replace",
+                          env={**os.environ, "PYTHONUTF8": "1"}, timeout=timeout)
 
     # A property run prints prose, not JSON: its verdict is the exit code and its detail is the
     # BROKEN lines. Carried as text rather than forced into a shape it does not have.

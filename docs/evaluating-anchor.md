@@ -5,7 +5,11 @@ carries all of them. Nothing is installed on your machine and nothing is cloned.
 
 **Vocabulary.** A *policy* is one `permit` or `forbid` statement, and a `.dw` file is a *policy set*
 — Dogwood's term, after Cedar's. This page also says *rule* for one policy, as AWS's own Dogwood
-posts often do, because "the policy" is otherwise ambiguous between one statement and the file.
+posts often do, because "the policy" is otherwise ambiguous between one statement and the file. A
+*session* is one AgentCore
+[*policy session*](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/policy-temporal.html):
+the history of related requests a temporal condition can see. Anchor checks every possible session
+up to `--attempts` attempts long (3 by default), not one that was recorded.
 
 ## Getting it
 

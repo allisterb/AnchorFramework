@@ -44,6 +44,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -414,7 +415,7 @@ def replay(policy: Path, trace: Path, schema: Path, dogwood: Path = DOGWOOD,
     # `--format` belongs to the verb, not to the binary, and it is added HERE rather than in
     # `replay_args` because the command a person is told to run should give them human output.
     proc = subprocess.run([str(dogwood), verb, "--format", "json", *rest],
-                          capture_output=True, text=True, timeout=120)
+                          capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120)
 
     if proc.returncode != 0:
         return {"_failed": True, "_why": (proc.stdout + proc.stderr).strip()[-1200:]}
@@ -689,7 +690,8 @@ def main() -> int:
     checker = REPO / "src" / "checker" / "properties.py"
     proc = subprocess.run([sys.executable, str(checker), str(args.policy),
                            "--property", str(args.module)],
-                          cwd=REPO, capture_output=True, text=True, timeout=3600)
+                          cwd=REPO, capture_output=True, text=True, encoding="utf-8", errors="replace",
+                          env={**os.environ, "PYTHONUTF8": "1"}, timeout=3600)
     found = confirm(args.policy, args.module, proc.stdout + proc.stderr, keep=args.keep)
 
     if args.json:

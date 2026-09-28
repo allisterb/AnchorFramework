@@ -244,7 +244,10 @@ Bedrock AgentCore service, which answers `POST /invocations` rather than taking 
 **Vocabulary.** A **policy** is one `permit` or `forbid` statement, and a `.dw` file is a **policy
 set** — Dogwood's term, after Cedar's `PolicySet`. Anchor also calls a policy a **rule**, as AWS's own
 Dogwood posts often do, because "the policy" is otherwise ambiguous between one statement and the
-file. Every question below is about what the whole set decides.
+file. Every question below is about what the whole set decides. A **session** is one AgentCore
+[*policy session*](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/policy-temporal.html):
+the history of related requests a temporal condition can see. Anchor checks every possible session
+up to `--attempts` attempts long (3 by default), not one that was recorded.
 
 Three questions about a Dogwood policy set, each answered with a **witness session** or a bounded
 no — nothing to configure, and no statement of intent required:

@@ -70,7 +70,14 @@ public class PythonProcess : Runtime
             // in 5 seconds over HTTP and never at all over stdio. Nothing here reads stdin, which
             // is exactly why this was invisible until an agent drove the server the way a host
             // does.
-            RedirectStandardInput = true
+            RedirectStandardInput = true,
+
+            // UTF-8 both ways, with PYTHONUTF8 below: that makes the child WRITE UTF-8, and these
+            // make us READ it. Left to defaults, Windows has the child write cp1252 and us read the
+            // console's code page, so a checker relaying dogwood's box-drawn diagnostic crashed
+            // writing it or arrived as mojibake.
+            StandardOutputEncoding = utf8,
+            StandardErrorEncoding = utf8
         };
         // ArgumentList quotes each element, which a joined string would not. These arguments are
         // policy paths that reach us from an agent, so a space in one is ordinary rather than
@@ -84,6 +91,7 @@ public class PythonProcess : Runtime
         // Unbuffered, so a caller watching a long run sees it progress instead of nothing followed
         // by everything.
         info.Environment["PYTHONUNBUFFERED"] = "1";
+        info.Environment["PYTHONUTF8"] = "1";
 
         var output = new StringBuilder();
         var errors = new StringBuilder();
@@ -248,6 +256,9 @@ public class PythonProcess : Runtime
     #endregion
 
     #region Fields
+
+    /// <summary>UTF-8 without a byte-order mark, which is what Python writes under PYTHONUTF8.</summary>
+    static readonly Encoding utf8 = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
 
     static readonly ConcurrentDictionary<string, bool> runnable = new();
 

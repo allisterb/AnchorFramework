@@ -71,6 +71,11 @@ public class TLCProcess : Runtime
             (Environment.GetEnvironmentVariable("ANCHOR_TLC_JAVA_OPTS") ?? "")
                 .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
         {
+            // UTF-8 in and out, as in src/translator/tlc.py: the JVM's default charset is the
+            // platform's -- cp1252 on Windows -- for reading .tla files and for writing stdout.
+            // file.encoding covers both on Java 11-17; stdout/stderr.encoding are Java 19+, and a
+            // JVM ignores properties it does not know.
+            "-Dfile.encoding=UTF-8", "-Dstdout.encoding=UTF-8", "-Dstderr.encoding=UTF-8",
             $"-Djava.io.tmpdir={metadir}",
             "-cp", tools.Value, "tlc2.TLC", "-tool", "-metadir", metadir
         };
@@ -86,7 +91,11 @@ public class TLCProcess : Runtime
             WorkingDirectory = Path.GetDirectoryName(Path.GetFullPath(spec)),
             UseShellExecute = false,
             RedirectStandardOutput = true,
-            RedirectStandardError = true
+            RedirectStandardError = true,
+            // Stated, because the default for a redirected stream on Windows is the console's code
+            // page -- whatever that happens to be -- not what the JVM was told to write.
+            StandardOutputEncoding = utf8,
+            StandardErrorEncoding = utf8
         };
         // ArgumentList quotes each element, which a joined string would not: both the JDK path and
         // the spec paths routinely contain spaces.
@@ -200,6 +209,9 @@ public class TLCProcess : Runtime
     #endregion
 
     #region Fields
+
+    /// <summary>UTF-8 without a byte-order mark, which is what the JVM writes when told UTF-8.</summary>
+    private static readonly Encoding utf8 = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
 
     private static readonly Lazy<Dictionary<int, string>> codeNames = new(() =>
         typeof(EC).GetFields(BindingFlags.Public | BindingFlags.Static)

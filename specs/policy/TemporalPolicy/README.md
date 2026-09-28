@@ -27,6 +27,14 @@ at the commit `ext/dogwood` pins), and its parser produces a `ParsedPolicySet` a
 `LoweredPolicySet`, after Cedar's `PolicySet`. AWS's AgentCore posts say *policy document* for the
 natural-language text a policy set is authored *from* — the brief here — never for the `.dw` file.
 
+A **session** is one AgentCore
+[*policy session*](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/policy-temporal.html):
+"a sequence of related Gateway invocations grouped under one session ID", whose history is all a
+temporal condition can see. The specs here range over every possible session up to a bound
+(`--attempts`, 3 by default), never over one recorded session. Within a session Dogwood can narrow
+the history further: its default event schema pins `callerPrincipal`, which is what `--pinned`
+models.
+
 **Point it at any `.dw` file:**
 
 ```bash
