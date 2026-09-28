@@ -59,7 +59,7 @@
   <!-- Shared assembly version. Projects opt in by mapping their AssemblyVersion /
        FileVersion / Version to this property, so bumping the version here restamps them all on the next build. -->
   <PropertyGroup Label="Versioning">
-    <ProjectAssemblyVersion>0.1.2</ProjectAssemblyVersion>
+    <ProjectAssemblyVersion>0.1.3</ProjectAssemblyVersion>
 
     <!-- Version is the one the CLI prints. AssemblyVersion and FileVersion were mapped per project
          and Version was not, so it kept the SDK default of 1.0.0 and the banner reported a version
