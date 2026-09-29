@@ -161,6 +161,8 @@ public class CliCheckTests : TestsRuntime
                       "--no-llm applies only with --full"),
                      (new[] { "check", "tests/policies/dead_forbid.dw", "--allow-flagged-input" },
                       "--allow-flagged-input applies only with --full"),
+                     (new[] { "check", "tests/policies/dead_forbid.dw", "--config", "x.json" },
+                      "--config applies only with --full"),
                      (new[] { "check", "examples/aws1", "--property", "x.tla" },
                       "--property applies to a single policy set file, not a directory"),
                      (new[] { "check", "examples/aws1", "--full", "--keep", "x" },
@@ -173,6 +175,29 @@ public class CliCheckTests : TestsRuntime
 
             Assert.True(exit == 2, $"{string.Join(' ', args)} exited {exit}: {stderr}");
             Assert.Contains(why, stderr);
+        }
+    }
+
+    /// <summary>
+    /// An option that takes a value, given none, is refused. The parser dropped it silently, so a
+    /// bare `--event-schema` checked under the default reading and a bare `--llm` passed every
+    /// refusal. None of these has --full, so a regression here reaches no LLM.
+    /// </summary>
+    [CliFact]
+    public async Task AnOptionWithNoValueIsRefusedNotDropped()
+    {
+        foreach (var (args, name) in new[]
+                 {
+                     (new[] { "check", "tests/policies/dead_forbid.dw", "--llm" }, "--llm"),
+                     (new[] { "check", "tests/policies/dead_forbid.dw", "--event-schema" }, "--event-schema"),
+                     (new[] { "check", "tests/policies/dead_forbid.dw", "--attempts", "--verbose" }, "--attempts"),
+                     (new[] { "check", "tests/policies/dead_forbid.dw", "--output-dir=" }, "--output-dir")
+                 })
+        {
+            var (exit, _, stderr) = await RunAsync(args);
+
+            Assert.True(exit == 2, $"{string.Join(' ', args)} exited {exit}: {stderr}");
+            Assert.Contains($"{name} needs a value", stderr);
         }
     }
 

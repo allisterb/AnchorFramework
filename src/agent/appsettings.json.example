@@ -16,6 +16,18 @@
     "Location": "global"
   },
 
+  "_model_comment": [
+    "The model each provider runs when --llm names none. Optional: without it, Gemini runs",
+    "gemini-2.5-flash and Bedrock the Strands SDK's default. One per provider, because a model id",
+    "means nothing to the other one; --llm overrides either. Gemini has its own block rather than",
+    "sharing Google's, because the Google block is left out for an ordinary Developer API key.",
+    "`anchor check --full --provider auto` runs whatever is configured here, and stops before the",
+    "run, after a one-token test request, if it cannot be reached."
+  ],
+  "Gemini": {
+    "Model": "gemini-2.5-flash"
+  },
+
   "_bedrock_comment": [
     "Bedrock takes its API key as a BEARER TOKEN in the environment, not as a constructor",
     "argument: botocore builds the name from the service's signing name, so it reads",
@@ -46,6 +58,7 @@
   "Bedrock": {
     "Region": "us-east-1",
     "Profile": "",
-    "Streaming": true
+    "Streaming": true,
+    "Model": ""
   }
 }

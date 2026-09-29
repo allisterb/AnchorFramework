@@ -21,7 +21,7 @@ weaker evidence of intent than a key someone pasted.
 | provider class | `strands.models.BedrockModel` | `strands.models.gemini.GeminiModel` |
 | ships with `strands-agents`? | yes, and boto3 is already a dependency | the module ships; the `google-genai` SDK underneath it is a separate pin |
 | extra package needed | **none** — boto3 is already there, and the `botocore[crt]` the error message asks for is avoidable; see below | `google-genai`, already in `requirements.in` |
-| default model | the provider's regional default | `gemini-2.5-flash` |
+| default model | `Bedrock:Model`, else the provider's regional default | `Gemini:Model`, else `gemini-2.5-flash` |
 | credential shape | bearer token **in the environment**, or ordinary AWS credentials | API key |
 | verified end to end here | authenticated, routed, tool-negotiated — generation blocked by account quota | **yes, including in the container** |
 
@@ -30,6 +30,29 @@ Both are configured the same way: environment variable first, then `appsettings.
 beside it and fill in what you need. That file is gitignored by `**/*appsettings.json`; the
 `.example` is not, because the pattern ends at `.json`. **Keep it that way — the example must never
 hold a real key.**
+
+## Choosing the model
+
+`--llm <model-id>` names it for one run. To name it once, set the provider's `Model`:
+
+```json
+{
+  "Gemini":  { "Model": "gemini-3.7-flash" },
+  "Bedrock": { "Region": "us-east-1", "Model": "global.anthropic.claude-sonnet-4-6" }
+}
+```
+
+One per provider, because a model id means nothing to the other one. The order is `--llm`, then the
+setting, then the default in the table above; every mode uses the same order (`anchor check --full`,
+`auto`, `hitl`, the pipeline), and an audit's summary says which of the three it used. Gemini's
+setting is in a block of its own rather than in `Google`, because the `Google` block is left out for
+an ordinary Developer API key.
+
+**`anchor check --full --provider auto` means "use whatever is configured here, and stop if it cannot
+be reached".** `--provider`, `--llm` and `--config` each make an audit's LLM *required*: before any
+check runs, a one-token test request goes through the same client the questions will use, and a bad
+key, an unknown model, a model the account may not call or one that cannot take tools stops the run
+there with exit 3. Without any of them the LLM is optional, and a problem is a warning.
 
 ## Google Gemini
 
@@ -194,6 +217,9 @@ and no amount of error-reading will establish that.
 | `This model doesn't support tool use in streaming mode` | `Bedrock:Streaming: false` or `--no-stream` |
 | `Model use case details have not been submitted` | account state — the model is not enabled for it. Not wiring |
 | `Too many tokens per day` | account quota, which resets. Not wiring |
+| `404 NOT_FOUND ... was not found or your project does not have access` | Gemini through an Agent Platform key has no model by that id, or the project may not use it. Check `--llm` or `Gemini:Model` |
+| `The provided model identifier is invalid` | no Bedrock model by that id in this region. Check `--llm` or `Bedrock:Model` |
+| `on-demand throughput isn't supported` | the model is called through an inference profile: use the profile id (`us.`, `global.`), not the bare model id |
 | `InvalidClientTokenId` from `aws sts get-caller-identity` | the named profile's keys are dead. Check the profile before blaming the key |
 | the agent prints each answer twice | `callback_handler=None` is missing; streaming output and the return value both print |
 

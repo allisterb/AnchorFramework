@@ -224,11 +224,14 @@ docker run --rm -v "$PWD:/work" -v "$HOME/.anchor:/config:ro" \
     anchor auto policy.dw --config /config/appsettings.json --intent "..."
 ```
 
-`--config` works outside a container too, and `ANCHOR_APPSETTINGS` is the same thing from the
-environment. Without either, the file is looked for beside `src/agent/` and at the repo root — which
+`check --full` takes `--config` too, for the LLM that answers `questions.md`. It works outside a
+container as well, and `ANCHOR_APPSETTINGS` is the same thing from the environment. Without either, the file is looked for beside `src/agent/` and at the repo root — which
 is where a checkout keeps it and where an image has neither. A single `-e GEMINI_API_KEY` also works
-if a key is all you need. A path that is not there is refused with exit 2 rather than silently
-falling back, so a typo fails loudly instead of running with no key.
+if a key is all you need. A `--config` path that is not there is refused with exit 2, so a typo
+fails loudly instead of running with no key. An `ANCHOR_APPSETTINGS` path that is not there means
+no settings file at all, never a fall back to the search, so a different file's key is not used
+by accident. Every LLM mode warns about it before its first call, even when the environment
+supplies the key, because the file's `Model` and `Region` settings then quietly stop applying.
 
 Dafny and z3 are **not** in it: neither is on the Dogwood policy path, so no verb reaches the
 solver. [`deploy/Dockerfile.agentcore`](deploy/Dockerfile.agentcore) is a different image and a different shape — the
@@ -311,6 +314,24 @@ overwrites the directory's.
 For a single policy set, `--full --property Other.tla` checks a module as well as the ones found by
 header: one kept elsewhere, not yet given the header, or written for several policy sets. It is
 added, never substituted, and the report marks it as given.
+
+Both modes start by saying what they are about to do, from the options given: what is checked and
+how exhaustively, under which reading, which property modules and questions, which LLM and where its
+credentials come from, and where the report goes. Anything that can be known to be wrong is said
+there too, before the first TLC run.
+
+**The LLM is the optional part of an audit.** `--llm` picks the model for one run; to name it once,
+set `Gemini:Model` or `Bedrock:Model` in `appsettings.json` (see
+[model-providers.md](docs/model-providers.md#choosing-the-model)). Without `--llm`, `--provider` or `--config`, an LLM that
+cannot be reached (no key, no credentials, a key with no region) is a warning: the questions are
+skipped, every check runs, and the report says why. Naming any of the three is a request for LLM
+calls, so it is proven before the run with a one-token test request through the same client the
+questions use: a bad key, an unknown model id, a model the account may not call, or one that cannot
+take tools stops the run before it starts (exit 3). A question that still fails at the call gets
+the report written, then exits 3. Without any of the three nothing is spent on the test, and an LLM
+problem found at the first question is a warning. So `--full --provider auto` is how to say "use
+the LLM I have configured, and stop before the run if it cannot be reached". A directory with no property module is a warning
+too: the rule-by-rule checks still run, and the report says what they cannot establish.
 
 `findings.html` is a single file with nothing beside it, so it can be attached to a ticket and opens
 the same from disk as from a server. It quotes policy text, and a policy under analysis is often one

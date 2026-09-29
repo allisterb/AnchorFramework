@@ -130,6 +130,30 @@ public class AuthoringHarnessTests : TestsRuntime
     }
 
     /// <summary>
+    /// The audit's LLM is optional unless asked for by name. Unreachable and unnamed, it is a
+    /// warning and the questions are skipped; named with --llm, --provider or --config, it stops the
+    /// run before any TLC, or exits 3 after the report when it fails only at the first question.
+    /// </summary>
+    /// <remarks>
+    /// Calls no model: the harness empties every credential from its environment and replaces
+    /// <c>review</c> and <c>build_model</c> with stand-ins that raise.
+    /// </remarks>
+    [PythonHarness("audit_llm_preflight.py", "strands")]
+    public async Task TheAuditsLlmIsAWarningUnlessAskedForByName()
+    {
+        var run = await PythonHarness.RunAsync("tests/strands/audit_llm_preflight.py");
+        Assert.True(run.ExitCode == 0, run.Output);
+
+        Assert.Contains("readiness never holds the key itself", run.Output);
+        Assert.Contains("...before the first TLC run", run.Output);
+        Assert.Contains("a SystemExit from the LLM no longer loses the report", run.Output);
+        Assert.Contains("with --llm, a question that fails after a good probe writes the report and exits 3", run.Output);
+        Assert.Contains("--llm with a model the probe cannot reach stops the run, exit 3", run.Output);
+        Assert.Contains("without --llm, --provider or --config nothing is spent on a probe", run.Output);
+        Assert.DoesNotContain("FAIL", run.Output);
+    }
+
+    /// <summary>
     /// Ambiguity reporting: a request that admits more than one policy is raised <b>only when the
     /// readings actually decide something differently</b>.
     /// </summary>

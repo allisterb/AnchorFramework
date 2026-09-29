@@ -1204,7 +1204,8 @@ def main() -> int:
                         "this is how a mounted one is named")
     p.add_argument("--provider", default="auto", help="auto, bedrock or gemini")
     p.add_argument("--llm", default=None,
-                   help="the LLM's model id. Defaults to the provider's own default (gemini-2.5-flash for "
+                   help="the LLM's model id. Defaults to the provider's Model setting (Gemini:Model "
+                        "or Bedrock:Model), then the provider's own default (gemini-2.5-flash for "
                         "Gemini), which is a small model for a hard task")
     p.add_argument("--rounds", type=int, default=3,
                    help="drafting attempts. A round costs one model call plus ~1s of SANY; "

@@ -29,7 +29,9 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import sys
+from dataclasses import dataclass, field
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
@@ -129,6 +131,11 @@ def appsettings_path() -> Path | None:
     `ANCHOR_APPSETTINGS` first, so a container can point at a file it wrote from a secret store;
     then beside this module, which is where a developer puts it; then the repository root.
 
+    A NAMED FILE THAT IS NOT THERE MEANS NO FILE, NOT THE NEXT ONE. Falling through to the search
+    would quietly swap the file somebody named for a different one, holding a different key, and
+    the run would go ahead on it. `readiness` says so when no key is found; `missing_settings`
+    is how it knows.
+
     Every one of these is gitignored by `**/*appsettings.json`. That is checked rather than assumed,
     because the whole point of the file is that it holds a key.
     """
@@ -142,6 +149,44 @@ def appsettings_path() -> Path | None:
     return None
 
 
+def missing_settings() -> str | None:
+    """The path `ANCHOR_APPSETTINGS` names, when nothing is there; otherwise None."""
+    named = os.environ.get("ANCHOR_APPSETTINGS")
+    return named if named and not Path(named).exists() else None
+
+
+# Once per process: the pipeline builds several agents, and an audit a model per question.
+_settings_warned = False
+
+
+def settings_warning() -> str | None:
+    """A warning, the first time it is asked for, when `ANCHOR_APPSETTINGS` names a missing file.
+
+    A WARNING WHETHER OR NOT A KEY TURNS UP ELSEWHERE, because the environment can supply the key
+    and nothing else: `Gemini:Model`, `Bedrock:Region`, the `Google` block have no variables of
+    their own, and they would silently stop applying. Not an error, since a deployment that sets
+    the variable and injects its keys is a valid one.
+    """
+    global _settings_warned
+    if _settings_warned or not (named := missing_settings()):
+        return None
+    _settings_warned = True
+    return (f"$ANCHOR_APPSETTINGS names {named}, which does not exist, so no settings file is read: "
+            f"any key, Model, Region or Google setting you kept there does not apply, and "
+            f"src/agent/ and the Anchor root are not searched instead.")
+
+
+def settings_note() -> str:
+    """Which settings file was read, or why none was, for a message about a missing key."""
+    if (named := missing_settings()):
+        return (f"$ANCHOR_APPSETTINGS names {named}, which does not exist, so no settings file was "
+                f"read -- the search in src/agent/ and at the Anchor root is not used when it is set.")
+    if (path := appsettings_path()):
+        return f"The settings file read was {path}."
+    return ("No settings file was found: none named by --config or $ANCHOR_APPSETTINGS, and none "
+            "in src/agent/ or at the Anchor root.")
+
+
 def use_appsettings(path: Path) -> None:
     """Point every later `setting()` at this file. What `--config` does.
 
@@ -150,10 +195,10 @@ def use_appsettings(path: Path) -> None:
     wrote -- and a flag that set something else would make two answers to one question. Every read
     is lazy and happens in this module, so doing it before the graph is built reaches all of them.
 
-    RAISES where the environment variable falls through. An absent ANCHOR_APPSETTINGS path means
-    "carry on and look in the usual places", which is right for something the environment set on
-    your behalf; somebody who typed `--config` named a file, and running without a key and blaming
-    the environment is the failure that would follow from ignoring it.
+    RAISES where the environment variable does not. An absent ANCHOR_APPSETTINGS path means no
+    settings file -- the environment's keys may be all a deployment needs, and `readiness` names
+    the missing path if no key turns up. Somebody who typed `--config` named a file, and running
+    without it is the failure that would follow from ignoring that.
     """
     if not path.is_file():
         # Exit 2, the same code every other "could not run, and here is why" takes. A bare
@@ -399,17 +444,40 @@ def gemini_api_key() -> str | None:
     return setting(GEMINI_SETTING)
 
 
+def resolve_provider(provider: str) -> str:
+    """`auto` made definite: Gemini when an API key is configured, Bedrock otherwise.
+
+    That ordering is not a preference between them: a key that is present was put there
+    deliberately, whereas Bedrock credentials sit in `~/.aws` on most machines whether or not the
+    account can actually call a model. Preferring the explicit signal fails less confusingly.
+    """
+    return ("gemini" if gemini_api_key() else "bedrock") if provider == "auto" else provider
+
+
+# The model a provider runs when --llm names none. One per provider, because a model id means
+# nothing to the other one: {"Gemini": {"Model": "..."}, "Bedrock": {"Model": "..."}}.
+MODEL_SETTINGS = {"gemini": "Gemini:Model", "bedrock": "Bedrock:Model"}
+
+
+def chosen_model(provider: str, model_id: str | None) -> tuple[str | None, str]:
+    """The model id for a RESOLVED provider, and where it came from: `--llm`, then the provider's
+    `Model` setting, then the default. The default is None for Bedrock, where `BedrockModel`
+    picks its own."""
+    if model_id:
+        return model_id, "--llm"
+    if provider in MODEL_SETTINGS and (configured := setting(MODEL_SETTINGS[provider])):
+        return configured, f"{MODEL_SETTINGS[provider]} in {appsettings_path()}"
+    return (DEFAULT_GEMINI_MODEL if provider == "gemini" else None), "the provider's default"
+
+
 def build_model(provider: str = "auto", model_id: str | None = None,
                 streaming: bool | None = None):
-    """The model to reason with, or None for the Strands default.
-
-    `auto` picks Gemini when an API key is in the environment and Bedrock otherwise. That ordering
-    is not a preference between them: a key that is present was put there deliberately, whereas
-    Bedrock credentials sit in `~/.aws` on most machines whether or not the account can actually
-    call a model. Preferring the explicit signal fails less confusingly.
-    """
-    if provider == "auto":
-        provider = "gemini" if gemini_api_key() else "bedrock"
+    """The model to reason with. `auto` as `resolve_provider`; the model id as `chosen_model`."""
+    # Every LLM mode comes through here before its first call, so this is where it is said.
+    if (warning := settings_warning()):
+        print(f"warning: {warning}", file=sys.stderr, flush=True)
+    provider = resolve_provider(provider)
+    model_id, _ = chosen_model(provider, model_id)
 
     if provider == "bedrock":
         return build_bedrock_model(model_id, streaming)
@@ -433,14 +501,165 @@ def build_model(provider: str = "auto", model_id: str | None = None,
         raise SystemExit(
             "no Gemini API key. Put one in an appsettings.json beside src/agent/ (or at the repo "
             f'root) as {{"ApiKeys": {{"GoogleAgentPlatform": "..."}}}}, or set one of '
-            f"{' or '.join(GEMINI_KEYS)}. See src/agent/appsettings.json.example.")
+            f"{' or '.join(GEMINI_KEYS)}. See src/agent/appsettings.json.example. "
+            + settings_note())
 
     if args.get("enterprise") and not args.get("project"):
         raise SystemExit(
             "Google:Enterprise is set but Google:Project is not. An Agent Platform key needs a "
             "project and a location; see src/agent/appsettings.json.example.")
 
-    return GeminiModel(client_args=args, model_id=model_id or DEFAULT_GEMINI_MODEL)
+    return GeminiModel(client_args=args, model_id=model_id)
+
+
+@dataclass
+class Readiness:
+    """What `build_model` would be given, found without building it. Never holds a secret."""
+
+    provider: str
+    model: str
+    source: str = ""
+    # Where the model id came from: --llm, a Model setting, or the provider's default.
+    model_source: str = ""
+    problems: list[str] = field(default_factory=list)
+    # Whether `probe` has since had an answer from it, rather than only finding it configured.
+    tested: bool = False
+    # Not problems -- the LLM can still be built -- but worth saying before the run.
+    warnings: list[str] = field(default_factory=list)
+
+
+def readiness(provider: str = "auto", model_id: str | None = None) -> Readiness:
+    """Whether an LLM can be built as configured, said BEFORE a run rather than after it. See
+    `_readiness`; this adds the settings warning, which a problem message already covers."""
+    ready = _readiness(provider, model_id)
+    if not ready.problems and (warning := settings_warning()):
+        ready.warnings.append(warning)
+    return ready
+
+
+def _readiness(provider: str, model_id: str | None) -> Readiness:
+    """Whether an LLM can be built as configured, said BEFORE a run rather than after it.
+
+    Walks the same resolution `build_model` does -- environment first, then the settings file --
+    and reports what it found and what is missing. It calls no model and sends no key anywhere,
+    so it cannot say whether a key WORKS: a rejected key still surfaces at the first question.
+    AWS credential resolution may contact AWS itself (SSO, assume-role); that is the SDK's own
+    lookup, not a model call.
+    """
+    import importlib.util
+
+    provider = resolve_provider(provider)
+    settings = appsettings_path()
+    from_file = f"{settings}" if settings else ""
+    model, model_source = chosen_model(provider, model_id)
+
+    if provider == "gemini":
+        ready = Readiness("gemini", model, model_source=model_source)
+        env = next((name for name in GEMINI_KEYS if os.environ.get(name)), None)
+        ready.source = f"${env}" if env else (from_file if setting(GEMINI_SETTING) else "")
+        if not ready.source:
+            ready.problems.append(
+                f"no Gemini API key: set {' or '.join(GEMINI_KEYS)}, or put one in appsettings.json "
+                f"as ApiKeys:GoogleAgentPlatform (see src/agent/appsettings.json.example). "
+                + settings_note())
+        if importlib.util.find_spec("google") is None or importlib.util.find_spec("google.genai") is None:
+            ready.problems.append("the google-genai SDK is not installed, and the Gemini provider "
+                                  "needs it; see requirements/README.md")
+        client = gemini_client_args()
+        if client.get("enterprise") and not client.get("project"):
+            ready.problems.append("Google:Enterprise is set but Google:Project is not; an Agent "
+                                  "Platform key needs a project and a location")
+        return ready
+
+    if provider != "bedrock":
+        return Readiness(provider, model_id or "", problems=[
+            f"unknown provider {provider!r}; expected 'bedrock', 'gemini' or 'auto'"])
+
+    try:
+        from strands.models.bedrock import DEFAULT_BEDROCK_MODEL_ID as default_model
+    except ImportError:
+        default_model = "the Strands SDK's default"
+    ready = Readiness("bedrock", model or default_model, model_source=model_source)
+
+    key = bedrock_api_key()
+    region = (os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION")
+              or setting("Bedrock:Region"))
+    profile = os.environ.get("AWS_PROFILE") or setting("Bedrock:Profile")
+
+    if key and not profile and isolate_from_shared_config(key, profile):
+        ready.source = f"${BEDROCK_TOKEN_ENV}" if os.environ.get(BEDROCK_TOKEN_ENV) else from_file
+        if not region:
+            ready.problems.append(
+                'a Bedrock API key is configured but no region: with a key the AWS config is not '
+                'read, so set "Bedrock": {"Region": "us-east-1"} in appsettings.json, or AWS_REGION')
+        return ready
+
+    # No key, or a named profile: ordinary AWS credentials, found the way boto3 finds them.
+    try:
+        import boto3
+        credentials = boto3.Session(profile_name=profile).get_credentials()
+    except Exception as e:                                                  # noqa: BLE001
+        ready.problems.append(f"AWS credentials could not be resolved"
+                              f"{f' for profile {profile!r}' if profile else ''}: "
+                              f"{type(e).__name__}: {str(e).splitlines()[0][:160]}")
+        return ready
+    if credentials is None:
+        ready.problems.append(
+            "no LLM is configured: no Gemini API key, no Bedrock API key, and no AWS credentials. "
+            "Put a key in appsettings.json (see src/agent/appsettings.json.example), or set "
+            f"{GEMINI_KEYS[0]} or {BEDROCK_TOKEN_ENV}. " + settings_note())
+        return ready
+    ready.source = (f"AWS credentials ({credentials.method}"
+                    f"{f', profile {profile}' if profile else ''})")
+    return ready
+
+
+# Offered and never called: its presence is what makes a model that cannot take tools -- or cannot
+# take them while streaming -- refuse the probe the way it would refuse the first question.
+PROBE_TOOL = {"name": "noop", "description": "Does nothing. Do not call it.",
+              "inputSchema": {"json": {"type": "object", "properties": {}}}}
+
+# google-genai sets no timeout of its own and retries 408/429/5xx up to five times with backoff to
+# 60s, so an unanswered probe could hold a run at "testing ..." for minutes, or indefinitely on a
+# stalled connection, before anything has started. One token needs nothing like this long.
+PROBE_SECONDS = 90
+
+
+def probe(provider: str, model_id: str | None, streaming: bool | None = None) -> str | None:
+    """One request, capped at ONE output token, through the client the questions will use. None
+    if it was answered; otherwise what went wrong, explained where the failure is a known one.
+
+    The only check that can say whether the key works, the model id exists, the account may call
+    it and it takes tools -- a configuration check can say none of those. It costs a few input
+    tokens and one output token, so it is run only when an LLM was asked for by name.
+
+    `provider` must be resolved already, not `auto`: the cap is set differently for each.
+    """
+    import asyncio
+
+    # The model the request goes to, which --llm may not have named: a Model setting may have.
+    named = chosen_model(provider, model_id)[0] or "the default model"
+    try:
+        model = build_model(provider, model_id, streaming)
+        if provider == "gemini":
+            model.update_config(params={**(model.get_config().get("params") or {}),
+                                        "max_output_tokens": 1})
+        else:
+            model.update_config(max_tokens=1)
+
+        async def one() -> None:
+            async for _ in model.stream([{"role": "user", "content": [{"text": "Reply with OK."}]}],
+                                        tool_specs=[PROBE_TOOL]):
+                pass
+
+        asyncio.run(asyncio.wait_for(one(), PROBE_SECONDS))
+    except TimeoutError:
+        return (f"a one-token test request to {named} via {provider} had no answer within "
+                f"{PROBE_SECONDS}s. The provider may be rate limiting or failing and being "
+                f"retried; try again shortly")
+    except (Exception, SystemExit) as e:                                    # noqa: BLE001
+        return f"a one-token test request to {named} via {provider} failed: {describe_failure(e)}"
+    return None
 
 
 def review(request: str, project_dir: Path | None = None, model: str | None = None,
@@ -491,7 +710,9 @@ def review(request: str, project_dir: Path | None = None, model: str | None = No
             transcript.write_text(
                 existing.rstrip() + "\n\n"
                 + tr.render(agent.messages, question=request, heading=heading,
-                            meta={"provider": provider, "model": model or "(provider default)"}),
+                            meta={"provider": resolve_provider(provider),
+                                  "model": chosen_model(resolve_provider(provider), model)[0]
+                                           or "(provider default)"}),
                 encoding="utf-8")
 
         return answer
@@ -515,10 +736,44 @@ REFUSALS = (
      "Re-run with --no-stream."),
     ("AccessDenied",
      "The credentials reached Bedrock and were refused. Check the key and the region."),
+    ("The provided model identifier is invalid",
+     "Bedrock has no model by that id in this region. Pass --llm with one it has; "
+     "`aws bedrock list-foundation-models` lists them."),
+    ("on-demand throughput isn",
+     "This model is called through an inference profile, not by its bare id. Pass --llm with the "
+     "profile id -- the model id prefixed with a geography, such as us. or global."),
+    ("is not found for API version",
+     "Gemini has no model by that name. Pass --llm with one it has, such as gemini-2.5-flash."),
+    # The same mistake through an Agent Platform key, which words it differently.
+    ("was not found or your project does not have access",
+     "Google has no model by that name, or this project may not use it. Pass --llm with one it "
+     "has, such as gemini-2.5-flash."),
     ("API_KEY_SERVICE_BLOCKED",
      "A Google Agent Platform key needs the Google block -- Enterprise, Project, Location. See "
      "src/agent/appsettings.json.example."),
 )
+
+
+# The provider's own sentence, which google-genai buries in a printed dict after the status:
+# `404 NOT_FOUND. {'error': {'code': 404, 'message': '...'}}`. Either quote, since Python's repr
+# switches to double quotes for a message containing an apostrophe.
+FAR_SIDE_MESSAGE = re.compile(r"""['"]message['"]:\s*(['"])(.*?)(?<!\\)\1""", re.S)
+
+
+def describe_failure(e: BaseException, limit: int = 400) -> str:
+    """A far-side failure in one line: its type, its status, the provider's own message rather
+    than the dict around it, and what it means where that is known. Cut at `limit`, not before
+    the part that says what went wrong."""
+    text = str(e)
+    line = (text.splitlines() or [""])[0]
+    if (m := FAR_SIDE_MESSAGE.search(text)):
+        status = line.split(".", 1)[0] if line[:3].isdigit() else ""
+        line = f"{status}: {m.group(2)}" if status else m.group(2)
+    line = " ".join(line.split())
+    if len(line) > limit:
+        line = line[:limit - 3] + "..."
+    meaning = explain(e)
+    return f"{type(e).__name__}: {line}" + (f" -- {meaning}" if meaning else "")
 
 
 def explain(e: Exception) -> str | None:
@@ -559,7 +814,8 @@ def main() -> int:
                     help="which model provider. `auto` picks gemini when GEMINI_API_KEY or "
                          "GOOGLE_API_KEY is set, and bedrock otherwise")
     ap.add_argument("--llm", type=str, default=None,
-                    help="the LLM's model id; defaults to the provider's own default")
+                    help="the LLM's model id. Defaults to the provider's Model setting "
+                         "(Gemini:Model or Bedrock:Model), then the provider's own default")
     ap.add_argument("--no-stream", action="store_true",
                     help="disable streaming. Some Bedrock models accept tools only outside "
                          "streaming mode -- ai21.jamba answers 'This model doesn't support tool "

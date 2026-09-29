@@ -34,7 +34,9 @@ public class Options
     "whose header names a policy set, and asks the questions in questions.md of an LLM (--no-llm " +
     "skips them), after scanning the inputs for hidden text and instructions aimed at an LLM. " +
     "Writes findings.md, findings.html, results.json and traces/ into the directory, or into " +
-    "<policy-set>-findings/ beside a single policy set file.\n" +
+    "<policy-set>-findings/ beside a single policy set file. The LLM is optional: one that cannot " +
+    "be reached is a warning and the questions are skipped, unless --llm, --provider or --config " +
+    "asked for it, which makes it required and tests it with a one-token request before the run.\n" +
     "Exit codes: \n" +
     "0: answered or nothing to look at.\n1: a --property claim is BROKEN or there are findings.\n2: no verdict.\n3: could not run.")]
 public class CheckOptions : Options
@@ -104,12 +106,31 @@ public class CheckOptions : Options
                    "anything. Most of the value, none of the cost, and the part that belongs in CI.")]
     public bool NoLlm { get; set; }
 
-    [Option("provider", Required = false, HelpText = "--full ONLY. auto, bedrock or gemini.")]
+    [Option("provider", Required = false, MetaValue = "NAME",
+        HelpText = "--full ONLY. Which service's LLM answers questions.md: gemini, bedrock, or auto " +
+                   "(the default), which picks gemini when a Gemini API key is configured and bedrock " +
+                   "otherwise. Credentials are read from the environment first -- GEMINI_API_KEY or " +
+                   "GOOGLE_API_KEY; AWS_BEARER_TOKEN_BEDROCK or ordinary AWS credentials, and " +
+                   "AWS_REGION -- then from the settings file: see --config. Given at all, it makes the " +
+                   "LLM required: `--provider auto` is how to say \"use the LLM I have configured, " +
+                   "and stop before the run if it cannot be reached\".")]
     public string Provider { get; set; } = string.Empty;
 
-    [Option("llm", Required = false,
-        HelpText = "--full ONLY. The LLM's model id; defaults to the provider's own.")]
+    [Option("llm", Required = false, MetaValue = "MODEL-ID",
+        HelpText = "--full ONLY. Which model the provider runs, by its id: gemini-2.5-flash, or a " +
+                   "Bedrock model id your account has enabled. Default: the provider's Model setting " +
+                   "(Gemini:Model or Bedrock:Model, see --config), then gemini-2.5-flash for gemini " +
+                   "or the Strands SDK's own for bedrock. Not needed to use an LLM -- --full already " +
+                   "asks one whenever there is a questions.md, unless --no-llm is given.")]
     public string Llm { get; set; } = string.Empty;
+
+    [Option("config", Required = false, MetaValue = "APPSETTINGS.JSON",
+        HelpText = "--full ONLY. The settings file holding the LLM's API key, model and provider settings; " +
+                   "see src/agent/appsettings.json.example. Without it: the file $ANCHOR_APPSETTINGS " +
+                   "names, else src/agent/appsettings.json, else appsettings.json at the Anchor root -- " +
+                   "never one in your directory. In a container, how a mounted file is named. A path " +
+                   "that is not there is refused.")]
+    public string Config { get; set; } = string.Empty;
 
     [Option("allow-flagged-input", Required = false,
         HelpText = "--full ONLY. Ask the LLM its questions even when the input scan found " +

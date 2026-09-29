@@ -50,6 +50,29 @@ whose schema has no universal pin. The reading is stated in every run, as before
   own warning and rejected by the CLI as an unknown option. Only one of `--event-schema`, `--pinned`
   and `--unpinned` may be given: the checker used to take the first and ignore the rest, silently.
 - **The audit report states its reading**, in an "event-schema reading" row, every run.
+- **Every check says what it is about to do before it starts**, on stderr: what is checked and how
+  exhaustively, the reading, the property modules and questions, the LLM and where its credentials
+  come from, and where the report goes. Anything that can be known to be wrong is said there too,
+  before the first TLC run.
+- **An audit's LLM is optional unless asked for.** With none of `--llm`, `--provider` or `--config`,
+  an LLM that cannot be reached is a warning: the questions are skipped, the checks all run, and the
+  report's "questions answered" row says why (`0 of 5 — not asked: no LLM is configured`). Naming
+  any of the three makes it a requirement, **proven before the run by a one-token test request**
+  through the same client the questions use: a bad key, an unknown model id, a model the account
+  may not call or one that cannot take tools stops the run before the first TLC run, exit 3,
+  explained where the failure is a known one. A test with no answer within 90 seconds counts as a
+  failure, since the Gemini SDK sets no timeout and retries rate limits for minutes. A question that still fails at the call writes the
+  report and exits 3. Without any of the three nothing is spent on the test, and a failure is a
+  warning. `--llm` or `--provider` with `--no-llm` is refused. A directory with no property module
+  is warned about up front.
+- **`Gemini:Model` and `Bedrock:Model` settings**, naming the model each provider runs when `--llm`
+  names none, in every mode. The order is `--llm`, then the setting, then the provider's default,
+  and an audit's summary says which it used. `--full --provider auto` therefore means "use the LLM
+  I have configured, and stop before the run if it cannot be reached".
+- **`--config` on `check --full`**, naming the settings file that holds the LLM's key, as `auto` and
+  `hitl` already did. An audit could only be pointed at one through `ANCHOR_APPSETTINGS`. The help
+  for `--provider` and `--llm` now says where credentials come from, and that `--llm` picks a model
+  rather than turning the LLM on: `--full` asks one whenever there is a `questions.md`.
 - **Progress as it happens**, as plain log lines on stderr with no spinner, so CI logs read the same.
   An audit says up front how many steps it will run, numbers each (`[3/10] 03-data-freshness.dw`)
   with its result and time, and a check announces each TLC run as it starts. Long searches pass on
@@ -58,6 +81,19 @@ whose schema has no universal pin. The reading is stated in every run, as before
 
 ### Fixed
 
+- **An LLM that could not be built lost the whole audit.** `--provider gemini` with no key, or a
+  Bedrock key with no region, raised `SystemExit` from inside the question loop, which caught only
+  ordinary exceptions. The audit ended after every check had run and before any was written up,
+  exiting 1, which reads as "there are findings". The report is now always written.
+- **A missing `ANCHOR_APPSETTINGS` file is named, not misreported.** When it names a file that is not
+  there, no settings file is read. It never falls back to `src/agent/` or the repo root, whatever
+  `src/agent/README.md` said, so a different file's key cannot be used by accident. Every LLM mode
+  now warns about it before its first call, once, even when the environment supplies the key: the
+  file's `Model`, `Region` and `Google` settings have no variables of their own and would silently
+  stop applying. The error for a missing key used to say nothing had been named; it names the path.
+- **An option that takes a value, given none, is refused.** The parser dropped it without a word, so
+  `--event-schema` alone checked under the default reading, `--llm` alone passed even the refusal
+  for use without `--full`, and `--attempts` alone used the default bound.
 - **An audit given a path relative to the user's directory looked in Anchor's.** The audit runs from
   the Anchor root (`/app` in the container), and was handed paths as typed, so `check my-policies`
   from `/work` looked for `/app/my-policies`. Paths are now made absolute first.

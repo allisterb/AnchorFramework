@@ -202,7 +202,8 @@ def main() -> int:
                                        {"policy": "tests/policies/dead_forbid.dw"})
         text = str(result)
         check("CheckPolicy reports the DEAD forbid", "DEAD" in text)
-        check("CheckPolicy carries the reading caveat", "DOGWOOD'S OWN DEFAULT" in text.upper())
+        # Without the apostrophe: `str()` of the result escapes it, and the phrase then never matches.
+        check("CheckPolicy carries the reading caveat", "CALLERPRINCIPAL PINNED" in text.upper())
 
         # --- containment, which exists for exactly this caller ------------------------------------
         escaped = str(client.call_tool_sync("wiring-escape", "CheckPolicy",

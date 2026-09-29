@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 
 using CommandLine;
@@ -63,6 +64,15 @@ public static class Program
         {
             Console.Error.WriteLine($"Unrecognised command '{verb}'. Try: {string.Join(", ", Verbs)}.");
             Console.Error.WriteLine("Run 'anchor --help' for usage.");
+            return BadUsage;
+        }
+
+        // An option that takes a value, given none, is dropped by CommandLineParser without a word:
+        // `--event-schema` alone ran under the default reading, `--llm` alone under the default
+        // model, `--attempts` alone under the default bound. Checked here for the same reason.
+        if (MissingValue(verb, args) is string bare)
+        {
+            Console.Error.WriteLine($"{bare} needs a value.");
             return BadUsage;
         }
 
@@ -192,6 +202,10 @@ public static class Program
                 ?? await CheckDirectoryAsync(opts);
         }
 
+        if (File.Exists(opts.Policy))
+        {
+            Console.Error.WriteLine(Announce(opts, 1));
+        }
         var code = await CheckOneAsync(opts, opts.Policy);
         await ListAvailableAsync(opts, opts.Policy);
         return code;
@@ -216,6 +230,7 @@ public static class Program
             return CouldNotRun;
         }
 
+        Console.Error.WriteLine(Announce(opts, sets.Length));
         var worst = Ok;
         foreach (var set in sets)
         {
@@ -248,6 +263,41 @@ public static class Program
         }
     }
 
+    /// <summary>
+    /// What a plain check is about to do, from the options it was given. On stderr, before the first
+    /// TLC run, so the verdicts on stdout stay exactly as they were. The audit says the same of
+    /// itself, in the same layout.
+    /// </summary>
+    static string Announce(CheckOptions o, int sets)
+    {
+        static string Row(string label, string text) => $"  {label,-18}{text}";
+        var pad = new string(' ', 20);
+        var what = sets == 1 ? "one policy set" : $"{sets} policy sets";
+
+        var task = !string.IsNullOrWhiteSpace(o.Property)
+            ? Row("claims", $"the invariants of {Path.GetFileName(o.Property)}, instead of rule by rule" +
+                            (o.Explain ? "; each explained first" : "") +
+                            (o.Witness ? "; a BROKEN one replayed in Dogwood" : ""))
+            : !string.IsNullOrWhiteSpace(o.Against)
+            ? Row("compared", $"against {Path.GetFileName(o.Against)}: MORE or LESS PERMISSIVE, " +
+                              "EQUIVALENT or INCOMPARABLE")
+            : Row("rule by rule", "one or two TLC runs per rule");
+        var bound = o.Smoke is int n
+            ? $"a random walk of {n} behaviours (--smoke): finds live rules, never VACUOUS, REDUNDANT or DEAD"
+            : $"exhaustive, sessions of up to {o.Attempts ?? 3} attempts";
+        var reading = !string.IsNullOrWhiteSpace(o.EventSchema) ? $"the event schema {Path.GetFileName(o.EventSchema)}"
+            : o.Unpinned ? "unpinned: every principal's events"
+            : o.Pinned ? "callerPrincipal pinned, Dogwood's default"
+            : "callerPrincipal pinned, Dogwood's default (--unpinned or --event-schema to change)";
+
+        List<string> lines = [$"Check of {o.Policy} ({what}):", task, pad + bound, pad + "reading: " + reading];
+        if (o.Syntax) lines.Add(pad + "parsed by `dogwood check-parse` first (--syntax)");
+        if (!string.IsNullOrWhiteSpace(o.Keep)) lines.Add(pad + $"the generated TLA+ kept in {o.Keep}");
+        lines.Add("Prints the verdicts" + (string.IsNullOrWhiteSpace(o.Keep) ? ", writes nothing" : "") +
+                  " and asks no LLM; --full audits and writes a report.");
+        return string.Join(Environment.NewLine, lines) + Environment.NewLine;
+    }
+
     /// <summary>The first option given that does not apply here, reported, as an exit code; or null.</summary>
     static int? Refused(IEnumerable<(string Name, bool Given)> options, string why)
     {
@@ -269,6 +319,7 @@ public static class Program
         ("--no-llm", o.NoLlm),
         ("--provider", !string.IsNullOrWhiteSpace(o.Provider)),
         ("--llm", !string.IsNullOrWhiteSpace(o.Llm)),
+        ("--config", !string.IsNullOrWhiteSpace(o.Config)),
         ("--allow-flagged-input", o.AllowFlaggedInput)
     ];
 
@@ -381,6 +432,7 @@ public static class Program
         if (!string.IsNullOrWhiteSpace(opts.Property)) args.AddRange(["--property", Path.GetFullPath(opts.Property)]);
         if (!string.IsNullOrWhiteSpace(opts.Provider)) args.AddRange(["--provider", opts.Provider]);
         if (!string.IsNullOrWhiteSpace(opts.Llm)) args.AddRange(["--llm", opts.Llm]);
+        if (!string.IsNullOrWhiteSpace(opts.Config)) args.AddRange(["--config", Path.GetFullPath(opts.Config)]);
         if (opts.Attempts is int a) args.AddRange(["--attempts", a.ToString()]);
         if (opts.Smoke is int sm) args.AddRange(["--smoke", sm.ToString()]);
         if (opts.MaxFields is int mf) args.AddRange(["--max-fields", mf.ToString()]);
@@ -453,6 +505,39 @@ public static class Program
         return asked ? Ok : BadUsage;
     }
 
+    /// <summary>
+    /// The first option that takes a value but was given none -- last on the line, followed by
+    /// another option, or <c>--name=</c> -- or null. Anything not a bool takes a value.
+    /// </summary>
+    static string? MissingValue(string? verb, string[] args)
+    {
+        var type = OptionTypes.FirstOrDefault(t => t.GetCustomAttribute<VerbAttribute>() is { } v
+            && (verb is null ? v.IsDefault : string.Equals(v.Name, verb, StringComparison.OrdinalIgnoreCase)));
+        if (type is null)
+        {
+            return null;
+        }
+
+        var takesValue = type.GetProperties()
+            .Where(p => p.PropertyType != typeof(bool))
+            .Select(p => p.GetCustomAttribute<OptionAttribute>()?.LongName)
+            .OfType<string>()
+            .Select(name => "--" + name)
+            .ToHashSet();
+
+        for (var i = 0; i < args.Length; i++)
+        {
+            var (name, value) = args[i].Split('=', 2) is [var n, var v]
+                ? (n, v)
+                : (args[i], i + 1 < args.Length && !args[i + 1].StartsWith("--") ? args[i + 1] : null);
+            if (takesValue.Contains(name) && string.IsNullOrEmpty(value))
+            {
+                return name;
+            }
+        }
+        return null;
+    }
+
     /// <summary>CommandLineParser gives an unset string as empty; the API below wants null.</summary>
     static string? Blank(string value) => string.IsNullOrWhiteSpace(value) ? null : value;
 
@@ -473,6 +558,9 @@ public static class Program
     /// The verbs whose product is a report on standard output. They get a file log sink unless
     /// --debug asked otherwise, so that logging never interleaves with the thing being read.
     /// </summary>
+    /// <summary>The option types the parser is given, for reading their options before it runs.</summary>
+    static readonly Type[] OptionTypes = [typeof(ServerOptions), typeof(CheckOptions), typeof(ExplainOptions)];
+
     static readonly HashSet<string> Reporting = new(StringComparer.OrdinalIgnoreCase)
     {
         "check", "explain"

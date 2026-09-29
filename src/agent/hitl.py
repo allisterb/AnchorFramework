@@ -823,7 +823,9 @@ def main() -> int:
                         "to appsettings.json beside src/agent/ or at the repo root; in a container "
                         "this is how a mounted one is named")
     p.add_argument("--provider", default="auto", help="auto, bedrock or gemini")
-    p.add_argument("--llm", default=None, help="the LLM's model id; defaults to the provider's own")
+    p.add_argument("--llm", default=None,
+                   help="the LLM's model id. Defaults to the provider's Model setting "
+                        "(Gemini:Model or Bedrock:Model), then the provider's own default")
     p.add_argument("--rounds", type=int, default=3,
                    help="drafting attempts WITHIN one pass, before the person is asked")
     p.add_argument("--refinements", type=int, default=4,

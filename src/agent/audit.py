@@ -311,13 +311,9 @@ def check_all(plan: Plan, out: Path, attempts: int | None = None,
                      "reading": event_schema.name if event_schema else (reading or "pinned"),
                      "unpaired": [{"module": m.name, "why": w} for m, w in plan.unpaired]}
 
-    # SAID BEFORE IT STARTS, because the first answer can be minutes away: every rule is one or
-    # two TLC runs, and each run is a JVM starting and a model being searched.
+    # Numbered, because the first answer can be minutes away; `announce` has said what the steps
+    # are before this starts.
     steps = len(plan.policies) + len(plan.properties)
-    print(f"{steps} step(s): {len(plan.policies)} policy set(s) checked rule by rule, then "
-          f"{len(plan.properties)} property module(s). Each rule is one or two TLC runs of a few "
-          f"seconds, so a large set takes minutes; each run is announced as it starts.\n",
-          file=sys.stderr, flush=True)
     step = 0
 
     for policy in plan.policies:
@@ -420,6 +416,19 @@ def findings_of(results: dict) -> list[str]:
     return out
 
 
+def questions_row(plan: Plan, results: dict, model_used: bool) -> str:
+    """How many questions were answered, and why the rest were not. A bare 0 reads as "none"."""
+    llm = results.get("llm")
+    if llm is None:
+        return str(len(plan.questions) if model_used else 0)
+    row = f"{llm['answered']} of {len(plan.questions)}"
+    if llm.get("skipped"):
+        row += f" — not asked: {llm['skipped']}"
+    if llm.get("failed"):
+        row += " — " + "; ".join(llm["failed"])
+    return row.replace("|", "\\|")
+
+
 def report(plan: Plan, results: dict, findings: list[str], *, model_used: bool,
            scanned: list[str] | None = None) -> str:
     """The findings file. Written whether or not a model ran."""
@@ -480,7 +489,7 @@ def report(plan: Plan, results: dict, findings: list[str], *, model_used: bool,
               "| | |", "|---|---|",
               f"| policy sets | {len(plan.policies)} |",
               f"| stated intentions (`.tla`) | {len(plan.properties)} |",
-              f"| questions answered | {len(plan.questions) if model_used else 0} |",
+              f"| questions answered | {questions_row(plan, results, model_used)} |",
               # SAID EVERY TIME, the default included: a verdict is scoped to a reading, and one
               # that does not say which gets read as being about the deployed configuration.
               "| event-schema reading | " + (
@@ -606,18 +615,25 @@ def report(plan: Plan, results: dict, findings: list[str], *, model_used: bool,
     return "\n".join(lines)
 
 
-def ask_model(plan: Plan, results: dict, out: Path, provider: str, model: str | None) -> int:
+def ask_model(plan: Plan, results: dict, out: Path, provider: str,
+              model: str | None) -> tuple[int, list[str]]:
     """Put the directory's own questions to the agent, and save the whole exchange.
 
-    Returns how many were answered. The agent is given the questions and the policy paths; it runs
-    the tools itself, which is the point -- this is the same surface an MCP host would use, and a
-    transcript of it is evidence about that surface rather than about this script.
+    Returns how many were answered, and why each failure failed. The agent is given the questions
+    and the policy paths; it runs the tools itself, which is the point -- this is the same surface
+    an MCP host would use, and a transcript of it is evidence about that surface rather than about
+    this script.
     """
-    from agent.policy_agent import review
+    from agent.policy_agent import describe_failure, review
 
     transcript = out / "transcript.md"
-    answered = 0
+    answered, failures = 0, []
     for q in plan.questions:
+        # A FIRST QUESTION THAT FAILS is almost always the key or the provider, and every question
+        # after it would fail the same way, each after its own retries.
+        if failures and not answered:
+            failures.append(f"{q.heading}: not asked, after the first question failed")
+            continue
         target = plan.directory / q.policy if q.policy else (
             plan.policies[0] if plan.policies else None)
         if target is None or not target.exists():
@@ -634,11 +650,14 @@ def ask_model(plan: Plan, results: dict, out: Path, provider: str, model: str | 
             review(request, project_dir=REPO, model=model, provider=provider,
                    transcript=transcript, heading=q.heading)
             answered += 1
-        except Exception as e:                                    # noqa: BLE001
-            # One question failing must not lose the others, or the run.
-            print(f"    failed: {type(e).__name__}: {str(e).splitlines()[0][:160]}",
-                  file=sys.stderr)
-    return answered
+        except (Exception, SystemExit) as e:                      # noqa: BLE001
+            # One question failing must not lose the others, or the run. SystemExit included:
+            # `build_model` raises it for a missing key or region, and uncaught it ended the audit
+            # after every check had run and before any of them was written up.
+            why = describe_failure(e)
+            print(f"    failed: {why}", file=sys.stderr)
+            failures.append(f"{q.heading}: {why}")
+    return answered, failures
 
 
 def scan_note(scan: screen.Report, *, withheld: bool, overridden: bool) -> dict[str, list[str]]:
@@ -668,6 +687,65 @@ def scan_note(scan: screen.Report, *, withheld: bool, overridden: bool) -> dict[
     return {"md": md, "html": html}
 
 
+def refuse(explicit: list[str], problems: list[str], warnings: list[str] = ()) -> int:
+    """An LLM asked for by name that cannot be had: said, and stopped, before anything runs."""
+    for w in warnings:
+        print(f"warning: {w}", file=sys.stderr)
+    for p in problems:
+        print(f"error: {p}", file=sys.stderr)
+    named = " and ".join(explicit)
+    print(f"\nnot run: {named} {'asks' if len(explicit) == 1 else 'ask'} for LLM calls, and they "
+          f"cannot be made as things stand. Fix the above, or leave out {named} to run every check "
+          f"and skip the questions with a warning.", file=sys.stderr)
+    return 3
+
+
+def announce(plan: Plan, target: Path, out: Path, args: argparse.Namespace, ready, skipped: str) -> str:
+    """What this audit is about to do, from the options it was given. Said before the first TLC
+    run, because the first result can be minutes away."""
+    def names(modules: list[str]) -> str:
+        return ", ".join(modules[:6]) + (f", and {len(modules) - 6} more" if len(modules) > 6 else "")
+
+    pad = " " * 20
+    what = "one policy set" if plan.subject else f"{len(plan.policies)} policy set(s)"
+    bound = (f"a random walk of {args.smoke} behaviours each (--smoke): finds live rules, never "
+             f"VACUOUS, REDUNDANT or DEAD" if args.smoke else
+             f"exhaustive, sessions of up to {args.attempts or 3} attempts")
+    reading = (f"the event schema {args.event_schema.name}" if args.event_schema else
+               "unpinned: every principal's events" if args.reading == "unpinned" else
+               "callerPrincipal pinned, Dogwood's default" if args.reading else
+               "callerPrincipal pinned, Dogwood's default (--unpinned or --event-schema to change)")
+    lines = [f"Audit of {target} ({what}):",
+             f"  1. rule by rule   {what}, one or two TLC runs per rule",
+             f"{pad}{bound}",
+             f"{pad}reading: {reading}"]
+
+    if plan.properties:
+        given = {m.resolve() for m in plan.given}
+        lines.append(f"  2. properties     {len(plan.properties)} module(s): " + names(
+            [m.name + (" (--property)" if m.resolve() in given else "") for m, _ in plan.properties]))
+    else:
+        lines.append("  2. properties     none found")
+    if plan.unpaired:
+        lines.append(f"{pad}{len(plan.unpaired)} more cannot run, and the report says why: "
+                     + names([m.name for m, _ in plan.unpaired]))
+
+    if ready is not None:
+        lines += [f"  3. questions      {len(plan.questions)} from questions.md, asked of {ready.model} "
+                  f"via {ready.provider}",
+                  f"{pad}model: {ready.model_source}",
+                  f"{pad}credentials: {ready.source}. These are live LLM calls"
+                  + ("; a one-token test request was answered just now" if ready.tested else "")]
+    else:
+        count = f"{len(plan.questions)} in questions.md, " if plan.questions else ""
+        lines.append(f"  3. questions      {count}not asked: {skipped}")
+
+    lines += [f"  report            {out}",
+              f"{pad}findings.md, findings.html, results.json, traces/",
+              "Each TLC run is announced as it starts; a large policy set takes minutes."]
+    return "\n".join(lines)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("target", type=Path,
@@ -686,9 +764,20 @@ def main() -> int:
     ap.add_argument("--no-llm", action="store_true",
                     help="run the checks and write the report without asking an LLM anything. "
                          "Most of the value, none of the cost, and the part that belongs in CI")
-    ap.add_argument("--provider", type=str, default="auto", choices=("auto", "bedrock", "gemini"))
-    ap.add_argument("--llm", type=str, default=None,
-                    help="the LLM's model id; defaults to the provider's own")
+    ap.add_argument("--provider", type=str, default=None, choices=("auto", "bedrock", "gemini"),
+                    help="which service's LLM answers questions.md. auto picks gemini when a Gemini "
+                         "API key is configured, bedrock otherwise. Credentials come from the "
+                         "environment first, then the settings file (see --config). Given at all -- "
+                         "`--provider auto` included -- it makes the LLM required and tests it first")
+    ap.add_argument("--llm", type=str, default=None, metavar="MODEL-ID",
+                    help="which model the provider runs. Default: the provider's Model setting "
+                         "(Gemini:Model or Bedrock:Model), then gemini-2.5-flash, or the Strands "
+                         "SDK's own for bedrock. Not needed to use an LLM: one is asked whenever "
+                         "there is a questions.md, unless --no-llm")
+    ap.add_argument("--config", type=Path, default=None, metavar="APPSETTINGS.JSON",
+                    help="the settings file holding the LLM's API key, model and provider settings. "
+                         "Default: $ANCHOR_APPSETTINGS, else src/agent/appsettings.json, else one "
+                         "at the Anchor root. A path that is not there is refused")
     ap.add_argument("--attempts", type=int, default=None, help="session length bound")
     ap.add_argument("--smoke", type=int, nargs="?", const=1000, default=None, metavar="N",
                     help="explore each policy set as a random walk of N behaviours (default 1000) "
@@ -716,6 +805,20 @@ def main() -> int:
                          "high-severity text. For findings you have read and judged benign; the "
                          "report records that it was used")
     args = ap.parse_args()
+
+    # AN LLM THAT WAS ASKED FOR, and one that merely would have been used. With none of these the
+    # LLM is the optional part of an audit: if it cannot be reached the questions are skipped with
+    # a warning and every check still runs. Naming any of them is a request for model calls, and
+    # one that cannot be met stops the run before its first TLC run rather than after its last.
+    explicit = [name for name, given in (("--llm", args.llm), ("--provider", args.provider),
+                                         ("--config", args.config)) if given]
+    if explicit and args.no_llm:
+        ap.error(f"{explicit[0]} asks for an LLM and --no-llm says not to; pass one or the other")
+
+    # Before any check runs, so a mistyped path fails now rather than after minutes of TLC.
+    if args.config is not None:
+        from agent.policy_agent import use_appsettings                    # noqa: PLC0415
+        use_appsettings(args.config)
 
     # A DIRECTORY, OR ONE POLICY SET IN IT. The single set is the directory narrowed to that
     # file, so the two produce the same report and there is one audit rather than two.
@@ -762,10 +865,6 @@ def main() -> int:
         return 3
 
     out = args.output_dir or default_out
-    out.mkdir(parents=True, exist_ok=True)
-
-    print(f"{len(plan.policies)} policy set(s), {len(plan.properties)} stated intention(s), "
-          f"{len(plan.questions)} question(s)\n", file=sys.stderr)
 
     # THE INPUT SCAN, BEFORE ANYTHING READS THE INPUTS. The checks run in full whatever it finds:
     # the parser, TLC and Dogwood are deterministic and not at risk from text aimed at a model.
@@ -781,28 +880,86 @@ def main() -> int:
     else:
         reads = [directory, *([args.event_schema] if args.event_schema else [])]
     scan = screen.scan(reads, relative_to=directory)
-    asking = not args.no_llm and bool(plan.questions)
-    withheld = bool(scan.high) and asking and not args.allow_flagged_input
     if scan.high or scan.medium:
         print(screen.render(scan, census=False) + "\n", file=sys.stderr)
-    if withheld:
-        print("The checks run in full; the model's questions are NOT asked, because the scan "
-              "found high-severity text above that it would read. If it is benign, run again "
-              "with --allow-flagged-input.\n", file=sys.stderr)
+    withheld = (bool(scan.high) and not args.no_llm and bool(plan.questions)
+                and not args.allow_flagged_input)
 
+    # EVERYTHING THAT CAN BE KNOWN BEFORE THE RUN, said before it: whether the questions will be
+    # asked, and if not, why. Whether a key WORKS cannot be known without a live call, so a
+    # rejected one still surfaces at the first question.
+    ready, skipped, warnings = None, "", []
+    if args.no_llm:
+        skipped = "--no-llm"
+    elif not plan.questions:
+        skipped = ("no questions.md" if not (directory / "questions.md").exists() else
+                   f"no question in questions.md names {plan.subject}" if plan.subject else
+                   "questions.md holds no questions")
+        if explicit:
+            warnings.append(f"{explicit[0]} was given, but there is nothing to ask an LLM: {skipped}.")
+    elif withheld:
+        skipped = "the input scan found high-severity text an LLM would read"
+        if explicit:
+            return refuse(explicit, [f"the input scan above found high-severity text the LLM would "
+                                     f"read. Read it with `anchor scan`; if it is benign, add "
+                                     f"--allow-flagged-input."])
+        warnings.append("the checks run in full, but the questions are NOT asked: the input scan "
+                        "above found high-severity text an LLM would read. If it is benign, run "
+                        "again with --allow-flagged-input.")
+    else:
+        from agent.policy_agent import probe, readiness                    # noqa: PLC0415
+        ready = readiness(args.provider or "auto", args.llm)
+        warnings += ready.warnings
+        if ready.problems:
+            if explicit:
+                return refuse(explicit, ready.problems)
+        elif explicit:
+            # ASKED FOR BY NAME, SO PROVEN BEFORE THE RUN: one request of one output token, which
+            # is the only way to learn that the key works, the model id exists and the account may
+            # call it -- before minutes of TLC rather than after. Unnamed, a failure at the first
+            # question is a warning, and nothing is spent finding it out early.
+            print(f"testing {ready.model} via {ready.provider} with a one-token request ...",
+                  file=sys.stderr, flush=True)
+            if (problem := probe(ready.provider, args.llm)):
+                # The settings warning may be the reason: a Model or Region that did not apply.
+                return refuse(explicit, [problem], ready.warnings)
+            ready.tested = True
+        if ready.problems:
+            skipped = f"no LLM is configured ({ready.problems[0]})"
+            warnings += ready.problems + [
+                f"the {len(plan.questions)} question(s) in questions.md will be skipped, and the "
+                f"report says why; every check still runs. --no-llm says this was intended."]
+    if not plan.properties:
+        about = plan.subject or "these policy sets"
+        warnings.append(f"no property module states what {about} should mean, so only the "
+                        f"rule-by-rule checks run. They find rules that do nothing, not rules that "
+                        f"do the opposite of what was meant. To check that, write the meaning as a "
+                        f".tla module beside it; see "
+                        f"src/Anchor.MCPServer/knowledge/writing-a-property-module.md.")
+
+    asking = ready is not None and not ready.problems
+    print(announce(plan, target, out, args, ready if asking else None, skipped), file=sys.stderr)
+    for w in warnings:
+        print(f"warning: {w}", file=sys.stderr)
+    print("", file=sys.stderr, flush=True)
+
+    out.mkdir(parents=True, exist_ok=True)
     results = check_all(plan, out, attempts=args.attempts, smoke=args.smoke,
                         max_fields=args.max_fields, reading=args.reading,
                         event_schema=args.event_schema)
     results["inputScan"] = scan.as_dict() | {"modelWithheld": withheld}
     findings = findings_of(results)
 
-    answered = 0
-    if asking and not withheld:
-        print(f"\nasking the agent {len(plan.questions)} question(s) "
-              f"(this makes live model calls)", file=sys.stderr)
-        answered = ask_model(plan, results, out, args.provider, args.llm)
+    answered, failed = 0, []
+    if asking:
+        print(f"\nasking {len(plan.questions)} question(s) of {ready.model} ({ready.provider}); "
+              f"these are live LLM calls", file=sys.stderr, flush=True)
+        answered, failed = ask_model(plan, results, out, ready.provider, args.llm)
+    results["llm"] = {"provider": ready.provider if asking else None,
+                      "model": ready.model if asking else None,
+                      "answered": answered, "skipped": skipped, "failed": failed}
 
-    note = scan_note(scan, withheld=withheld, overridden=bool(scan.high) and asking and not withheld)
+    note = scan_note(scan, withheld=withheld, overridden=bool(scan.high) and asking)
     (out / "results.json").write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
     (out / "findings.md").write_text(
         report(plan, results, findings, model_used=bool(answered), scanned=note["md"]),
@@ -823,6 +980,15 @@ def main() -> int:
     print(f"\n{len(findings)} finding(s); wrote {out / 'findings.md'}", file=sys.stderr)
     for f in findings:
         print(f"  - {f}", file=sys.stderr)
+
+    if failed:
+        print(f"\n{'error' if explicit else 'warning'}: {len(failed)} of {len(plan.questions)} "
+              f"question(s) were not answered; the checks and the report are complete.",
+              file=sys.stderr)
+        # Asked for, and not delivered: 3, "could not do what was asked", even though the report
+        # is written -- a script that passed --llm must not read the findings exit as success.
+        if explicit:
+            return 3
 
     # Non-zero when there is something to look at, so this can gate a pipeline. Distinct from 3,
     # which means the run could not happen at all -- the same contract the single-policy run
