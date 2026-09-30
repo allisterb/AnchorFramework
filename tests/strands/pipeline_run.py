@@ -421,7 +421,7 @@ def accepted_path() -> None:
         # THE SEPARATION, as it actually lands: the answerer's input contains the verdicts and not
         # the drafter's module text. Nothing enforces this but the wiring, so it is checked.
         seen = getattr(answerer.model, "seen", "")
-        check("the answerer saw the verdicts", "The stated property" in seen, seen[:200])
+        check("the answerer saw the verdicts", "The property module" in seen, seen[:200])
         check("the answerer did NOT see the draft", "===MODULE===" not in seen, seen[:200])
 
         # THE BOUND REACHES THE REPORTER. "Holds" on its own is the most overclaimable sentence
@@ -562,9 +562,9 @@ def sweeping() -> None:
         # is shown to discriminate rather than merely to complete.
         by = {r.policy.name: pipeline.outcome(r) for r in runs}
         print(f"  {by}")
-        check("the correct policy passes", by.get("firewall.dw") == "property holds", str(by))
+        check("the correct policy passes", by.get("firewall.dw") == "property module holds", str(by))
         check("and the broken one is caught",
-              by.get("firewall_open.dw") == "property BROKEN", str(by))
+              by.get("firewall_open.dw") == "property module BROKEN", str(by))
 
         report = pipeline.sweep_report(work, intents, runs)
         check("the summary names the policy with no stated intent",
@@ -624,7 +624,7 @@ def says_what_it_is_doing() -> None:
             # THE VERDICTS AT THE END, so nobody has to open findings.md -- or think a separate
             # `check` is needed -- to learn what the run found; and the way on to a full audit.
             check("the end of the run gives the property's verdict",
-                  "the stated property HOLDS (Intent.tla)" in said, said[-900:])
+                  "the property module Intent.tla HOLDS: every claim in it" in said, said[-900:])
             check("...and the derived findings", "derived findings: 1 (forbid #2 DEAD)" in said,
                   said[-900:])
             check("...and the audit that goes further",
@@ -641,7 +641,7 @@ def says_what_it_is_doing() -> None:
             text = (Path(tmp) / "findings.md").read_text(encoding="utf-8")
             engine = DOGWOOD.exists()
             check("a BROKEN property is said at the end, as the session that breaks it",
-                  "the stated property is BROKEN (Intent.tla):" in said
+                  "the property module Intent.tla is BROKEN:" in said
                   and ("the Dogwood engine" in said if engine else "dogwood binary" in said),
                   said[-1200:])
             check("...replayed in Dogwood in findings.md, with the trace kept beside it",
@@ -657,7 +657,7 @@ def says_what_it_is_doing() -> None:
                                "and the claim makes them sufficient.", "review"), **kw)
             code, said = run_main(argv)
             check("a rejected draft says at the end why it was rejected",
-                  "outcome: no property (rejected at review)" in said
+                  "outcome: no property module (rejected at review)" in said
                   and "makes them sufficient" in said.split("outcome:")[-1], said[-900:])
             check("...that nothing was checked, and what hitl would do instead",
                   "nothing was checked. `anchor hitl`" in said, said[-900:])

@@ -1154,8 +1154,8 @@ def render(x: Explanation, *, width: int = 96) -> str:
 
     if x.unchecked:
         lines += wrap("!!", f"defined here but NOT named in the .cfg, so not checked: "
-                            f"{', '.join(sorted(x.unchecked))}. A property nobody listed is a "
-                            f"property nobody checked", width, indent=2)
+                            f"{', '.join(sorted(x.unchecked))}. A claim nobody listed is a "
+                            f"claim nobody checked", width, indent=2)
         lines.append("")
 
     lines.append("  Read the `forbids` lines before the run, not after it. Each one is the only")
@@ -1231,8 +1231,8 @@ def main() -> int:
     cfg = args.cfg or args.module.with_suffix(".cfg")
     if not cfg.exists():
         print(f"{args.module.name} has no {cfg.name}, so nothing is checked and there is nothing\n"
-              f"to explain. Naming the invariants is deliberate: a property nobody listed is a\n"
-              f"property nobody checked.", file=sys.stderr)
+              f"to explain. Naming the invariants is deliberate: a claim nobody listed is a\n"
+              f"claim nobody checked.", file=sys.stderr)
         return 2
 
     x = explain_file(args.module, cfg)

@@ -685,10 +685,10 @@ def announce(plan: Plan, target: Path, out: Path, args: argparse.Namespace, read
 
     if plan.properties:
         given = {m.resolve() for m in plan.given}
-        lines.append(f"  2. properties     {len(plan.properties)} module(s): " + names(
+        lines.append(f"  2. modules        {len(plan.properties)} property module(s): " + names(
             [m.name + (" (--property)" if m.resolve() in given else "") for m, _ in plan.properties]))
     else:
-        lines.append("  2. properties     none found")
+        lines.append("  2. modules        no property module found")
     if plan.unpaired:
         lines.append(f"{pad}{len(plan.unpaired)} more cannot run, and the report says why: "
                      + names([m.name for m, _ in plan.unpaired]))

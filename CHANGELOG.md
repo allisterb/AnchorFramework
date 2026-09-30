@@ -145,6 +145,11 @@ whose schema has no universal pin. The reading is stated in every run, as before
   `--event-schema`, which had no help. The options the two share are defined once, so their help
   cannot drift apart again, and `--provider` rejects an unknown name when the command is read
   rather than when the first model is built.
+- **"Property module" for the `.tla` file, "claim" for one invariant in it**, in the checker's
+  messages, `auto`'s and `hitl`'s output and reports, and the CLI help, which said "property" for
+  both. A verdict is about the module (it holds when every claim in it does); "a claim nobody listed
+  is a claim nobody checked" is about one. `--property` keeps its name. Reports already committed
+  under `examples/` are records of earlier runs and keep the wording they were written with.
 - **"Policy set" for the `.dw` file** throughout the CLI help, the audit report and the checker's
   messages, which said "policy" for it. Dogwood's own term; a policy is one `permit` or `forbid`.
 

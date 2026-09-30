@@ -538,7 +538,7 @@ def prove(args, policies: list[dict], vocab: dict, keys: list[str] | None = None
                       "`x <= 22` fails where `x <= Num(22)` works.")
                 return 2
             if verdict == "constant":
-                print("\nNOTHING THIS PROPERTY SAYS CAN BE TESTED against this policy. Give the "
+                print("\nNOTHING THIS PROPERTY MODULE SAYS CAN BE TESTED against this policy set. Give the "
                       "module\nstates the policy answers differently, or the claims below it are "
                       "true of a\ndecision that never changes.")
                 return WeakProperty
@@ -558,9 +558,9 @@ def prove(args, policies: list[dict], vocab: dict, keys: list[str] | None = None
                         [(args.property_module.stem, args.property_module.stem)])
 
     if held:
-        print("  every claim holds over every request the property names.\n")
-        print("That is not a proof about requests it does not name. A property ranges over what it\n"
-              "says it ranges over, and nothing warns you when that is less than you meant.")
+        print("  every claim holds over every request the property module names.\n")
+        print("That is not a proof about requests it does not name. A property module ranges over\n"
+              "what it says it ranges over, and nothing warns you when that is less than you meant.")
         if args.mutation_score:
             return mutation_report(args, policies, vocab, keys, held=True)
         return 0
@@ -593,8 +593,8 @@ def prove(args, policies: list[dict], vocab: dict, keys: list[str] | None = None
         for line in definition_of(source, v.split(" is violated")[0].split()[-1]):
             print(f"        {line}")
 
-    print("\nThe policy does not mean what the property says it means. The state above is the\n"
-          "request that breaks the claim, and the claim is quoted beneath it -- read the two\n"
+    print("\nThe policy set does not mean what the property module says it means. The state above\n"
+          "is the request that breaks the claim, and the claim is quoted beneath it -- read the two\n"
           "together, because a violated invariant says which direction failed only when you can\n"
           "see what it asserted.")
 
@@ -894,16 +894,16 @@ def probe_decision(work: Path, module: Path, cfg_text: str) -> tuple[str, str]:
         return "unknown", f"`{call}` could not be evaluated over this module's states"
     if verdicts["NotAlwaysRefused"]:
         return "constant", (
-            f"the policy GRANTS every request this property names: `{call}` is true in every "
+            f"the policy GRANTS every request this property module names: `{call}` is true in every "
             f"state the module ranges over. A claim about what is refused therefore cannot fail, "
             f"whatever it says")
     if verdicts["NotAlwaysGranted"]:
         return "constant", (
-            f"the policy REFUSES every request this property names: `{call}` is false in every "
+            f"the policy REFUSES every request this property module names: `{call}` is false in every "
             f"state the module ranges over. A claim about what is refused therefore holds without "
             f"testing anything. The usual cause is a session that omits a prerequisite the policy "
             f"set requires -- a verification, an approval, a prior read -- so the request is "
-            f"denied before the rule this property is about is ever reached")
+            f"denied before the rule this property module is about is ever reached")
     return "varies", f"`{call}` is true in some of this module's states and false in others"
 
 
@@ -920,7 +920,7 @@ def check_property(work: Path, module: Path, said: str | None = None) -> tuple[b
             f"{module.name} needs a companion {cfg.name} naming the invariants to check, e.g.\n"
             f"      SPECIFICATION Spec\n"
             f"      INVARIANT YourClaim\n"
-            f"    Naming them is deliberate: a property nobody listed is a property nobody checked")
+            f"    Naming them is deliberate: a claim nobody listed is a claim nobody checked")
 
     shutil.copyfile(module, work / module.name)
     shutil.copyfile(cfg, work / cfg.name)
@@ -1049,15 +1049,15 @@ def mutation_report(args, policies: list[dict], vocab: dict, keys, held: bool) -
                      would have been satisfied by anything.
     """
     if not held:
-        print("\nNot scored: the property does not hold on the policy as written, so it has\n"
-              "already shown it can tell one policy from another. Fix the finding first.")
+        print("\nNot scored: the property module does not hold on the policy set as written, so it\n"
+              "has already shown it can tell one policy set from another. Fix the finding first.")
         return 0
 
     all_mutants = mutants(policies)
     cap = args.mutants or len(all_mutants)
     tried = all_mutants[:cap]
 
-    print(f"\nMUTATION SCORE -- does this property notice when the policy breaks?\n"
+    print(f"\nMUTATION SCORE -- does this property module notice when the policy set breaks?\n"
           f"  {len(tried)} mutant(s)"
           f"{f' of {len(all_mutants)}, capped by --mutants' if cap < len(all_mutants) else ''}\n")
 
@@ -1074,7 +1074,7 @@ def mutation_report(args, policies: list[dict], vocab: dict, keys, held: bool) -
             try:
                 still, _ = check_property(
                     work, args.property_module,
-                    said=f"  TLC {n}/{len(tried)}  mutant: {what}. Does the property notice?")
+                    said=f"  TLC {n}/{len(tried)}  mutant: {what}. Does the property module notice?")
             except Unsupported:
                 # The damage produced something outside the modelled subset. Not evidence about
                 # the property, so it is not counted against it.
@@ -1093,10 +1093,10 @@ def mutation_report(args, policies: list[dict], vocab: dict, keys, held: bool) -
     print(f"\n  {caught} of {total} caught.")
 
     if total and caught == 0:
-        print("\nTHE PROPERTY CAUGHT NOTHING. It holds of the policy, and it holds of every broken\n"
+        print("\nTHE PROPERTY MODULE CAUGHT NOTHING. It holds of the policy set, and of every broken\n"
               "version of the policy set too -- so it is not constraining this policy set at all. Either it\n"
               "ranges over requests the policy never sees, or it asserts something trivially true.\n"
-              "A property nothing can violate is not a check.")
+              "A property module nothing can violate is not a check.")
         # ITS OWN EXIT CODE, not 1. "Your property is broken" and "your property is weak" are
         # opposite findings -- the first says the policy is wrong, the second says the check is --
         # and sharing a code makes a caller read a useless property as a discriminating one.
@@ -1328,13 +1328,13 @@ def describe(args, policies: list[dict], vocab: dict, schema: dict, reading: str
             "rather than quietly answering one.",
             "There is no Inputs. State the requests your claim is about, including values this "
             "policy never mentions, or the claim may range over nothing and pass.",
-            "The .cfg must name SPECIFICATION Spec and every INVARIANT. A property nobody listed "
-            "is a property nobody checked.",
+            "The .cfg must name SPECIFICATION Spec and every INVARIANT. A claim nobody listed is "
+            "a claim nobody checked.",
         ],
         "skeleton": skeleton(name, args.policy.stem, policies, vocab),
         "config": ("SPECIFICATION Spec\n\n"
-                   "\\* Naming the claims is deliberate. A property nobody listed is a property\n"
-                   "\\* nobody checked.\n"
+                   "\\* Naming the claims is deliberate. A claim nobody listed is a claim nobody\n"
+                   "\\* checked.\n"
                    "INVARIANT EverythingIsGranted\n"),
     }
     print(json.dumps(doc, indent=2))
@@ -1372,7 +1372,7 @@ def main() -> int:
                          "that has to act on the answer instead of read it")
     ap.add_argument("--mutation-score", action="store_true",
                     help="after a --property check that HOLDS, break the policy in small ways and "
-                         "report which breakages the property notices. A property that survives "
+                         "report which breakages the property module notices. A module that survives "
                          "every one of them is not constraining this policy set -- it holds, and it "
                          "would hold of anything")
     ap.add_argument("--mutants", type=int, default=None, metavar="N",
@@ -1395,7 +1395,7 @@ def main() -> int:
                     help="before checking a --property, say in English what each of its claims "
                          "FORBIDS, which states it will be checked in, and which of those its "
                          "condition even applies to. The one step in this pipeline nothing else "
-                         "verifies is whether the property says what you meant, and this is the "
+                         "verifies is whether the property module says what you meant, and this is the "
                          "sentence to disagree with while disagreeing is still cheap")
     ap.add_argument("--eval", type=str, default=None, metavar="EXPR",
                     help="evaluate a TLA+ expression in this policy's own semantics and print the "
@@ -1413,8 +1413,8 @@ def main() -> int:
                          "event schema has no universal pin")
     ap.add_argument("--decision-probe", action="store_true",
                     help="with --property: ask whether the policy's answer VARIES over the states "
-                         "this module ranges over, and stop. Two TLC runs, seconds. A property "
-                         "whose policy refuses everything it names holds without testing "
+                         "this module ranges over, and stop. Two TLC runs, seconds. A property module "
+                         "whose policy set refuses everything it names holds without testing "
                          "anything, and mutation scoring can only report that afterwards, as a "
                          "symptom. Exit 4 when the decision is constant")
     ap.add_argument("--parse", action="store_true",

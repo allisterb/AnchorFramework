@@ -480,7 +480,7 @@ public static class Program
 
         if (!r.IsSuccess)
         {
-            Console.Error.WriteLine(r.Message ?? "the property could not be read");
+            Console.Error.WriteLine(r.Message ?? "the property module could not be read");
             return CouldNotRun;
         }
 

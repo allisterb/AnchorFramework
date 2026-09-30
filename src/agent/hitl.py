@@ -422,7 +422,7 @@ def plainly(complaints: list[str]) -> str:
         return "The draft was not well-formed, so nothing was checked."
     if "did not contain both" in said:
         return "The draft came back incomplete."
-    return "The draft could not be used as a property."
+    return "The draft could not be used as a set of claims to check."
 
 
 def restate(run: Run, why: str) -> Ask:
@@ -688,10 +688,10 @@ def transcript(session: Session) -> str:
     # session where nobody confirmed anything.
     confirmed = any(r.confirmed for r in session.runs)
     lines += ["", "---", "",
-              "*The property was drafted by a model and gated by Anchor. A person stated the "
-              "requirement and confirmed a plain-English reading of the claim, which is better "
-              "evidence than an unattended run and is still not a person having written the "
-              "property.*" if confirmed else
+              "*The property module was drafted by a model and gated by Anchor. A person stated "
+              "the requirement and confirmed a plain-English reading of its claims, which is "
+              "better evidence than an unattended run and is still not a person having written "
+              "the property module.*" if confirmed else
               "*Nothing here was confirmed by the person: no draft reached the checkpoint where "
               "they are shown what it would forbid. The requirement above is theirs; every verdict "
               "is Anchor's, under the same gates as an unattended run.*", ""]

@@ -569,7 +569,7 @@ def stage_score(run: Run, _: str) -> str:
         return gate(False, "\n".join(run.complaints))
 
     caught = run.score.get("caught")
-    return gate(True, f"the property discriminates: it caught {caught} of the broken versions of "
+    return gate(True, f"the property module discriminates: it caught {caught} of the broken versions of "
                       f"this policy that were tried")
 
 
@@ -627,12 +627,12 @@ def stage_check(run: Run, _: str) -> str:
     run.prop = repair.check_property(run.policy, run.module_path, event_schema=run.event_schema,
                                      max_fields=run.max_fields)
 
-    lines = [f"Policy: {run.policy.name}", f"Property: {run.module_name}", ""]
+    lines = [f"Policy set: {run.policy.name}", f"Property module: {run.module_name}.tla", ""]
     if run.prop.get("_failed"):
-        lines.append(f"The property could not be checked: {run.prop.get('_why')}")
+        lines.append(f"The property module could not be checked: {run.prop.get('_why')}")
     else:
-        lines.append("The stated property HOLDS." if run.prop.get("held")
-                     else "The stated property is BROKEN.")
+        lines.append("The property module HOLDS: every claim in it holds." if run.prop.get("held")
+                     else "The property module is BROKEN: a claim in it does not hold.")
         for v in run.prop.get("violations") or []:
             lines.append(f"  {v['invariant']} is violated at {v['state']}")
 
@@ -653,7 +653,7 @@ def stage_check(run: Run, _: str) -> str:
     # in a TLC verdict says how little that might be.
     lines += ["", "WHAT WAS ACTUALLY CHECKED -- each claim, what it forbids, and how many of the "
               "states it ranges over its condition applies to:", "", run.explained.strip(), "",
-              "This says nothing about requests the property does not name."]
+              "This says nothing about requests the property module does not name."]
 
     if run.rules.get("_failed"):
         lines += ["", "The derived questions were NOT attempted: this policy is outside the "
@@ -742,14 +742,19 @@ def closing(run: Run, *, plain: bool = False) -> list[str]:
     if run.unreachable or run.crashed or run.rejected_at or not run.module_path:
         return lines
 
-    name = "the claim you confirmed" if plain else run.module_path.name
+    # THE MODULE, OR ITS CLAIMS. A verdict is about the whole file -- it holds when every claim
+    # in it does -- and `hitl` names what its person confirmed rather than a file.
+    module = f"the property module {run.module_path.name}"
     if run.prop.get("_failed"):
         why = (str(run.prop.get("_why", "")).strip().splitlines() or [""])[-1]
-        lines.append(f"  the property could not be checked: {why}")
+        lines.append(f"  {'the claims you confirmed' if plain else module} could not be "
+                     f"checked: {why}")
     elif run.prop.get("held"):
-        lines.append(f"  the stated property HOLDS ({name}), for every request it ranges over")
+        lines.append("  the claims you confirmed all HOLD, for every request they range over"
+                     if plain else
+                     f"  {module} HOLDS: every claim in it, for every request it ranges over")
     else:
-        lines.append(f"  the stated property is BROKEN ({name}):")
+        lines.append("  a claim you confirmed is BROKEN:" if plain else f"  {module} is BROKEN:")
         lines += ([f"    {plainly(c) if plain else c.sentence()}" for c in run.witness] or
                   [f"    {v['invariant']} is violated at {v['state']}"
                    for v in run.prop.get("violations") or []])
@@ -855,7 +860,7 @@ def stage_report(run: Run, said: str) -> str:
                             "disagreed with the draft."}.get(
             run.rejected_at,
             "The gate below is a criterion in code, not a judgement a model was asked to make.")
-        lines += [f"## No property was checked: the draft was rejected at `{run.rejected_at}`", "",
+        lines += [f"## No property module was checked: the draft was rejected at `{run.rejected_at}`", "",
                   f"{whose} Nothing downstream ran, and nothing here was verified.", ""]
         lines += [f"- {c}" for c in run.complaints]
     else:
@@ -907,7 +912,7 @@ def stage_report(run: Run, said: str) -> str:
         # findings.html and checks this module beside every other one whose header names the
         # policy set -- none of which `auto` does, and the module is not where it would look.
         if run.module_path and not run.prop.get("_failed"):
-            lines += ["To audit the policy set with this property, beside every other module whose "
+            lines += ["To audit the policy set with this property module, beside every other module whose "
                       "header names it:", "", "```bash", audit_command(run), "```", ""]
         lines += ["## Reported", "", run.answered]
 
@@ -915,13 +920,14 @@ def stage_report(run: Run, said: str) -> str:
     # wrote the property -- but a run a person steered is not an unattended one, and a footer that
     # said so either way would be wrong in one of the two directions every time.
     lines += ["", "---", "",
-              "*A property drafted by a model and gated by Anchor. A person stated the requirement "
-              "and confirmed a plain-English reading of the claim, which is better evidence than "
-              "an unattended run and is still not a person having written the property.*"
+              "*A property module drafted by a model and gated by Anchor. A person stated the "
+              "requirement and confirmed a plain-English reading of its claims, which is better "
+              "evidence than an unattended run and is still not a person having written the "
+              "property module.*"
               if run.confirmed else
-              "*A property drafted by a model and gated by Anchor. Findings against an "
-              "agent-authored property are weaker evidence than findings against one a person "
-              "wrote.*", ""]
+              "*A property module drafted by a model and gated by Anchor. Findings against an "
+              "agent-authored property module are weaker evidence than findings against one a "
+              "person wrote.*", ""]
 
     run.findings.write_text("\n".join(lines), encoding="utf-8")
     return f"wrote {run.findings}"
@@ -1237,7 +1243,7 @@ def outcome(run: Run) -> str:
         return f"no property module (rejected at {run.rejected_at})"
     if run.prop.get("_failed"):
         return "no verdict"
-    return "property module BROKEN" if not run.prop.get("held") else "property holds"
+    return "property module BROKEN" if not run.prop.get("held") else "property module holds"
 
 
 def sweep_report(target: Path, intents: dict[str, str], runs: list[Run]) -> str:
@@ -1267,9 +1273,9 @@ def sweep_report(target: Path, intents: dict[str, str], runs: list[Run]) -> str:
         # that was not.
         lines += ["", "**Not swept**, because `intents.md` states no requirement for them:", ""]
         lines += [f"- `{n}`" for n in unstated]
-    lines += ["", "*Every property above was drafted by a model and gated by Anchor. Findings "
-              "against an agent-authored property are weaker evidence than findings against one a "
-              "person wrote.*", ""]
+    lines += ["", "*Every property module above was drafted by a model and gated by Anchor. "
+              "Findings against an agent-authored property module are weaker evidence than "
+              "findings against one a person wrote.*", ""]
     return "\n".join(lines)
 
 
@@ -1383,7 +1389,7 @@ def add_checking_arguments(p: argparse.ArgumentParser) -> None:
                         "redrafted")
     p.add_argument("--max-fields", type=int, default=None, metavar="N",
                    help="raise the checker's bound on how many input/output fields a policy set "
-                        "may read (default 4). Applies to the PROPERTY runs only -- the derived "
+                        "may read (default 4). Applies to the property module's own runs only -- the derived "
                         "questions range over the product of every field domain and do not "
                         "finish above the default, so they are left to refuse instead")
 
@@ -1411,7 +1417,7 @@ def add_llm_arguments(p: argparse.ArgumentParser) -> None:
 
 
 def add_cap_arguments(p: argparse.ArgumentParser) -> None:
-    """Caps on each LLMrulesno property (rejected at review) call. None by default."""
+    """Caps on each LLM call. None by default."""
     p.add_argument("--turns", type=int, default=None, metavar="N",
                    help="cap on agent loop iterations PER CALL -- one model call plus the tools "
                         "it asked for. Not cumulative: --rounds R with --turns T allows R*T")

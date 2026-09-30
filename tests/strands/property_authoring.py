@@ -256,7 +256,7 @@ def main() -> int:
     check("...and the checker says NO VERDICT rather than BROKEN", broken["exitCode"] == 2,
           str(broken.get("exitCode")))
     check("...and claims nothing about the policy",
-          "does not mean what the property says" not in broken["output"],
+          "does not mean what the property module says" not in broken["output"],
           broken["output"][-300:])
 
     said = assess(broken, (POLICIES / "firewall_unparseable.cfg").read_text(encoding="utf-8"))
@@ -282,7 +282,7 @@ def main() -> int:
     check("...and gets NO VERDICT rather than BROKEN", crashed["exitCode"] == 2,
           str(crashed.get("exitCode")))
     check("...and claims nothing about the policy",
-          "does not mean what the property says" not in crashed["output"],
+          "does not mean what the property module says" not in crashed["output"],
           crashed["output"][-300:])
     check("...and names the field TLC choked on",
           "nonexistent field" in crashed["output"], crashed["output"][-300:])
