@@ -152,8 +152,10 @@ whose schema has no universal pin. The reading is stated in every run, as before
   questions had one before; the prose these modes return is a claim, and the transcript is the
   evidence to check it against. findings.md and the opening summary say where it is.
 - **The opening summary fits the terminal.** Its values wrap in their own column at 88, as the
-  reading does; a long requirement or settings path used to be wrapped again by `hitl`'s
-  92-column terminal under the wrong indent. And a stage's progress line is no longer wrapped at
+  reading does, and paths under the working directory are shown relative to it; a long
+  requirement or settings path used to be wrapped again by `hitl`'s 92-column terminal under the
+  wrong indent. A line that cannot fit -- one long path -- is now left as laid out rather than
+  re-wrapped, which only moved the path without shortening anything. And a stage's progress line is no longer wrapped at
   all: wrapping turned its `\r` into a space, so the elapsed time landed after the description
   instead of replacing it.
 - **The reading of a property module is laid out to be read**, wherever it appears: `anchor

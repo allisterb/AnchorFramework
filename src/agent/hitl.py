@@ -177,9 +177,14 @@ class Terminal(Console):
                 # this prints: a findings.md path wrapped as `...anchor\hitl-` / `identity\...` is
                 # no longer a path anybody can copy, and `hitl-identity` is one word to a reader
                 # even though textwrap sees two.
-                out.append(textwrap.fill(line, self.width, initial_indent=indent,
-                                         subsequent_indent=indent + "  ",
-                                         break_on_hyphens=False, break_long_words=False))
+                wrapped = textwrap.wrap(line, self.width, initial_indent=indent,
+                                        subsequent_indent=indent + "  ",
+                                        break_on_hyphens=False, break_long_words=False)
+                # AND A LINE THAT CANNOT BE MADE TO FIT IS LEFT ALONE. One too wide only because of
+                # a path is laid out already -- a label, then the path in its column -- and
+                # re-wrapping it only moved the path under the wrong indent without shortening it.
+                out.append(line if any(len(w) > self.width for w in wrapped)
+                           else "\n".join(wrapped))
         # `newline=False` leaves the cursor on the line, so the next call can overwrite it with a
         # leading `\r` -- which is how a stage says it has STARTED and then says how long it took,
         # on one line instead of two.
@@ -875,7 +880,7 @@ def main() -> int:
     source = "--intent"
     brief = args.intent
     if not brief and (brief := stated_intent(args.policy, args.intents, console)):
-        source = f"{args.intents or args.policy.parent / 'intents.md'}"
+        source = policy_agent.shown(args.intents or args.policy.parent / "intents.md")
     if not brief:
         source = "you, at the prompt"
         brief = console.ask(
@@ -903,9 +908,11 @@ def main() -> int:
     # THE SAME SUMMARY `auto` GIVES, in words for a person: no TLC, as everywhere else here.
     said = brief if len(brief) <= 110 else brief[:107] + "..."
     console.say(pipeline.announce(
-        f"Drafting a property module for {args.policy}, with you as one of the gates",
+        f"Drafting a property module for {policy_agent.shown(args.policy)}, with you as one of "
+        f"the gates",
         f'from {source}: "{said}"',
-        f"{args.out or args.policy.parent / 'anchor' / 'hitl'}: session.md, and attempt-<n>/ "
+        f"{policy_agent.shown(args.out or args.policy.parent / 'anchor' / 'hitl')}: session.md, "
+        f"and attempt-<n>/ "
         f"for each pass, with that pass's findings.md and transcript.md -- every LLM call it "
         f"made", args, ready,
         stages=[f"describe, draft (up to {args.rounds} round(s) a pass), preflight, score (up to "

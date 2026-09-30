@@ -740,11 +740,8 @@ def audit_command(run: Run) -> str:
     """The `check --full` that audits the policy set with this run's property: the Dogwood
     witness drawn in findings.html, beside every other module whose header names it."""
     def shown(p: Path) -> str:
-        try:
-            p = p.resolve().relative_to(Path.cwd().resolve())
-        except ValueError:
-            pass
-        return f'"{p}"' if " " in str(p) else str(p)
+        said = policy_agent.shown(p)
+        return f'"{said}"' if " " in said else said
 
     return " ".join(["anchor check", shown(run.policy), "--full", "--property",
                      shown(run.module_path),
@@ -1612,9 +1609,12 @@ def main() -> int:
         # from its heading -- so the single-policy default must not be passed alongside it.
         per_run = {k: v for k, v in shared.items() if k != "module_name"}
 
-        print(announce(f"Sweeping {len(intents)} requirement(s) against {args.policy} (unattended)",
-                       f"{len(intents)} from {intents_file}, each run through every stage",
-                       f"{out}: a subdirectory per requirement, and summary.md", args, ready),
+        print(announce(f"Sweeping {len(intents)} requirement(s) against "
+                       f"{policy_agent.shown(args.policy)} (unattended)",
+                       f"{len(intents)} from {policy_agent.shown(intents_file)}, each run through "
+                       f"every stage",
+                       f"{policy_agent.shown(out)}: a subdirectory per requirement, and summary.md",
+                       args, ready),
               file=sys.stderr, flush=True)
         # A line as each requirement starts and one as it lands, never rewritten in place: the
         # stages and TLC runs between them would break up a line that was.
@@ -1656,7 +1656,7 @@ def main() -> int:
     source = "--intent"
     if not args.intent and beside.is_file():
         if (stated := intent_for(read_intents(beside), args.policy.name)):
-            args.intent, source = stated, f"its heading in {beside}"
+            args.intent, source = stated, f"its heading in {policy_agent.shown(beside)}"
 
     if not args.intent:
         # Two situations, two different fixes: a file that says nothing about this policy, or
@@ -1675,9 +1675,9 @@ def main() -> int:
               out=args.out or args.policy.parent / "anchor", **shared)
 
     said = args.intent if len(args.intent) <= 110 else args.intent[:107] + "..."
-    print(announce(f"Drafting a property module for {args.policy} (unattended)",
+    print(announce(f"Drafting a property module for {policy_agent.shown(args.policy)} (unattended)",
                    f'from {source}: "{said}"',
-                   f"{run.out}: {args.name}.tla and .cfg, drafting/, findings.md, and "
+                   f"{policy_agent.shown(run.out)}: {args.name}.tla and .cfg, drafting/, findings.md, and "
                    f"transcript.md -- every LLM call, with its tool calls", args, ready),
           file=sys.stderr, flush=True)
 

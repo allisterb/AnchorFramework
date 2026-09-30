@@ -630,9 +630,21 @@ def says_what_it_will_do() -> None:
         check("the session is described before it starts",
               "with you as one of the gates" in flat and "from --intent:" in flat
               and "confirm (you)" in flat and "stand-in via gemini" in flat, shown[:900])
-        check("...no line of it wider than the terminal it is shown in",
-              all(len(line) <= saved[1]().width for line in shown.splitlines()),   # the real one
-              max(shown.splitlines(), key=len))
+        # WHAT MATTERS IS THAT THE TERMINAL DOES NOT RE-WRAP IT, which scattered its column. Not
+        # "no line wider than 92": on a CI runner one path alone can be, and cannot be broken.
+        screen = io.StringIO()
+        saved[1](stream=screen).say(shown)                          # the real Terminal
+        check("...and the terminal shows it exactly as laid out",
+              [ln.rstrip() for ln in screen.getvalue().rstrip().splitlines()]
+              == [ln.rstrip() for ln in shown.rstrip().splitlines()], screen.getvalue()[:900])
+
+        # A laid-out line too wide ONLY because of a path is left alone: re-wrapping it moved the
+        # path under the wrong indent without making anything fit.
+        screen = io.StringIO()
+        laid = "  output            /home/runner/work/a/very/long/path/that/cannot/break:"
+        saved[1](width=40, stream=screen).say(laid)
+        check("a line that cannot be made to fit is left as laid out, not scattered",
+              screen.getvalue().rstrip("\n") == laid, repr(screen.getvalue()))
         formal(shown, "in the summary before a session")
 
         # AND AT THE END, a broken property as the person reads it: `sentence()` quotes the TLA+

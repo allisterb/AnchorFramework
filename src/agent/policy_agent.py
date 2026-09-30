@@ -149,6 +149,17 @@ def appsettings_path() -> Path | None:
     return None
 
 
+def shown(path: Path | str) -> str:
+    """A path as a person reads it: relative to where they are when it is under there, whole
+    otherwise. What every summary prints -- `examples\\aws1\\testprop` rather than the whole
+    checkout, which on a CI runner alone is wider than the column it has to sit in."""
+    p = Path(path)
+    try:
+        return str(p.resolve().relative_to(Path.cwd().resolve()))
+    except (ValueError, OSError):
+        return str(path)
+
+
 def missing_settings() -> str | None:
     """The path `ANCHOR_APPSETTINGS` names, when nothing is there; otherwise None."""
     named = os.environ.get("ANCHOR_APPSETTINGS")
@@ -476,7 +487,7 @@ def chosen_model(provider: str, model_id: str | None) -> tuple[str | None, str]:
     if model_id:
         return model_id, "--llm"
     if provider in MODEL_SETTINGS and (configured := setting(MODEL_SETTINGS[provider])):
-        return configured, f"{MODEL_SETTINGS[provider]} in {appsettings_path()}"
+        return configured, f"{MODEL_SETTINGS[provider]} in {shown(appsettings_path())}"
     return (DEFAULT_GEMINI_MODEL if provider == "gemini" else None), "the provider's default"
 
 
@@ -560,7 +571,7 @@ def _readiness(provider: str, model_id: str | None) -> Readiness:
 
     provider = resolve_provider(provider)
     settings = appsettings_path()
-    from_file = f"{settings}" if settings else ""
+    from_file = shown(settings) if settings else ""
     model, model_source = chosen_model(provider, model_id)
 
     if provider == "gemini":
