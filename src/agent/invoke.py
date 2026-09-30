@@ -48,7 +48,9 @@ import hashlib
 import os
 import subprocess
 import sys
+import threading
 from collections import OrderedDict
+from collections.abc import Callable
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
@@ -65,6 +67,51 @@ _memo: OrderedDict[str, subprocess.CompletedProcess[str]] = OrderedDict()
 # What it saved, for anything that wants to report honestly on what actually ran.
 ran = 0
 reused = 0
+
+# The lines worth passing on from a checker run while it is still running: which TLC run is
+# starting, and TLC's own once-a-minute progress on a long search.
+RELAYED = ("  TLC ", "        Progress")
+
+# Where those lines go, or None to keep them out of sight. `auto` sets it, because an unattended
+# run is otherwise minutes of silence; unset, the checker is not even asked for them, so nothing
+# changes for any other caller.
+progress: Callable[[str], None] | None = None
+
+
+def run_relayed(cmd: list[str], timeout: int,
+                relay: Callable[[str], None]) -> subprocess.CompletedProcess[str]:
+    """Run the checker, handing its progress lines to `relay` as they arrive.
+
+    stdout is read on a thread while stderr is read here line by line, so neither pipe can fill
+    and stall the other. The relayed lines are NOT kept in the returned stderr: they describe the
+    run rather than its answer, and a caller that shows stderr to a drafter or a report would
+    otherwise pass them on a second time. Past `timeout` the run is killed and TimeoutExpired
+    raised, exactly as `subprocess.run` does.
+    """
+    proc = subprocess.Popen(cmd, cwd=REPO, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                            text=True, encoding="utf-8", errors="replace",
+                            # UTF-8 both ways, and ask the checker for its progress lines.
+                            env={**os.environ, "PYTHONUTF8": "1", "ANCHOR_PROGRESS": "1"})
+    out: list[str] = []
+    reader = threading.Thread(target=lambda: out.append(proc.stdout.read()), daemon=True)
+    reader.start()
+    expired = threading.Event()
+    timer = threading.Timer(timeout, lambda: (expired.set(), proc.kill()))
+    timer.start()
+    errors: list[str] = []
+    try:
+        for line in proc.stderr:
+            if line.startswith(RELAYED):
+                relay(line.rstrip())
+            else:
+                errors.append(line)
+        proc.wait()
+    finally:
+        timer.cancel()
+    reader.join()
+    if expired.is_set():
+        raise subprocess.TimeoutExpired(cmd, timeout)
+    return subprocess.CompletedProcess(cmd, proc.returncode, "".join(out), "".join(errors))
 
 
 def enabled() -> bool:
@@ -107,12 +154,18 @@ def checker(args: list[str], *, timeout: int = 900) -> subprocess.CompletedProce
     if key is not None and (hit := _memo.get(key)) is not None:
         _memo.move_to_end(key)
         reused += 1
+        if progress is not None:
+            progress("  (the same check already ran in this run; its answer is reused)")
         return hit
 
-    # UTF-8 both ways: PYTHONUTF8 makes the child WRITE it, and the encoding makes us READ it.
-    # Either half alone breaks on Windows, whose locale default is cp1252.
-    proc = subprocess.run(cmd, cwd=REPO, capture_output=True, text=True, encoding="utf-8", errors="replace",
-                          env={**os.environ, "PYTHONUTF8": "1"}, timeout=timeout)
+    if progress is not None:
+        proc = run_relayed(cmd, timeout, progress)
+    else:
+        # UTF-8 both ways: PYTHONUTF8 makes the child WRITE it, and the encoding makes us READ it.
+        # Either half alone breaks on Windows, whose locale default is cp1252.
+        proc = subprocess.run(cmd, cwd=REPO, capture_output=True, text=True, encoding="utf-8",
+                              errors="replace", env={**os.environ, "PYTHONUTF8": "1"},
+                              timeout=timeout)
     ran += 1
 
     # A TIMEOUT IS NOT CACHED, because `subprocess.run` raises rather than returning and there is

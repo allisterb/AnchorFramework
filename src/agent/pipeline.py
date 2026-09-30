@@ -46,6 +46,7 @@ import argparse
 import os
 import re
 import sys
+import tempfile
 import time
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass, field
@@ -65,7 +66,7 @@ from strands.types.tools import ToolSpec                               # noqa: E
 
 from annotations import VERDICT_PASS, verdict                          # noqa: E402
 
-from agent import author, policy_agent, repair                         # noqa: E402
+from agent import author, invoke, policy_agent, repair                 # noqa: E402
 
 STAGES = ("describe", "draft", "preflight", "score", "review", "check", "answer", "report")
 
@@ -289,6 +290,8 @@ class Run:
     score: dict = field(default_factory=dict)
     rules: dict = field(default_factory=dict)
     prop: dict = field(default_factory=dict)
+    # A BROKEN property's counterexamples, replayed in Dogwood: `checker.witness.Confirmation`s.
+    witness: list = field(default_factory=list)
     explained: str = ""
     checked: str = ""
     answered: str = ""
@@ -354,7 +357,9 @@ def ask(agent, prompt: str, run: Run, who: str) -> tuple[str, bool]:
         # the stage's generic handler because that one says "a stage of Anchor itself failed" and
         # sends the reader to the wrong place: a run with `--llm gemini-3.7-flash` reported five
         # Anchor bugs for what was a 404 on the model name.
-        run.unreachable.append(f"{who}: {e}")
+        # The provider's own message, out of whatever the SDK wrapped it in, and what it means
+        # where that is known: `gemini-2.7.-flash` should read as a model name, not as a stack.
+        run.unreachable.append(f"{who}: {policy_agent.describe_failure(e)}")
         run.calls.append(Call(who, seconds=time.monotonic() - started, capped=True))
         return "", True
     elapsed = time.monotonic() - started
@@ -631,6 +636,18 @@ def stage_check(run: Run, _: str) -> str:
         for v in run.prop.get("violations") or []:
             lines.append(f"  {v['invariant']} is violated at {v['state']}")
 
+        # THE SESSION THAT BREAKS IT, in Dogwood, with the engine's own verdict -- what `check
+        # --full` does with a broken claim, done here because the counterexample is already in
+        # hand and a replay costs milliseconds. `state` above is a TLA+ value; this is a trace a
+        # Dogwood author can read and put to the engine themselves.
+        if not run.prop.get("held"):
+            run.witness = replay_in_dogwood(run)
+            for c in run.witness:
+                lines += ["", f"  In Dogwood: {c.sentence()}"]
+                lines += [f"    {line}" for line in c.trace.rstrip().splitlines()]
+                if c.directory and c.command:
+                    lines.append(f"    kept in {c.directory}; from in there: {c.command}")
+
     # THE BOUND, in the same breath as the verdict. "Holds" on its own is the most overclaimable
     # sentence this pipeline produces: a property ranges over exactly what it names, and nothing
     # in a TLC verdict says how little that might be.
@@ -655,6 +672,100 @@ def stage_check(run: Run, _: str) -> str:
             lines.append(f"  {len(run.rules['unknown'])} rule(s) returned no verdict")
     run.checked = "\n".join(lines)
     return run.checked
+
+
+def replay_in_dogwood(run: Run) -> list:
+    """A broken property's counterexamples as Dogwood sessions, replayed by the engine, kept in
+    `<out>/witness` with a README. Never raises: the replay is extra evidence for a finding
+    already made, and losing the finding to it would be the wrong way round."""
+    from checker.witness import Confirmation, confirm, reading_schema     # noqa: PLC0415
+
+    try:
+        with tempfile.TemporaryDirectory(prefix="anchor-reading-") as scratch:
+            # The reading the model was checked under, as a file: never the engine's own default,
+            # which is only the same reading by coincidence.
+            return confirm(run.policy, run.module_path, run.prop.get("output", ""),
+                           keep=run.out / "witness",
+                           event_schema=run.event_schema or reading_schema("pinned", Path(scratch)))
+    except Exception as e:                                               # noqa: BLE001
+        return [Confirmation(invariant="", state={},
+                             why=f"the counterexample could not be replayed in Dogwood: {e}")]
+
+
+def audit_command(run: Run) -> str:
+    """The `check --full` that audits the policy set with this run's property: the Dogwood
+    witness drawn in findings.html, beside every other module whose header names it."""
+    def shown(p: Path) -> str:
+        try:
+            p = p.resolve().relative_to(Path.cwd().resolve())
+        except ValueError:
+            pass
+        return f'"{p}"' if " " in str(p) else str(p)
+
+    return " ".join(["anchor check", shown(run.policy), "--full", "--property",
+                     shown(run.module_path),
+                     *(["--event-schema", shown(run.event_schema)] if run.event_schema else [])])
+
+
+def plainly(c) -> str:
+    """A replayed counterexample without the TLA+ value `sentence()` quotes, for `hitl`."""
+    if c.agreed and c.engine and c.demanded is not None:
+        return (f"the Dogwood engine {'ALLOWS' if c.engine == 'allow' else 'REFUSES'} a session "
+                f"your requirement says it must {'ALLOW' if c.demanded else 'REFUSE'}; the "
+                f"session is in findings.md")
+    # A disagreement, or no verdict: neither sentence quotes the value.
+    return c.sentence() if c.engine else (c.why or "the session that breaks it is in findings.md")
+
+
+def closing(run: Run, *, plain: bool = False) -> list[str]:
+    """What the run found, at its end: the outcome, the property's verdict, the derived findings,
+    and how to audit with the property. So that nobody has to open findings.md to learn whether
+    the policy set does what was asked -- or think a separate `check` is needed to find out.
+
+    `plain` is `hitl`'s: no module file and no command, since it promises its person no formal
+    vocabulary. Both are in the attempt's findings.md."""
+    lines = [f"outcome: {outcome(run)}"]
+
+    # A REJECTED DRAFT SAYS WHY, here as well as in findings.md: "rejected at review" alone left a
+    # person to open the report to learn that nothing had been checked, and why not. `hitl` asks
+    # its person about the same complaints instead, so it is not shown them twice.
+    if run.rejected_at and not plain and not run.unreachable:
+        for complaint in run.complaints:
+            said = [line.strip() for line in complaint.splitlines() if line.strip()]
+            lines += [f"  {line}" for line in said[:8]]
+            if len(said) > 8:
+                lines.append(f"  ... ({len(said) - 8} more line(s) in findings.md)")
+        if run.rejected_at != "confirm":
+            lines.append("nothing was checked. `anchor hitl` runs the same gates, and when one "
+                         "turns a draft away it asks you about the requirement and drafts again "
+                         "with your answer")
+    if run.unreachable or run.crashed or run.rejected_at or not run.module_path:
+        return lines
+
+    name = "the claim you confirmed" if plain else run.module_path.name
+    if run.prop.get("_failed"):
+        why = (str(run.prop.get("_why", "")).strip().splitlines() or [""])[-1]
+        lines.append(f"  the property could not be checked: {why}")
+    elif run.prop.get("held"):
+        lines.append(f"  the stated property HOLDS ({name}), for every request it ranges over")
+    else:
+        lines.append(f"  the stated property is BROKEN ({name}):")
+        lines += ([f"    {plainly(c) if plain else c.sentence()}" for c in run.witness] or
+                  [f"    {v['invariant']} is violated at {v['state']}"
+                   for v in run.prop.get("violations") or []])
+
+    if run.rules.get("_failed"):
+        lines.append("  derived findings: not attempted, the policy set is outside the subset "
+                     "they range over")
+    elif run.rules:
+        defects = set(run.rules.get("defects") or [])
+        found = [r for r in run.rules.get("rules") or [] if r.get("index") in defects]
+        lines.append(f"  derived findings: {len(found)}" + (
+            " (" + ", ".join(f"{r.get('effect')} #{r.get('index')} {r.get('verdict')}"
+                             for r in found) + ")" if found else ""))
+    if not plain:
+        lines.append(f"to audit with it: {audit_command(run)}")
+    return lines
 
 
 def stage_answer(run: Run, said: str, answerer) -> str:
@@ -791,8 +902,14 @@ def stage_report(run: Run, said: str) -> str:
                           "the part a person can audit.", ""]
             if trip:
                 lines += [trip, ""]
-        lines += ["## Verdicts", "", "```", run.checked.strip(), "```", "",
-                  "## Reported", "", run.answered]
+        lines += ["## Verdicts", "", "```", run.checked.strip(), "```", ""]
+        # THE WAY ON, for a module that ran. `check --full` draws a broken claim's session in
+        # findings.html and checks this module beside every other one whose header names the
+        # policy set -- none of which `auto` does, and the module is not where it would look.
+        if run.module_path and not run.prop.get("_failed"):
+            lines += ["To audit the policy set with this property, beside every other module whose "
+                      "header names it:", "", "```bash", audit_command(run), "```", ""]
+        lines += ["## Reported", "", run.answered]
 
     # AND WHAT THIS DOCUMENT IS ALLOWED TO CLAIM. Both readings end in the same place -- nobody
     # wrote the property -- but a run a person steered is not an unattended one, and a footer that
@@ -1117,10 +1234,10 @@ def outcome(run: Run) -> str:
         # working rather than the draft failing.
         return "the person said this is not what they meant"
     if run.rejected_at:
-        return f"no property (rejected at {run.rejected_at})"
+        return f"no property module (rejected at {run.rejected_at})"
     if run.prop.get("_failed"):
         return "no verdict"
-    return "property BROKEN" if not run.prop.get("held") else "property holds"
+    return "property module BROKEN" if not run.prop.get("held") else "property holds"
 
 
 def sweep_report(target: Path, intents: dict[str, str], runs: list[Run]) -> str:
@@ -1156,6 +1273,155 @@ def sweep_report(target: Path, intents: dict[str, str], runs: list[Run]) -> str:
     return "\n".join(lines)
 
 
+# What each stage is doing, said as it starts. `hitl` says it on one line it then overwrites with
+# the time; `auto` runs unattended, often in CI, so it says each on a line of its own.
+DOING = {
+    "describe": "reading the policy set's vocabulary",
+    "draft": "asking the LLM to write a property module: this can take a while",
+    "preflight": "reading the draft",
+    # No `TLC`, `TLA+` or `.cfg` in any of these: `hitl` shows them to a person, and it promises
+    # that person no formal-methods vocabulary (tests/strands/hitl_loop.py holds it to that).
+    "score": "breaking the policy set on purpose, one check per mutant: this can take a while",
+    "review": "asking the LLM in a fresh context whether the property module says what you asked for",
+    "confirm": "over to you",
+    "check": "running the checks",
+    "answer": "writing it up",
+    "report": "writing findings.md",
+}
+
+
+def stage_logger(run: "Run"):
+    """`announce` for an unattended run: one plain line per event on stderr, never rewritten, so
+    a CI log reads the same as a terminal. The TLC runs inside a stage are relayed between them.
+
+    A STAGE WHOSE LLM COULD NOT BE REACHED SAYS SO AS IT ENDS. It used to say `done`, and the run
+    then stopped at `report` with nothing on the terminal to say why -- the reason was only in
+    findings.md.
+    """
+    before = [0]
+
+    def announce(stage: str, seconds: float | None) -> None:
+        if seconds is None:
+            before[0] = len(run.unreachable)
+            print(f"[{stage}] {DOING.get(stage, '')} ...", file=sys.stderr, flush=True)
+            return
+        if (failed := run.unreachable[before[0]:]):
+            print(f"      -> {stage} FAILED ({seconds:.1f}s): the LLM could not be reached", file=sys.stderr)
+            for f in failed:
+                print(f"         {f}", file=sys.stderr)
+            sys.stderr.flush()
+            return
+        print(f"      -> {stage} done ({seconds:.1f}s)", file=sys.stderr, flush=True)
+    return announce
+
+
+def announce(what: str, requirement: str, out: str, args: argparse.Namespace,
+             ready: policy_agent.Readiness, *, stages: list[str] | None = None,
+             closing: str = "Each stage is announced as it starts, and each TLC run inside it."
+             ) -> str:
+    """What this run is about to do, from the options it was given. Said before the first stage,
+    because the first answer can be minutes away. `hitl` passes its own stages and closing."""
+    pad = " " * 20
+    stages = stages or [f"describe, draft (up to {args.rounds} round(s)), preflight, score (up to "
+                        f"{args.mutants} mutant(s), a TLC run each),",
+                        "review, check, answer, report"]
+    return "\n".join([
+        f"{what}:",
+        f"  requirement       {requirement}",
+        f"  stages            {stages[0]}",
+        *[f"{pad}{line}" for line in stages[1:]],
+        f"  LLM               {ready.model} via {ready.provider}",
+        f"{pad}model: {ready.model_source}",
+        f"{pad}credentials: {ready.source}. Every draft and review is a live LLM call",
+        f"  reading           " + (f"the event schema {args.event_schema.name}" if args.event_schema
+                                   else "callerPrincipal pinned, Dogwood's default (--event-schema "
+                                        "to change)"),
+        f"  output            {out}",
+        closing,
+        ""])
+
+
+def require_llm(args: argparse.Namespace) -> policy_agent.Readiness | None:
+    """The LLM's configuration, checked before anything runs; None, having said why, when it
+    cannot be built. REQUIRED in `auto` and `hitl` alike -- drafting is what they are for -- so
+    what is missing is said now, rather than at the first draft or after a person has typed."""
+    ready = policy_agent.readiness(args.provider, args.llm)
+    for w in ready.warnings:
+        print(f"warning: {w}", file=sys.stderr)
+    if ready.problems:
+        for p in ready.problems:
+            print(f"error: {p}", file=sys.stderr)
+        print("\nnot run: drafting needs an LLM, and it cannot be built as things stand.",
+              file=sys.stderr)
+        return None
+    return ready
+
+
+def relay_checker_progress() -> None:
+    """Pass every checker run's TLC lines to stderr as they arrive. `auto` only: `hitl` draws
+    each stage on one line and would have it broken up."""
+    invoke.progress = lambda line: print(line, file=sys.stderr, flush=True)
+
+
+# The options `auto` and `hitl` share, defined once so that their help cannot drift apart.
+VERBOSE_HELP = ("leave third-party logging as it is. By default google-genai's once-per-run "
+                "warning about how Strands calls it is silenced: it is advice to the SDK, not "
+                "to anyone reading this output")
+
+
+def add_checking_arguments(p: argparse.ArgumentParser) -> None:
+    """How each draft is checked."""
+    p.add_argument("--event-schema", type=Path, default=None, metavar="FILE.dwschema",
+                   help="the .dwschema the policy set is deployed under. Without one, Dogwood's "
+                        "own default reading: callerPrincipal pinned, so a temporal condition "
+                        "sees only the requesting principal's earlier events")
+    p.add_argument("--mutants", type=int, default=8, metavar="N",
+                   help="how many broken versions of the policy set each draft is tested against "
+                        "-- a rule deleted, a permit turned into a forbid, a condition dropped -- "
+                        "one TLC run each (default 8; fewer if the policy set has fewer). A draft "
+                        "that holds of all of them constrains nothing, so it is rejected and "
+                        "redrafted")
+    p.add_argument("--max-fields", type=int, default=None, metavar="N",
+                   help="raise the checker's bound on how many input/output fields a policy set "
+                        "may read (default 4). Applies to the PROPERTY runs only -- the derived "
+                        "questions range over the product of every field domain and do not "
+                        "finish above the default, so they are left to refuse instead")
+
+
+def add_llm_arguments(p: argparse.ArgumentParser) -> None:
+    """The LLM that drafts. Required in both modes: drafting is what they are for."""
+    p.add_argument("--config", type=Path, default=None, metavar="APPSETTINGS.JSON",
+                   help="the settings file holding the LLM's API key, model and provider "
+                        "settings; see src/agent/appsettings.json.example. Default: "
+                        "$ANCHOR_APPSETTINGS, else src/agent/appsettings.json, else one at the "
+                        "Anchor root. In a container, how a mounted one is named. A path that is "
+                        "not there is refused")
+    p.add_argument("--provider", default="auto", choices=("auto", "bedrock", "gemini"),
+                   metavar="NAME",
+                   help="which service's LLM drafts: gemini, bedrock, or auto (the default), which "
+                        "picks gemini when a Gemini API key is configured and bedrock otherwise. "
+                        "Credentials come from the environment first -- GEMINI_API_KEY or "
+                        "GOOGLE_API_KEY; AWS_BEARER_TOKEN_BEDROCK or ordinary AWS credentials, "
+                        "and AWS_REGION -- then from the settings file")
+    p.add_argument("--llm", default=None, metavar="MODEL-ID",
+                   help="the LLM's model id. Default: the provider's Model setting (Gemini:Model "
+                        "or Bedrock:Model), then gemini-2.5-flash for gemini or the Strands SDK's "
+                        "own for bedrock. The model matters more than any gate here: drafting a "
+                        "TLA+ property module is hard, and the Gemini default is a small model")
+
+
+def add_cap_arguments(p: argparse.ArgumentParser) -> None:
+    """Caps on each LLMrulesno property (rejected at review) call. None by default."""
+    p.add_argument("--turns", type=int, default=None, metavar="N",
+                   help="cap on agent loop iterations PER CALL -- one model call plus the tools "
+                        "it asked for. Not cumulative: --rounds R with --turns T allows R*T")
+    p.add_argument("--total-tokens", type=int, default=None, metavar="N",
+                   help="cap on input+output tokens per call")
+    p.add_argument("--output-tokens", type=int, default=None, metavar="N",
+                   help="cap on generated tokens per call. Soft: one oversized response can "
+                        "overshoot, since caps are checked at turn boundaries")
+
+
 def absolute(args, *names: str) -> None:
     """Resolve the named path arguments in place. Call it before anything reads them.
 
@@ -1180,54 +1446,45 @@ def main() -> int:
     # it always did.
     p = argparse.ArgumentParser(prog=os.environ.get("ANCHOR_VERB") or None,
                                 description=__doc__.splitlines()[0])
-    p.add_argument("policy", type=Path, help="a .dw policy, or a DIRECTORY to sweep")
-    p.add_argument("--intent", default=None,
-                   help="the requirement to state formally. Prose the POLICY did not write")
-    p.add_argument("--intents", type=Path, default=None,
-                   help="for a directory: a markdown file of `## <policy>.dw` headings and the "
-                        "requirement under each. Defaults to <directory>/intents.md")
-    p.add_argument("--out", type=Path, default=None)
-    p.add_argument("--event-schema", type=Path, default=None)
-    p.add_argument("--mutants", type=int, default=8)
-    p.add_argument("--max-fields", type=int, default=None,
-                   help="raise the checker's bound on how many input/output fields a policy may "
-                        "read. Applies to the PROPERTY runs only -- the derived questions range "
-                        "over the product of every field domain and do not finish above the "
-                        "default, so they are left to refuse instead")
-    p.add_argument("--name", default="Intent", help="the property module's name")
-    # THE MODEL MATTERS MORE THAN ANY GATE HERE. Drafting a TLA+ property module is the hardest
-    # thing this pipeline asks of a model, and the default is a small fast one -- every gate below
-    # exists because a weak draft is the norm, not because the gates are the interesting part.
-    p.add_argument("--config", type=Path, default=None, metavar="APPSETTINGS.JSON",
-                   help="the settings file holding the model configuration and API key. Defaults "
-                        "to appsettings.json beside src/agent/ or at the repo root; in a container "
-                        "this is how a mounted one is named")
-    p.add_argument("--provider", default="auto", help="auto, bedrock or gemini")
-    p.add_argument("--llm", default=None,
-                   help="the LLM's model id. Defaults to the provider's Model setting (Gemini:Model "
-                        "or Bedrock:Model), then the provider's own default (gemini-2.5-flash for "
-                        "Gemini), which is a small model for a hard task")
-    p.add_argument("--rounds", type=int, default=3,
+    p.add_argument("policy", type=Path, metavar="policy-set-or-directory",
+                   help="a .dw policy set file, or a directory of them to sweep")
+    # FIRST, because nothing here runs without an LLM: which one, and where its settings come
+    # from, is what a reader most needs to know before anything else.
+    add_llm_arguments(p)
+    p.add_argument("--intent", default=None, metavar="TEXT",
+                   help="the requirement, in your own words: prose the policy set did not write. "
+                        "Without it, taken from this policy set's `## <policy-set>.dw` heading in "
+                        "the intents.md beside it")
+    p.add_argument("--intents", type=Path, default=None, metavar="FILE.md",
+                   help="a markdown file of `## <policy-set>.dw` headings with the requirement "
+                        "under each. For a directory, each policy set is drafted against its own "
+                        "heading (default: <directory>/intents.md, and a policy set with no "
+                        "heading is reported as unstated). Given with one policy set file, EVERY "
+                        "heading in it is drafted against that policy set")
+    p.add_argument("--out", type=Path, default=None, metavar="DIR",
+                   help="where the accepted property module (<name>.tla and its .cfg), the drafts "
+                        "in drafting/ and findings.md are written. Default: anchor/ beside the "
+                        "policy set file, or inside the directory. A sweep gives each requirement "
+                        "a subdirectory of its own -- the policy set's name for a directory, the "
+                        "heading for one policy set file -- and writes summary.md beside them")
+    p.add_argument("--name", default="Intent",
+                   help="the property module's name, for a single requirement (default Intent). "
+                        "A sweep names its own: Intent in each policy set's subdirectory, or one "
+                        "made from each heading")
+    add_checking_arguments(p)
+    p.add_argument("--rounds", type=int, default=3, metavar="N",
                    help="drafting attempts. A round costs one model call plus ~1s of SANY; "
                         "running out still reports (default: 3)")
-    p.add_argument("--turns", type=int, default=None,
-                   help="cap on agent loop iterations PER CALL -- one model call plus the tools "
-                        "it asked for. Not cumulative: --rounds R with --turns T allows R*T")
-    p.add_argument("--total-tokens", type=int, default=None,
-                   help="cap on input+output tokens per call")
-    p.add_argument("--output-tokens", type=int, default=None,
-                   help="cap on generated tokens per call. Soft: one oversized response can "
-                        "overshoot, since caps are checked at turn boundaries")
-    p.add_argument("--max-node-executions", type=int, default=None,
+    add_cap_arguments(p)
+    p.add_argument("--max-node-executions", type=int, default=None, metavar="N",
                    help="backstop on total node executions. Hitting it STOPS THE RUN WITH NO "
                         "REPORT, so it is set above what the graph can use; lower it only to "
                         "observe that behaviour")
-    p.add_argument("--node-timeout", type=float, default=None,
+    p.add_argument("--node-timeout", type=float, default=None, metavar="SECONDS",
                    help="per-node seconds. A node that times out fails, and a failed node "
                         "fail-fasts the whole run -- so this too can end a run with no report. "
                         "`score` runs TLC per mutant and is the one that would hit it")
-    p.add_argument("--verbose", action="store_true",
-                   help="leave third-party logging alone; see the note below")
+    p.add_argument("--verbose", action="store_true", help=VERBOSE_HELP)
     p.add_argument("--allow-flagged-input", action="store_true",
                    help="show the model inputs the scan flagged as high severity anyway. For a "
                         "finding you have READ and judged benign -- a comment that discusses "
@@ -1260,6 +1517,12 @@ def main() -> int:
         import logging                                                 # noqa: PLC0415
         logging.getLogger("google_genai.models").setLevel(logging.ERROR)
 
+    if (ready := require_llm(args)) is None:
+        return 3
+
+    # From here every stage says when it starts and ends, and every TLC run inside it says so too.
+    relay_checker_progress()
+
     shared = dict(event_schema=args.event_schema, module_name=args.name, mutants=args.mutants,
                   rounds=args.rounds, max_fields=args.max_fields,
                   limits={k: v for k, v in (("turns", args.turns),
@@ -1281,18 +1544,29 @@ def main() -> int:
         # from its heading -- so the single-policy default must not be passed alongside it.
         per_run = {k: v for k, v in shared.items() if k != "module_name"}
 
-        print(f"sweeping {len(intents)} intent(s) against {args.policy} (this makes live model "
-              f"calls)\n", file=sys.stderr)
+        print(announce(f"Sweeping {len(intents)} requirement(s) against {args.policy} (unattended)",
+                       f"{len(intents)} from {intents_file}, each run through every stage",
+                       f"{out}: a subdirectory per requirement, and summary.md", args, ready),
+              file=sys.stderr, flush=True)
+        # A line as each requirement starts and one as it lands, never rewritten in place: the
+        # stages and TLC runs between them would break up a line that was.
+        count = iter(range(1, len(intents) + 1))
+
         def progress(label: str, run: Run | None) -> None:
             if run is None:
-                print(f"  {label:<32} ...", end="\r", file=sys.stderr, flush=True)
+                print(f"\n==== [{next(count)}/{len(intents)}] {label} ".ljust(78, "="),
+                      file=sys.stderr, flush=True)
                 return
             spent = sum(c.total for c in run.calls)
-            print(f"  {label:<32} {outcome(run):<34} {spent:>7,} tokens, {run.round} round(s)",
-                  file=sys.stderr, flush=True)
+            print(f"==== {label}: {outcome(run)}, {spent:,} tokens, {run.round} round(s)",
+                  file=sys.stderr)
+            for line in closing(run)[1:]:                   # the outcome is on the line above
+                print(f"     {line}", file=sys.stderr)
+            sys.stderr.flush()
 
         runs = sweep(args.policy, intents, out=out, report=progress,
-                     build_graph=lambda r: build(r, provider=args.provider, model=args.llm),
+                     build_graph=lambda r: build(r, provider=args.provider, model=args.llm,
+                                                 announce=stage_logger(r)),
                      **per_run)
 
         out.mkdir(parents=True, exist_ok=True)
@@ -1300,18 +1574,21 @@ def main() -> int:
         summary.write_text(sweep_report(args.policy, intents, runs), encoding="utf-8")
         print(f"\n{sum(sum(c.total for c in r.calls) for r in runs):,} tokens over "
               f"{sum(len(r.calls) for r in runs)} model calls", file=sys.stderr)
+        # Without the requirement's label: the same model id fails the same way for every one.
+        unreachable([u.split(": ", 1)[-1] for r in runs for u in r.unreachable])
         print(summary)
-        return 1 if any(r.crashed or r.rejected_at for r in runs) else 0
+        return (3 if any(r.unreachable for r in runs) else
+                1 if any(r.crashed or r.rejected_at or broken(r) for r in runs) else 0)
 
     # NO --intent, so look where `hitl` looks: a heading naming this policy in the intents.md
     # beside it. `--intents` is NOT the spelling for this -- with a single policy that flag means
     # "run EVERY heading in the named file against this one policy", which is a different and
     # deliberate mode, so the useful default had to be what OMITTING it does.
     beside = args.policy.parent / "intents.md"
+    source = "--intent"
     if not args.intent and beside.is_file():
         if (stated := intent_for(read_intents(beside), args.policy.name)):
-            print(f"{beside.name} states: {stated}", file=sys.stderr)
-            args.intent = stated
+            args.intent, source = stated, f"its heading in {beside}"
 
     if not args.intent:
         # Two situations, two different fixes: a file that says nothing about this policy, or
@@ -1329,7 +1606,13 @@ def main() -> int:
     run = Run(policy=args.policy, intent=args.intent,
               out=args.out or args.policy.parent / "anchor", **shared)
 
-    graph = build(run, provider=args.provider, model=args.llm,
+    said = args.intent if len(args.intent) <= 110 else args.intent[:107] + "..."
+    print(announce(f"Drafting a property module for {args.policy} (unattended)",
+                   f'from {source}: "{said}"',
+                   f"{run.out}: {args.name}.tla and .cfg, drafting/, findings.md", args, ready),
+          file=sys.stderr, flush=True)
+
+    graph = build(run, provider=args.provider, model=args.llm, announce=stage_logger(run),
                   max_node_executions=args.max_node_executions, node_timeout=args.node_timeout)
     result = graph(f"State and check the intention for {args.policy.name}.")
 
@@ -1341,10 +1624,31 @@ def main() -> int:
           f"{(getattr(result, 'execution_time', 0) or 0) / 1000:.1f}s total", file=sys.stderr)
     for c in run.capped:
         print(f"CAP: {c}", file=sys.stderr)
+    for line in closing(run):
+        print(line, file=sys.stderr)
+    unreachable(run.unreachable)
     if run.findings:
         print(run.findings)
-    # A rejected draft is a complete run with nothing verified, and that is not a success.
-    return 1 if run.rejected_at else 0
+    # 3 when the LLM could not be reached: nothing was drafted, so there is no verdict of any kind
+    # -- the same number the audit gives a required LLM it cannot have. A rejected draft is a
+    # complete run with nothing verified, and that is not a success either. Nor is a BROKEN
+    # property: 1, as `check` and the audit give it, so one test reads all three.
+    return 3 if run.unreachable else 1 if run.rejected_at or broken(run) else 0
+
+
+def broken(run: Run) -> bool:
+    """The stated property was checked and does not hold."""
+    return bool(run.prop) and not run.prop.get("_failed") and not run.prop.get("held")
+
+
+def unreachable(failures: list[str]) -> None:
+    """The LLM failures of a run, said at its end as well as where they happened."""
+    if failures:
+        print("error: the LLM could not be reached, so nothing was drafted or checked. That is "
+              "its configuration -- a model id, a key, a region, a quota -- not a finding about "
+              "the policy set:", file=sys.stderr)
+        for f in dict.fromkeys(failures):                  # a sweep repeats one failure per run
+            print(f"  {f}", file=sys.stderr)
 
 
 if __name__ == "__main__":

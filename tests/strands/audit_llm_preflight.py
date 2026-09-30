@@ -145,6 +145,22 @@ def main() -> int:
         check("gemini asked for with no key is a problem",
               any("no Gemini API key" in p for p in r.problems), str(r.problems))
 
+        # A file that is not JSON -- here the trailing comma a hand edit leaves -- is said ONCE,
+        # with where, never quoting it; and a missing key is not blamed on a file that was "read".
+        file.write_text('{"ApiKeys": {"GoogleAgentPlatform": "%s",}}' % SECRET, encoding="utf-8")
+        os.environ["ANCHOR_APPSETTINGS"] = str(file)
+        policy_agent._unreadable.clear()
+        said = io.StringIO()
+        with contextlib.redirect_stderr(said):
+            r = readiness("gemini")
+        check("a settings file that is not JSON is warned about once, saying where",
+              said.getvalue().count("is not valid JSON") == 1 and "line 1, column" in said.getvalue(),
+              said.getvalue())
+        check("...without quoting it", SECRET not in said.getvalue() and SECRET not in repr(r))
+        check("...and the missing key's message says the file could not be read",
+              any("could not be read" in p for p in r.problems), str(r.problems))
+        settings(file, {})
+
         # A named file that is not there is NO file -- never the next one in the search -- and the
         # message must name it, not claim that nothing was named.
         os.environ["ANCHOR_APPSETTINGS"] = str(work / "typo.json")

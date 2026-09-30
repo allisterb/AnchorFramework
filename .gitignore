@@ -441,3 +441,4 @@ specs/cedar/CedarDifferential.tla
 specs/cedar/CedarDifferential.cfg
 docs/agent
 **/testoutput
+**/testprop

@@ -42,7 +42,9 @@ No provider and no credentials.
 
 from __future__ import annotations
 
+import contextlib
 import inspect
+import io
 import subprocess
 import sys
 import tempfile
@@ -588,6 +590,65 @@ def hitl_is_not_auto() -> None:
               "weaker evidence than findings against one a person wrote" in text, text[-400:])
 
 
+def says_what_it_will_do() -> None:
+    """`main` checks the LLM before the person is asked anything, then says what it will run.
+
+    Run through `main` itself, with the terminal check answered yes, a scripted person, and
+    `refine` stopped at its door -- so no graph is built and no model is called.
+    """
+    print("\nSaying what it will do, before it does it")
+    print("-" * 78)
+    from agent import policy_agent
+
+    class Stopped(Exception):
+        pass
+
+    def stop(*_a, **_k):
+        raise Stopped
+
+    saved = (hitl.at_a_terminal, hitl.Terminal, hitl.refine, policy_agent.readiness)
+    person = hitl.Scripted()
+    hitl.at_a_terminal, hitl.Terminal, hitl.refine = (lambda: True), (lambda: person), stop
+    try:
+        policy_agent.readiness = lambda *a, **k: policy_agent.Readiness(
+            "gemini", "x", problems=["no Gemini API key: (stand-in)"])
+        sys.argv = ["hitl.py", str(POLICIES / "firewall.dw")]
+        with contextlib.redirect_stderr(io.StringIO()):
+            code = hitl.main()
+        check("an LLM that cannot be built stops hitl before the person is asked, exit 3",
+              code == 3 and person.asked == [], f"{code} {person.asked}")
+
+        policy_agent.readiness = lambda *a, **k: policy_agent.Readiness(
+            "gemini", "stand-in", source="none (scripted)", model_source="scripted")
+        sys.argv = ["hitl.py", str(POLICIES / "firewall.dw"), "--intent", BRIEF]
+        try:
+            hitl.main()
+        except Stopped:
+            pass
+        shown = "\n".join(person.shown)
+        check("the session is described before it starts",
+              "with you as one of the gates" in shown and "from --intent:" in shown
+              and "confirm (you)" in shown and "stand-in via gemini" in shown, shown[:900])
+        formal(shown, "in the summary before a session")
+
+        # AND AT THE END, a broken property as the person reads it: `sentence()` quotes the TLA+
+        # value that breaks the claim, which is what `auto` and the audit print and this may not.
+        from checker.witness import Confirmation
+        run = pipeline.Run(policy=POLICIES / "firewall_open.dw", intent=BRIEF, out=Path("."))
+        run.module_path, run.rules = Path("Intent.tla"), {"rules": [], "defects": []}
+        run.prop = {"held": False, "violations": [{"invariant": "OutsideIsRefused",
+                                                   "state": {"req": "[port |-> 22]"}}]}
+        run.witness = [Confirmation(invariant="OutsideIsRefused", state={"req": "[port |-> 22]"},
+                                    demanded=False, engine="allow", agreed=True, at=1)]
+        ending = "\n".join(pipeline.closing(run, plain=True))
+        check("the end of a session gives a broken verdict in plain words",
+              "the Dogwood engine ALLOWS a session your requirement says it must REFUSE" in ending,
+              ending)
+        formal(ending, "in the verdict at the end of a session")
+    finally:
+        hitl.at_a_terminal, hitl.Terminal, hitl.refine, policy_agent.readiness = saved
+
+
 def main() -> int:
     print("=" * 78)
     print("hitl: a person at the one boundary with no oracle behind it")
@@ -602,6 +663,7 @@ def main() -> int:
     every_exit_reports(passing)
     where_the_requirement_comes_from()
     refuses_without_a_person()
+    says_what_it_will_do()
     hitl_is_not_auto()
 
     print()

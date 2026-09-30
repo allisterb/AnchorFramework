@@ -907,7 +907,7 @@ def probe_decision(work: Path, module: Path, cfg_text: str) -> tuple[str, str]:
     return "varies", f"`{call}` is true in some of this module's states and false in others"
 
 
-def check_property(work: Path, module: Path) -> tuple[bool, str]:
+def check_property(work: Path, module: Path, said: str | None = None) -> tuple[bool, str]:
     """Run the author's own property module against the generated policy records.
 
     Returns (it holds, TLC output). A violation is the ANSWER here, not an inversion: unlike the
@@ -924,7 +924,8 @@ def check_property(work: Path, module: Path) -> tuple[bool, str]:
 
     shutil.copyfile(module, work / module.name)
     shutil.copyfile(cfg, work / cfg.name)
-    progress(f"  TLC  {module.name}: every claim, in every state it ranges over")
+    # `said` is the caller's own line for this run, where it knows better -- a mutant, say.
+    progress(said or f"  TLC  {module.name}: every claim, in every state it ranges over")
     return run_tlc(module.stem, work, work)
 
 
@@ -1063,7 +1064,7 @@ def mutation_report(args, policies: list[dict], vocab: dict, keys, held: bool) -
     caught, survived = 0, []
     with workdir(args, "anchor-mutate-") as work:
         shutil.copyfile(SPECS / "DogwoodSemantics.tla", work / "DogwoodSemantics.tla")
-        for what, damaged in tried:
+        for n, (what, damaged) in enumerate(tried, 1):
             # A mutant that leaves no rules at all says nothing about the property: every policy
             # question is trivial on an empty set, and counting it either way would be noise.
             if not damaged:
@@ -1071,7 +1072,9 @@ def mutation_report(args, policies: list[dict], vocab: dict, keys, held: bool) -
             (work / "PolicyUnderTest.tla").write_text(
                 generate_policy_module(args.policy, damaged, vocab, keys=keys), encoding="utf-8")
             try:
-                still, _ = check_property(work, args.property_module)
+                still, _ = check_property(
+                    work, args.property_module,
+                    said=f"  TLC {n}/{len(tried)}  mutant: {what}. Does the property notice?")
             except Unsupported:
                 # The damage produced something outside the modelled subset. Not evidence about
                 # the property, so it is not counted against it.

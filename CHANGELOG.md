@@ -65,6 +65,16 @@ whose schema has no universal pin. The reading is stated in every run, as before
   report and exits 3. Without any of the three nothing is spent on the test, and a failure is a
   warning. `--llm` or `--provider` with `--no-llm` is refused. A directory with no property module
   is warned about up front.
+- **`auto` says what it is doing, as it does it.** It printed nothing between the command and its
+  closing summary. It now says up front what it will run (the requirement and where it came
+  from, the stages, the LLM and where its model and credentials came from, the reading, where
+  the output goes), then a line as each stage starts and ends, and each TLC run in between,
+  mutants included. Plain lines only, so a CI log reads the same. A sweep marks each requirement
+  with `==== [k/N]` instead of a line redrawn with `\r`. The LLM's configuration is checked
+  before the first stage, since drafting cannot happen without one: missing, it stops the run
+  with exit 3. **`hitl` gives the same summary** once the requirement is known, and checks the
+  LLM before asking the person anything, so nobody types a requirement for a run that cannot
+  start. In both, `--config`, `--provider` and `--llm` now lead the help.
 - **`Gemini:Model` and `Bedrock:Model` settings**, naming the model each provider runs when `--llm`
   names none, in every mode. The order is `--llm`, then the setting, then the provider's default,
   and an audit's summary says which it used. `--full --provider auto` therefore means "use the LLM
@@ -85,6 +95,26 @@ whose schema has no universal pin. The reading is stated in every run, as before
   Bedrock key with no region, raised `SystemExit` from inside the question loop, which caught only
   ordinary exceptions. The audit ended after every check had run and before any was written up,
   exiting 1, which reads as "there are findings". The report is now always written.
+- **`auto` ends with what it found.** It always model-checked the property it accepted, but said
+  so only in findings.md, so it read as needing a `check` afterwards. The run now ends with the
+  property's verdict, the rule-by-rule findings and the `check --full --property` command that
+  audits the policy set with the new module (findings.md carries the command too). A **BROKEN**
+  property is replayed in Dogwood as the session that breaks it, with the engine's verdict and the
+  trace kept in `<out>/witness`, as the audit does. `hitl` ends with the same verdicts in plain
+  words. Both now exit 1 for a BROKEN property, as `check` and the audit do; `auto` exited 0. A
+  draft a gate turned away, which is checked against nothing, ends with the gate's reason and a
+  pointer to `hitl`, rather than only `rejected at review`.
+- **`auto` said nothing when its LLM could not be reached.** A model id the provider does not have
+  (`gemini-2.7.-flash` in `Gemini:Model`) stopped the run at the first draft, but the stage still
+  read `-> draft done`, the run ended at `ran 4/8`, and the reason was only in findings.md. The
+  stage now reads `FAILED` with the provider's own message and what it means, the end of the run
+  repeats it, and the exit is 3, not the rejected-draft 1 -- in `auto`, a sweep and `hitl` alike.
+  The explanation names both places a model id can come from, `--llm` and the `Model` setting.
+- **A settings file that is not valid JSON says where**, once: `it is not valid JSON: Illegal
+  trailing comma before end of object at line 9, column 25. None of its settings apply.` It used to
+  say only `JSONDecodeError`, once per setting looked up (five times for one Gemini run), and the
+  missing-key error that followed called it "the settings file read". The message quotes nothing
+  from the file, which holds keys.
 - **A missing `ANCHOR_APPSETTINGS` file is named, not misreported.** When it names a file that is not
   there, no settings file is read. It never falls back to `src/agent/` or the repo root, whatever
   `src/agent/README.md` said, so a different file's key cannot be used by accident. Every LLM mode
@@ -111,6 +141,10 @@ whose schema has no universal pin. The reading is stated in every run, as before
 
 ### Changed
 
+- **`auto` and `hitl` describe every option**, among them `--out`, `--mutants` and
+  `--event-schema`, which had no help. The options the two share are defined once, so their help
+  cannot drift apart again, and `--provider` rejects an unknown name when the command is read
+  rather than when the first model is built.
 - **"Policy set" for the `.dw` file** throughout the CLI help, the audit report and the checker's
   messages, which said "policy" for it. Dogwood's own term; a policy is one `permit` or `forbid`.
 

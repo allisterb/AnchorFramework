@@ -171,9 +171,7 @@ def settings_warning() -> str | None:
     if _settings_warned or not (named := missing_settings()):
         return None
     _settings_warned = True
-    return (f"$ANCHOR_APPSETTINGS names {named}, which does not exist, so no settings file is read: "
-            f"any key, Model, Region or Google setting you kept there does not apply, and "
-            f"src/agent/ and the Anchor root are not searched instead.")
+    return (f"$ANCHOR_APPSETTINGS names {named}, which does not exist, so no settings file was read,")
 
 
 def settings_note() -> str:
@@ -182,6 +180,8 @@ def settings_note() -> str:
         return (f"$ANCHOR_APPSETTINGS names {named}, which does not exist, so no settings file was "
                 f"read -- the search in src/agent/ and at the Anchor root is not used when it is set.")
     if (path := appsettings_path()):
+        if (why := read_settings(path)[1]):
+            return f"The settings file {path} could not be read -- {why} -- so none of it applies."
         return f"The settings file read was {path}."
     return ("No settings file was found: none named by --config or $ANCHOR_APPSETTINGS, and none "
             "in src/agent/ or at the Anchor root.")
@@ -208,48 +208,58 @@ def use_appsettings(path: Path) -> None:
     os.environ["ANCHOR_APPSETTINGS"] = str(path.resolve())
 
 
-def setting(name: str) -> str | None:
-    """One colon-delimited setting, or None. Never raises on a bad file, and never logs a value."""
-    path = appsettings_path()
-    if path is None:
-        return None
+def read_settings(path: Path):
+    """The parsed file, or None and why it could not be read.
 
+    THE WHY NEVER QUOTES THE FILE, which exists to hold a secret. json's own message and position
+    describe the syntax -- "Illegal trailing comma before end of object at line 9, column 25" --
+    and say nothing of the content, which is all a person needs to find the mistake.
+    """
+    import json
     try:
         # utf-8-sig: a file written by a Windows editor routinely carries a BOM, and json.loads
         # rejects one.
-        import json
-        node = json.loads(path.read_text(encoding="utf-8-sig"))
-    except (OSError, ValueError) as e:
-        # The path and the failure, never the contents: this file exists to hold a secret, so a
-        # parse error must not print it back out in a diagnostic.
-        print(f"warning: could not read {path}: {type(e).__name__}", file=sys.stderr)
+        return json.loads(path.read_text(encoding="utf-8-sig")), None
+    except json.JSONDecodeError as e:
+        return None, f"it is not valid JSON: {e.msg} at line {e.lineno}, column {e.colno}"
+    except UnicodeDecodeError as e:
+        # Its str() quotes the offending byte; the position is enough.
+        return None, f"it is not UTF-8 text (at byte {e.start})"
+    except OSError as e:
+        return None, f"{type(e).__name__}: {e.strerror}"
+
+
+# Files already warned about: said once, not once per setting looked up in them.
+_unreadable: set[str] = set()
+
+
+def settings_root():
+    """The settings file's top level, or None. A file that cannot be read is warned about once."""
+    path = appsettings_path()
+    if path is None:
         return None
-
-    for part in name.split(":"):
-        if not isinstance(node, dict) or part not in node:
-            return None
-        node = node[part]
-
-    return node if isinstance(node, str) and node.strip() else None
+    node, why = read_settings(path)
+    if why and str(path) not in _unreadable:
+        _unreadable.add(str(path))
+        print(f"warning: could not read {path}: {why}. None of its settings apply.",
+              file=sys.stderr, flush=True)
+    return node
 
 
 def setting_raw(name: str):
     """A setting of any type. `setting` is the string-only form and is what most callers want."""
-    path = appsettings_path()
-    if path is None:
-        return None
-
-    try:
-        import json
-        node = json.loads(path.read_text(encoding="utf-8-sig"))
-    except (OSError, ValueError):
-        return None
-
+    node = settings_root()
     for part in name.split(":"):
         if not isinstance(node, dict) or part not in node:
             return None
         node = node[part]
     return node
+
+
+def setting(name: str) -> str | None:
+    """One colon-delimited setting, or None. Never raises on a bad file, and never logs a value."""
+    node = setting_raw(name)
+    return node if isinstance(node, str) and node.strip() else None
 
 
 def gemini_client_args() -> dict:
@@ -737,17 +747,19 @@ REFUSALS = (
     ("AccessDenied",
      "The credentials reached Bedrock and were refused. Check the key and the region."),
     ("The provided model identifier is invalid",
-     "Bedrock has no model by that id in this region. Pass --llm with one it has; "
-     "`aws bedrock list-foundation-models` lists them."),
+     "Bedrock has no model by that id in this region. Check --llm, or Bedrock:Model in the "
+     "settings file; `aws bedrock list-foundation-models` lists the ones it has."),
     ("on-demand throughput isn",
-     "This model is called through an inference profile, not by its bare id. Pass --llm with the "
-     "profile id -- the model id prefixed with a geography, such as us. or global."),
+     "This model is called through an inference profile, not by its bare id. Use the profile id "
+     "-- the model id prefixed with a geography, such as us. or global. -- in --llm or "
+     "Bedrock:Model."),
     ("is not found for API version",
-     "Gemini has no model by that name. Pass --llm with one it has, such as gemini-2.5-flash."),
+     "Gemini has no model by that name. Check --llm, or Gemini:Model in the settings file; "
+     "gemini-2.5-flash is one it has."),
     # The same mistake through an Agent Platform key, which words it differently.
     ("was not found or your project does not have access",
-     "Google has no model by that name, or this project may not use it. Pass --llm with one it "
-     "has, such as gemini-2.5-flash."),
+     "Google has no model by that name, or this project may not use it. Check --llm, or "
+     "Gemini:Model in the settings file; gemini-2.5-flash is one it has."),
     ("API_KEY_SERVICE_BLOCKED",
      "A Google Agent Platform key needs the Google block -- Enterprise, Project, Location. See "
      "src/agent/appsettings.json.example."),

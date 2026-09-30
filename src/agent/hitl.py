@@ -702,17 +702,8 @@ def transcript(session: Session) -> str:
 # What each stage is doing, for somebody watching it happen. The two that matter are `draft` and
 # `score`: between them they are almost the whole wait, and neither looks any different from a hung
 # process while it is working.
-DOING = {
-    "describe": "reading the policy's vocabulary",
-    "draft": "asking the model for a property module -- the long one",
-    "preflight": "reading the draft",
-    "score": "breaking the policy on purpose, one check per mutant -- the other long one",
-    "review": "asking a second model whether it says what you asked for",
-    "confirm": "over to you",
-    "check": "running the checks",
-    "answer": "writing it up",
-    "report": "writing findings.md",
-}
+# The same words `auto` uses, from one place.
+DOING = pipeline.DOING
 
 
 # How wide the overwrite has to be: the longest "  stage      note ..." line any of them produces,
@@ -803,37 +794,37 @@ def main() -> int:
     # it always did.
     p = argparse.ArgumentParser(prog=os.environ.get("ANCHOR_VERB") or None,
                                 description=__doc__.splitlines()[0])
-    p.add_argument("policy", type=Path, help="the .dw policy the requirement is about")
+    p.add_argument("policy", type=Path, metavar="policy-set",
+                   help="the .dw policy set file the requirement is about")
+    # FIRST, as in `auto`: nothing here runs without an LLM.
+    pipeline.add_llm_arguments(p)
     # `--intent` is the pipeline's name for the same string and the name of the field it lands
     # in. `--brief` stays as an alias because it is what this file documented until now.
-    p.add_argument("--intent", "--brief", dest="intent", default=None,
-                   help="the requirement, in your own words. Read from --intents or asked for if "
-                        "not given")
-    p.add_argument("--intents", type=Path, default=None,
-                   help="a markdown file of `## <policy>.dw` headings with the requirement under "
-                        "each -- the file `auto` sweeps a directory with. Defaults to intents.md "
-                        "beside the policy; no entry for it falls through to asking")
-    p.add_argument("--out", type=Path, default=None)
-    p.add_argument("--event-schema", type=Path, default=None)
-    p.add_argument("--mutants", type=int, default=8)
-    p.add_argument("--max-fields", type=int, default=None)
-    p.add_argument("--name", default="Intent", help="the property module's name")
-    p.add_argument("--config", type=Path, default=None, metavar="APPSETTINGS.JSON",
-                   help="the settings file holding the model configuration and API key. Defaults "
-                        "to appsettings.json beside src/agent/ or at the repo root; in a container "
-                        "this is how a mounted one is named")
-    p.add_argument("--provider", default="auto", help="auto, bedrock or gemini")
-    p.add_argument("--llm", default=None,
-                   help="the LLM's model id. Defaults to the provider's Model setting "
-                        "(Gemini:Model or Bedrock:Model), then the provider's own default")
-    p.add_argument("--rounds", type=int, default=3,
-                   help="drafting attempts WITHIN one pass, before the person is asked")
-    p.add_argument("--refinements", type=int, default=4,
-                   help="how many times the person may be asked before the session ends")
-    p.add_argument("--turns", type=int, default=None)
-    p.add_argument("--total-tokens", type=int, default=None)
-    p.add_argument("--output-tokens", type=int, default=None)
-    p.add_argument("--verbose", action="store_true")
+    p.add_argument("--intent", "--brief", dest="intent", default=None, metavar="TEXT",
+                   help="the requirement, in your own words: prose the policy set did not write. "
+                        "Without it, taken from --intents, or asked for")
+    p.add_argument("--intents", type=Path, default=None, metavar="FILE.md",
+                   help="a markdown file of `## <policy-set>.dw` headings with the requirement "
+                        "under each -- the file `auto` sweeps a directory with. Default: the "
+                        "intents.md beside the policy set file; with no heading for it there, "
+                        "you are asked")
+    p.add_argument("--out", type=Path, default=None, metavar="DIR",
+                   help="where the session is written: session.md, the record of every question "
+                        "and answer, and attempt-<n>/ for each pass, each holding what an `auto` "
+                        "run writes -- the property module, drafting/ and findings.md. Default: "
+                        "anchor/hitl/ beside the policy set file. A previous session's attempt-<n>/ "
+                        "directories there are removed first, and the removal is said")
+    p.add_argument("--name", default="Intent",
+                   help="the property module's name (default Intent)")
+    pipeline.add_checking_arguments(p)
+    p.add_argument("--rounds", type=int, default=3, metavar="N",
+                   help="drafting attempts WITHIN one pass, before the person is asked "
+                        "(default: 3)")
+    p.add_argument("--refinements", type=int, default=4, metavar="N",
+                   help="how many times the person may be asked before the session ends "
+                        "(default: 4)")
+    pipeline.add_cap_arguments(p)
+    p.add_argument("--verbose", action="store_true", help=pipeline.VERBOSE_HELP)
     p.add_argument("--allow-flagged-input", action="store_true",
                    help="show the model inputs the scan flagged as high severity anyway, after "
                         "reading the findings. The session record says it was used")
@@ -870,9 +861,20 @@ def main() -> int:
               file=sys.stderr)
         return 2
 
-    brief = args.intent or stated_intent(args.policy, args.intents, console) or console.ask(
-        f"What should {args.policy.name} guarantee?",
-        hint="one sentence in your own words -- what you would tell a colleague the rule is")
+    # BEFORE THE PERSON IS ASKED ANYTHING: somebody who has typed a requirement should not then
+    # learn that there was never an LLM to draft it with.
+    if (ready := pipeline.require_llm(args)) is None:
+        return 3
+
+    source = "--intent"
+    brief = args.intent
+    if not brief and (brief := stated_intent(args.policy, args.intents, console)):
+        source = f"{args.intents or args.policy.parent / 'intents.md'}"
+    if not brief:
+        source = "you, at the prompt"
+        brief = console.ask(
+            f"What should {args.policy.name} guarantee?",
+            hint="one sentence in your own words -- what you would tell a colleague the rule is")
     if brief.lower() in STOP_WORDS:
         print("no requirement given", file=sys.stderr)
         return 2
@@ -892,6 +894,19 @@ def main() -> int:
                        "input_scan_overridden": scanned.get("input_scan_overridden", False)
                                                 or bool(typed.high)}
 
+    # THE SAME SUMMARY `auto` GIVES, in words for a person: no TLC, as everywhere else here.
+    said = brief if len(brief) <= 110 else brief[:107] + "..."
+    console.say(pipeline.announce(
+        f"Drafting a property module for {args.policy}, with you as one of the gates",
+        f'from {source}: "{said}"',
+        f"{args.out or args.policy.parent / 'anchor' / 'hitl'}: session.md, and attempt-<n>/ "
+        f"for each pass", args, ready,
+        stages=[f"describe, draft (up to {args.rounds} round(s) a pass), preflight, score (up to "
+                f"{args.mutants} mutant(s), a check each),",
+                "review, confirm (you), check, answer, report",
+                f"you are asked up to {args.refinements} time(s) before the session ends"],
+        closing="Each stage is announced as it starts."))
+
     session = refine(
         args.policy, brief, console,
         out=args.out, refinements=args.refinements,
@@ -908,10 +923,16 @@ def main() -> int:
     where.write_text(transcript(session), encoding="utf-8")
 
     console.say()
+    if session.run is not None:
+        for line in pipeline.closing(session.run, plain=True):
+            console.say(line)
     console.say(f"{sum(sum(c.total for c in r.calls) for r in session.runs):,} tokens over "
                 f"{len(session.runs)} attempt(s)")
     print(where)
-    return 0 if session.passed else 1
+    # 3 when the LLM could not be reached, as in `auto`: nothing was drafted, so no verdict. 1 for
+    # a property that was checked and is BROKEN, as `auto`, `check` and the audit give it.
+    return (3 if any(r.unreachable for r in session.runs) else
+            0 if session.passed and not pipeline.broken(session.run) else 1)
 
 
 if __name__ == "__main__":

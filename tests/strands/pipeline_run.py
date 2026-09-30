@@ -60,6 +60,9 @@ from strands.types.event_loop import Usage                             # noqa: E
 from strands.types.tools import ToolSpec                               # noqa: E402
 
 from agent import pipeline                                             # noqa: E402
+# Where the engine is, honouring ANCHOR_DOGWOOD; without it a broken property says why it was
+# not confirmed rather than failing.
+from checker.engine import DOGWOOD                                     # noqa: E402
 
 POLICIES = REPO / "tests" / "policies"
 
@@ -130,6 +133,21 @@ class Capped(Fixed):
         yield {"contentBlockDelta": {"delta": {"text": self.text}}}
         yield {"contentBlockStop": {}}
         yield {"messageStop": {"stopReason": self.reason}}
+
+
+class Unreachable(Fixed):
+    """Refuses the way Gemini refuses a model id it does not have, through an Agent Platform key."""
+
+    def __init__(self) -> None:
+        super().__init__("")
+
+    async def stream(self, messages, *a, **kw):                # type: ignore[override]
+        self.calls += 1
+        raise RuntimeError(
+            "404 NOT_FOUND. {'error': {'code': 404, 'message': 'Publisher model `projects/p/"
+            "locations/global/publishers/google/models/gemini-2.7.-flash` was not found or your "
+            "project does not have access to it.', 'status': 'NOT_FOUND'}}")
+        yield                                                  # an async generator all the same
 
 
 def agent(text: str, name: str) -> Agent:
@@ -554,6 +572,129 @@ def sweeping() -> None:
         check("...and totals the tokens", "tokens** over" in report, report[-400:])
 
 
+def says_what_it_is_doing() -> None:
+    """10. AN UNATTENDED RUN SAYS WHAT IT IS DOING, as it does it.
+
+    `auto` printed nothing between the command and its closing summary: minutes of drafting and
+    TLC looking identical to a hang. This runs its real `main`, with every agent scripted and a
+    stand-in that raises if a real model is ever built, and reads what it said on stderr.
+    """
+    print("\nAn unattended run says what it is doing")
+    print("-" * 78)
+    from agent import invoke, policy_agent
+
+    def no_model(*_a, **_k):
+        raise AssertionError("a real model was built")
+
+    real_build, real_readiness, real_model = pipeline.build, policy_agent.readiness, policy_agent.build_model
+    policy_agent.build_model = no_model
+    pipeline.build = lambda run, **kw: real_build(
+        run, drafter=agent(GOOD, "draft"), answerer=agent("The property held.", "answer"),
+        reviewer=agent("VERDICT: MATCH -- it says the same.", "review"), **kw)
+    invoke.clear()                   # a remembered answer relays nothing, and this reads the relay
+    try:
+        with tempfile.TemporaryDirectory(prefix="anchor-pipe-") as tmp:
+            argv = [str(POLICIES / "firewall.dw"), "--intent", "SSH from the local range is "
+                    "permitted, and every external source is denied.", "--out", tmp, "--mutants", "2"]
+
+            # Nothing configured: refused before any stage, with the reason.
+            policy_agent.readiness = lambda *a, **k: policy_agent.Readiness(
+                "gemini", "x", problems=["no Gemini API key: (stand-in)"])
+            code, said = run_main(argv)
+            check("an LLM that cannot be built stops auto before any stage, exit 3",
+                  code == 3 and "no Gemini API key" in said and "[describe]" not in said,
+                  f"{code}\n{said[-600:]}")
+
+            policy_agent.readiness = lambda *a, **k: policy_agent.Readiness(
+                "gemini", "stand-in", source="none (scripted)", model_source="scripted")
+            code, said = run_main(argv)
+            check("the run is described before it starts",
+                  "Drafting a property module for" in said and "from --intent:" in said
+                  and said.index("Drafting a property module") < said.index("[describe]"),
+                  said[:800])
+            check("every stage says when it starts and when it ends",
+                  all(f"[{s}]" in said and f"-> {s} done" in said
+                      for s in ("describe", "draft", "preflight", "score", "check", "report")),
+                  said[-1500:])
+            check("each mutant's TLC run is relayed as it starts",
+                  "TLC 1/2  mutant:" in said and "TLC 2/2  mutant:" in said, said[-1500:])
+            check("nothing is drawn over in place, so a CI log reads the same", "\r" not in said)
+            check("...and the run itself is unchanged", code == 0, f"{code}\n{said[-600:]}")
+
+            # THE VERDICTS AT THE END, so nobody has to open findings.md -- or think a separate
+            # `check` is needed -- to learn what the run found; and the way on to a full audit.
+            check("the end of the run gives the property's verdict",
+                  "the stated property HOLDS (Intent.tla)" in said, said[-900:])
+            check("...and the derived findings", "derived findings: 1 (forbid #2 DEAD)" in said,
+                  said[-900:])
+            check("...and the audit that goes further",
+                  "to audit with it: anchor check" in said and "--full --property" in said,
+                  said[-900:])
+            text = (Path(tmp) / "findings.md").read_text(encoding="utf-8")
+            check("findings.md carries the same command",
+                  "To audit the policy set with this property" in text and "--full --property" in text,
+                  text[-1200:])
+
+            # A BROKEN property: the session that breaks it, replayed in Dogwood as the audit does.
+            broken = [str(POLICIES / "firewall_open.dw"), *argv[1:]]
+            code, said = run_main(broken)
+            text = (Path(tmp) / "findings.md").read_text(encoding="utf-8")
+            engine = DOGWOOD.exists()
+            check("a BROKEN property is said at the end, as the session that breaks it",
+                  "the stated property is BROKEN (Intent.tla):" in said
+                  and ("the Dogwood engine" in said if engine else "dogwood binary" in said),
+                  said[-1200:])
+            check("...replayed in Dogwood in findings.md, with the trace kept beside it",
+                  "In Dogwood:" in text and (not engine or (Path(tmp) / "witness").is_dir()),
+                  text[-1500:])
+            check("...and exits 1: findings, not a failure to run", code == 1, str(code))
+
+            # A draft the reviewer turns away: nothing is checked, and the end of the run must say
+            # why rather than only where -- "rejected at review" sent a person to findings.md.
+            pipeline.build = lambda run, **kw: real_build(
+                run, drafter=agent(GOOD, "draft"), answerer=agent("ok", "answer"),
+                reviewer=agent("VERDICT: MISMATCH -- the requirement makes the steps necessary, "
+                               "and the claim makes them sufficient.", "review"), **kw)
+            code, said = run_main(argv)
+            check("a rejected draft says at the end why it was rejected",
+                  "outcome: no property (rejected at review)" in said
+                  and "makes them sufficient" in said.split("outcome:")[-1], said[-900:])
+            check("...that nothing was checked, and what hitl would do instead",
+                  "nothing was checked. `anchor hitl`" in said, said[-900:])
+            check("...and exits 1", code == 1, str(code))
+
+            # A model id the provider does not have, as google-genai reports it through an Agent
+            # Platform key. It must be said where it happened and at the end, never as `done`.
+            pipeline.build = lambda run, **kw: real_build(
+                run, drafter=Agent(model=Unreachable(), callback_handler=None, name="draft"),
+                answerer=agent("ok", "answer"), reviewer=agent("VERDICT: MATCH", "review"), **kw)
+            code, said = run_main(argv)
+            check("an LLM that cannot be reached fails its stage, not `done`",
+                  "-> draft FAILED" in said and "-> draft done" not in said, said[-1200:])
+            check("...says why in the provider's own words, explained",
+                  "404 NOT_FOUND: Publisher model" in said
+                  and "Google has no model by that name" in said, said[-1200:])
+            check("...says so again at the end", "outcome: MODEL UNREACHABLE" in said
+                  and "error: the LLM could not be reached" in said, said[-800:])
+            check("...and exits 3, not the rejected-draft 1", code == 3, str(code))
+    finally:
+        pipeline.build, policy_agent.readiness, policy_agent.build_model = (
+            real_build, real_readiness, real_model)
+        invoke.progress = None
+
+
+def run_main(argv: list[str]) -> tuple[int, str]:
+    """`auto`'s main with this argv, and what it said on stderr."""
+    import contextlib
+    import io
+
+    said = io.StringIO()
+    sys.argv = ["pipeline.py", *argv]
+    with contextlib.redirect_stderr(said), contextlib.redirect_stdout(io.StringIO()):
+        code = pipeline.main()
+    return code, said.getvalue()
+
+
 def main() -> int:
     print("=" * 78)
     print("Anchor's property-authoring pipeline, as the graph that runs it")
@@ -568,6 +709,7 @@ def main() -> int:
     accepted_path()
     round_trip()
     sweeping()
+    says_what_it_is_doing()
 
     print()
     print("=" * 78)

@@ -40,10 +40,8 @@ import argparse
 import json
 import os
 import re
-import subprocess
 import sys
 import tempfile
-import threading
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -54,6 +52,7 @@ if str(REPO / "src") not in sys.path:
 
 CHECKER = REPO / "src" / "checker" / "properties.py"
 
+from agent.invoke import run_relayed  # noqa: E402
 from checker import scan as screen  # noqa: E402
 from checker.explain import as_dict, explain_file  # noqa: E402
 from checker.witness import Confirmation, confirm, reading_schema  # noqa: E402
@@ -234,7 +233,9 @@ def run_checker(policy: Path, *, against: Path | None = None, property_module: P
     if smoke is not None and property_module is None:
         args += ["--smoke", str(smoke)]
 
-    proc = run_relayed(args, timeout)
+    # The checker's progress lines are passed on as they arrive; everything else it says on stderr
+    # is carried into the report, so relaying that too would only print it twice.
+    proc = run_relayed(args, timeout, relay=lambda line: print(line, file=sys.stderr, flush=True))
 
     # A property run prints prose, not JSON: its verdict is the exit code and its detail is the
     # BROKEN lines. Carried as text rather than forced into a shape it does not have.
@@ -246,44 +247,6 @@ def run_checker(policy: Path, *, against: Path | None = None, property_module: P
     except json.JSONDecodeError:
         return {"kind": "derived", "_failed": True, "exitCode": proc.returncode,
                 "_why": (proc.stderr or proc.stdout).strip()[-1500:]}
-
-
-# The lines the audit passes on from a checker run: which TLC run is starting, and TLC's own
-# once-a-minute progress on a long search. Everything else the checker says on stderr is already
-# carried into the report, so relaying it too would only print it twice.
-RELAYED = ("  TLC ", "        Progress")
-
-
-def run_relayed(args: list[str], timeout: int) -> subprocess.CompletedProcess[str]:
-    """Run the checker, passing its progress lines on as they arrive and keeping everything else.
-
-    stdout, the JSON answer, is read on a thread while stderr is read here line by line, so neither
-    pipe can fill and stall the other. A run past `timeout` is killed and raises TimeoutExpired,
-    exactly as `subprocess.run` did before this relayed anything.
-    """
-    proc = subprocess.Popen(args, cwd=REPO, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                            text=True, encoding="utf-8", errors="replace",
-                            # UTF-8 both ways, and ask the checker for its progress lines.
-                            env={**os.environ, "PYTHONUTF8": "1", "ANCHOR_PROGRESS": "1"})
-    out: list[str] = []
-    reader = threading.Thread(target=lambda: out.append(proc.stdout.read()), daemon=True)
-    reader.start()
-    expired = threading.Event()
-    timer = threading.Timer(timeout, lambda: (expired.set(), proc.kill()))
-    timer.start()
-    errors: list[str] = []
-    try:
-        for line in proc.stderr:
-            errors.append(line)
-            if line.startswith(RELAYED):
-                print(line.rstrip(), file=sys.stderr, flush=True)
-        proc.wait()
-    finally:
-        timer.cancel()
-    reader.join()
-    if expired.is_set():
-        raise subprocess.TimeoutExpired(args, timeout)
-    return subprocess.CompletedProcess(args, proc.returncode, "".join(out), "".join(errors))
 
 
 def step_summary(result: dict) -> str:

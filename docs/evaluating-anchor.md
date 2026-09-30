@@ -201,6 +201,11 @@ and a verdict, and a draft that fails any of them is reported rather than retrie
 Omit `--intent` and it reads the requirement from a `## <policy>.dw` heading in the `intents.md`
 beside the policy — which is how the examples are set up.
 
+**An accepted draft is checked in the same run; no separate `check` is needed.** The run ends with
+the property's verdict — a BROKEN one as the session that breaks it, replayed in Dogwood — the
+rule-by-rule findings, and the `check --full --property` command that audits the policy set with the
+new module beside any others, for the report with the session drawn in `findings.html`.
+
 `hitl` is the same graph with one node added: before anything is checked, the claim is read back to
 you in plain English and you say whether that is what you meant; and when a gate turns a draft away
 it asks you about the **requirement**, never about TLA+. It needs a real terminal, so add `-it`:
@@ -222,9 +227,9 @@ asserted, and the reason mode 6 exists.
 | | |
 |---|---|
 | 0 | answered, and nothing to report |
-| 1 | a `--property` claim is BROKEN, the audit has findings, or (`scan`) the inputs hold something at medium or high severity |
+| 1 | a `--property` claim is BROKEN, the property `auto` or `hitl` drafted is BROKEN or was rejected, the audit has findings, or (`scan`) the inputs hold something at medium or high severity |
 | 2 | no verdict — and the reason is on stderr. `auto` and `hitl` also exit 2 when they refuse flagged input |
-| 3 | could not run |
+| 3 | could not run — for `auto` and `hitl`, including an LLM that could not be reached |
 | 4 | (`explain`) a claim cannot fail; it would pass having tested nothing |
 
 A script can branch on those without parsing prose, which is the point of having them.
