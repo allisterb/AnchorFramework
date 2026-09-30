@@ -626,9 +626,13 @@ def says_what_it_will_do() -> None:
         except Stopped:
             pass
         shown = "\n".join(person.shown)
+        flat = " ".join(shown.split())          # wrapped to a column; read as prose
         check("the session is described before it starts",
-              "with you as one of the gates" in shown and "from --intent:" in shown
-              and "confirm (you)" in shown and "stand-in via gemini" in shown, shown[:900])
+              "with you as one of the gates" in flat and "from --intent:" in flat
+              and "confirm (you)" in flat and "stand-in via gemini" in flat, shown[:900])
+        check("...no line of it wider than the terminal it is shown in",
+              all(len(line) <= saved[1]().width for line in shown.splitlines()),   # the real one
+              max(shown.splitlines(), key=len))
         formal(shown, "in the summary before a session")
 
         # AND AT THE END, a broken property as the person reads it: `sentence()` quotes the TLA+
@@ -640,6 +644,17 @@ def says_what_it_will_do() -> None:
                                                    "state": {"req": "[port |-> 22]"}}]}
         run.witness = [Confirmation(invariant="OutsideIsRefused", state={"req": "[port |-> 22]"},
                                     demanded=False, engine="allow", agreed=True, at=1)]
+        # A PROGRESS LINE SURVIVES THE TERMINAL: written to be overwritten, then overwritten by a
+        # `\r` line. Wrapped, the `\r` became a space and the time landed after the description.
+        screen = io.StringIO()
+        narrow = saved[1](width=30, stream=screen)                  # the real Terminal
+        narrow.say("  score      breaking the policy set on purpose, one check per mutant ...",
+                   newline=False)
+        narrow.say("\r  score         2.4s".ljust(80))
+        check("a progress line is never wrapped, so its `\\r` still returns to its start",
+              screen.getvalue().count("\n") == 1 and "\r  score         2.4s" in screen.getvalue(),
+              repr(screen.getvalue()))
+
         ending = "\n".join(pipeline.closing(run, plain=True))
         check("the end of a session gives a broken verdict in plain words",
               "the Dogwood engine ALLOWS a session your requirement says it must REFUSE" in ending,

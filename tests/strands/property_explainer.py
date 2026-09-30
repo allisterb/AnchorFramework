@@ -234,8 +234,11 @@ def main() -> int:
     check("...and the rendering does NOT say it applies to none of them",
           "NONE of the 0" not in shown and "NOT DETERMINED" in shown,
           next((line for line in shown.splitlines() if "applies" in line), ""))
+    # Read as prose, whitespace collapsed: the rendering wraps its sentences to a column, and a
+    # line break inside one is layout, not a change in what it says.
+    flat = " ".join(shown.split())
     check("...but says plainly that the states were never counted",
-          "never counted" in shown and "not a claim that it applies to none" in shown,
+          "never counted" in flat and "not a claim that it applies to none" in flat,
           next((line for line in shown.splitlines() if "applies" in line), ""))
 
     # --- the modules actually in the repo ---------------------------------------------------------

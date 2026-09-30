@@ -10,7 +10,8 @@ just as rigorously as one that says what they meant, and passes just as convinci
 
 So this prints, per claim, the sentence a reviewer actually has to agree with:
 
-    forbids   gap is greater than 600, and yet the policy GRANTS it
+    forbids:  gap is greater than 600,
+              and yet the policy GRANTS it
 
 If that sentence is not something you would object to seeing happen, the check is going to pass and
 tell you nothing -- and it will do it in the same green letters as a check that tested your
@@ -26,7 +27,9 @@ AND IT COUNTS. A claim shaped `A => B` tests nothing at all in any state where `
 states where `A` HOLDS are the entire experiment. Those are countable here, before TLC runs, because
 the domain is enumerable and `A` is usually arithmetic:
 
-    applies   to 2 of the 6 states it ranges over: gap = 960, gap = 1800
+    applies:  to 2 of the 6 states:
+                gap = 960
+                gap = 1800
 
 Zero of them is the failure this module exists to catch -- a claim that will pass having examined
 nothing, which is the same defect as a vacuous policy and just as invisible in a green run.
@@ -1081,15 +1084,24 @@ def claim_shaped(d: Definition) -> bool:
 
 
 # ---------------------------------------------------------------------------- output
-def render(x: Explanation, *, width: int = 96) -> str:
+# 88 and not wider, because `hitl` shows this to a person through a terminal that wraps at 92. A
+# line wider than that was wrapped a SECOND time there, keeping only its leading indent, and the
+# value column came apart: `hasLoad =` on one line and `FALSE, action = ...` under the label.
+WIDTH = 88
+
+
+def render(x: Explanation, *, width: int = WIDTH) -> str:
+    """The reading, laid out for a person: one claim to a block, its label on the left and the
+    value in a column of its own, `says` broken at its `then` and `forbids` at its `and yet`, and
+    ONE STATE TO A LINE -- a state is itself a comma-separated list, so several on one line gave a
+    reader no way to tell where one ended and the next began."""
     lines: list[str] = [f"{x.module}", ""]
 
     checked = [c for c in x.claims if c.defined]
-    over = (f"over {plural(len(x.states), 'state')}" if x.states
-            else f"over an unknown number of states -- {x.scope}")
-    lines.append(f"  {plural(len(checked), 'claim')} will be checked, {over}.")
-    if x.states:
-        lines += wrap("", listed(x.states, 8), width, indent=2)
+    over = (f"over {plural(len(x.states), 'state')}:" if x.states
+            else f"over an unknown number of states -- {x.scope}.")
+    lines.append(f"  {plural(len(checked), 'claim')} will be checked, {over}")
+    lines += states(x.states, 8, width, indent=6)
     lines.append("")
 
     for c in x.claims:
@@ -1098,15 +1110,17 @@ def render(x: Explanation, *, width: int = 96) -> str:
             if line:
                 lines.append(f"      \\* {line}")
         if c.says:
-            lines += wrap("says", c.says, width)
-            lines += wrap("forbids", c.forbids, width)
+            lines += labelled("says:", c.says, width, breaks=(", then ",))
+            lines += labelled("forbids:", c.forbids, width, breaks=(", and yet ",))
         if c.condition:
             if c.applies:
-                lines += wrap("applies", f"to {len(c.applies)} of the {c.total}: "
-                                         f"{listed(c.applies, 6)}", width)
+                lines += labelled("applies:", f"to {len(c.applies)} of the "
+                                              f"{plural(c.total, 'state')}:", width)
+                lines += states(c.applies, 6, width, indent=6 + LABEL + 3)
             elif c.unknown:
-                lines.append(f"      applies   unknown -- `{c.condition}` could not be worked out "
-                             f"here for {c.unknown} of the {c.total} states")
+                lines += labelled("applies:", f"unknown -- `{c.condition}` could not be worked "
+                                              f"out here for {c.unknown} of the {c.total} states",
+                                  width)
             elif not c.total:
                 # NOT "NONE of the 0 states", which is what this said and which is a STATEMENT OF
                 # FACT about a property nobody measured. `states()` returns "no readable Init" when
@@ -1120,14 +1134,15 @@ def render(x: Explanation, *, width: int = 96) -> str:
                 # The vacuity gate itself was right -- `vacuous` requires `total > 0`, so it failed
                 # open -- and only the rendering was wrong, which made it worse rather than better:
                 # nothing was blocked, and the reader was told the opposite of the truth.
-                lines.append("      applies   NOT DETERMINED -- this module's Init is outside the "
-                             "shape the reader can enumerate, so the states were never counted. "
-                             "This is not a claim that it applies to none of them.")
+                lines += labelled("applies:", "NOT DETERMINED -- this module's Init is outside the "
+                                              "shape the reader can enumerate, so the states were "
+                                              "never counted. This is not a claim that it applies "
+                                              "to none of them.", width)
             else:
-                lines.append(f"      applies   to NONE of the {plural(c.total, 'state')}")
+                lines += labelled("applies:", f"to NONE of the {plural(c.total, 'state')}", width)
         elif c.says and c.total:
-            lines.append(f"      applies   to all {plural(c.total, 'state')} -- "
-                         f"it has no condition")
+            lines += labelled("applies:", f"to all {plural(c.total, 'state')} -- it has no "
+                                          f"condition", width)
 
         if c.vacuous:
             guarded = bool(c.condition) and not c.applies
@@ -1138,24 +1153,25 @@ def render(x: Explanation, *, width: int = 96) -> str:
                    "As written it asserts something about the MODEL, not about the policy -- the "
                    "policy could say anything at all and this would still hold. State the claim "
                    "in terms of what the policy decides")
-            lines += wrap("!!", f"NOTHING THIS CLAIM RANGES OVER CAN BREAK IT: {why}, so it is "
-                                f"already true in all {plural(c.total, 'state')} without the "
-                                f"policy being "
-                                f"consulted at all. TLC will report it holding, having tested "
-                                f"nothing. {fix}", width)
+            lines += labelled("!!", f"NOTHING THIS CLAIM RANGES OVER CAN BREAK IT: {why}, so it "
+                                    f"is already true in all {plural(c.total, 'state')} without "
+                                    f"the policy being consulted at all. TLC will report it "
+                                    f"holding, having tested nothing. {fix}", width)
         elif c.broken:
-            lines += wrap("!!", f"this claim is already FALSE in "
-                                f"{listed(c.broken, 3)} before the policy is consulted, so TLC "
-                                f"will report a violation that says nothing about the policy. "
-                                f"Check the claim against the states it ranges over", width)
+            lines += labelled("!!", f"this claim is already FALSE, before the policy is "
+                                    f"consulted, in:", width)
+            lines += states(c.broken, 3, width, indent=6 + LABEL + 3)
+            lines += labelled("", "so TLC will report a violation that says nothing about the "
+                                  "policy. Check the claim against the states it ranges over",
+                              width)
         for note in c.notes:
-            lines += wrap("!!", note, width)
+            lines += labelled("!!", note, width)
         lines.append("")
 
     if x.unchecked:
-        lines += wrap("!!", f"defined here but NOT named in the .cfg, so not checked: "
-                            f"{', '.join(sorted(x.unchecked))}. A claim nobody listed is a "
-                            f"claim nobody checked", width, indent=2)
+        lines += labelled("!!", f"defined here but NOT named in the .cfg, so not checked: "
+                                f"{', '.join(sorted(x.unchecked))}. A claim nobody listed is a "
+                                f"claim nobody checked", width, indent=2)
         lines.append("")
 
     lines.append("  Read the `forbids` lines before the run, not after it. Each one is the only")
@@ -1176,17 +1192,50 @@ def listed(items: list[str], most: int) -> str:
     return ", ".join(items[:most]) + f", and {len(items) - most} more"
 
 
-def wrap(label: str, text: str, width: int, indent: int = 6) -> list[str]:
-    """A labelled paragraph, wrapped, with the label on the first line only."""
+# The label column: the longest label, `forbids:`, and a space.
+LABEL = 9
+
+
+def labelled(label: str, text: str, width: int, indent: int = 6,
+             breaks: tuple[str, ...] = ()) -> list[str]:
+    """`label  value`, the value wrapped in a column of its own so every continuation lines up
+    under it, and the label on the first line only. Each of `breaks` -- `, then `, `, and yet ` --
+    starts a new line at its first occurrence, which is where the sentence turns."""
+    import textwrap                                                     # noqa: PLC0415
+
+    parts = [text]
+    for b in breaks:
+        parts = [q for p in parts for q in split_at(p, b)]
+    head = " " * indent + (f"{label:<{LABEL}} " if label else " " * (LABEL + 1))
+    column = " " * len(head)
+    out: list[str] = []
+    for part in parts:
+        # Hyphens and long words are not break points: a quoted value like "rebalance_portfolio"
+        # or a path must survive whole, whatever the column costs.
+        out += textwrap.wrap(part, width, initial_indent=head if not out else column,
+                             subsequent_indent=column, break_on_hyphens=False,
+                             break_long_words=False) or [head.rstrip()]
+    return out
+
+
+def split_at(text: str, sep: str) -> list[str]:
+    """`text` broken at the first `sep` (`, then `), the comma kept on the first half and the
+    word that turns the sentence starting the second."""
+    head, found, tail = text.partition(sep)
+    return [head + ",", sep.removeprefix(", ") + tail] if found else [text]
+
+
+def states(items: list[str], most: int, width: int, indent: int) -> list[str]:
+    """One state to a line, each wrapped under itself if it must be, and honest about the rest."""
+    import textwrap                                                     # noqa: PLC0415
+
     pad = " " * indent
-    head = f"{pad}{label:<9} " if label else pad
-    out, line = [], head
-    for word in text.split():
-        if len(line) + len(word) + 1 > width and line.strip() not in ("", label):
-            out.append(line.rstrip())
-            line = " " * len(head)
-        line += word + " "
-    out.append(line.rstrip())
+    out: list[str] = []
+    for item in items[:most]:
+        out += textwrap.wrap(item, width, initial_indent=pad, subsequent_indent=pad + "  ",
+                             break_on_hyphens=False, break_long_words=False)
+    if len(items) > most:
+        out.append(f"{pad}and {len(items) - most} more")
     return out
 
 

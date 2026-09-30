@@ -297,6 +297,8 @@ class Run:
     answered: str = ""
     rejected_at: str = ""
     findings: Path | None = None
+    # `<out>/transcript.md`, once this run's first LLM call has started it.
+    transcript: Path | None = None
 
 
 @dataclass
@@ -349,6 +351,7 @@ def ask(agent, prompt: str, run: Run, who: str) -> tuple[str, bool]:
     what it returns is a truncated answer. Here somebody looks.
     """
     started = time.monotonic()
+    before = len(getattr(agent, "messages", None) or [])
     try:
         result = agent(prompt, **({"limits": run.limits} if run.limits else {}))
     except Exception as e:                                  # noqa: BLE001 - reported, not raised
@@ -361,6 +364,7 @@ def ask(agent, prompt: str, run: Run, who: str) -> tuple[str, bool]:
         # where that is known: `gemini-2.7.-flash` should read as a model name, not as a stack.
         run.unreachable.append(f"{who}: {policy_agent.describe_failure(e)}")
         run.calls.append(Call(who, seconds=time.monotonic() - started, capped=True))
+        record(run, agent, who, prompt, before, failed=policy_agent.describe_failure(e))
         return "", True
     elapsed = time.monotonic() - started
 
@@ -370,7 +374,47 @@ def ask(agent, prompt: str, run: Run, who: str) -> tuple[str, bool]:
     run.calls.append(Call(who, *tokens, seconds=elapsed, capped=cut))
     if cut:
         run.capped.append(f"{who} was cut off by the {stop} cap")
+    record(run, agent, who, prompt, before,
+           failed=f"cut off by the {stop} cap: what follows is incomplete" if cut else "")
     return str(result).strip(), cut
+
+
+def record(run: Run, agent, who: str, prompt: str, before: int, *, failed: str = "") -> None:
+    """This call's whole exchange -- the prompt, every tool call and its reply, and what came back
+    -- appended to `<out>/transcript.md`. Started afresh by a run's first call, so a re-run into
+    the same directory never reads as one long run.
+
+    WHY IT IS KEPT: every verdict here rests on a draft an LLM wrote while calling tools, and the
+    prose it returned is a claim about what those tools said. The transcript is the evidence to
+    check it against. Never raises -- losing the run to the record of it would be backwards.
+    """
+    try:
+        from agent import transcript as tr                            # noqa: PLC0415
+
+        path = run.out / "transcript.md"
+        if run.transcript is None:
+            run.out.mkdir(parents=True, exist_ok=True)
+            path.write_text(tr.header(
+                "Agent transcript",
+                f"`{run.policy.name}`: every LLM call this run made, in order -- the drafter with "
+                f"its tool calls, the reviewer and the reporter.",
+                by="src/agent/pipeline.py"), encoding="utf-8")
+            run.transcript = path
+
+        model = getattr(agent, "model", None)
+        config = model.get_config() if hasattr(model, "get_config") else {}
+        call = run.calls[-1] if run.calls and run.calls[-1].who == who else None
+        meta = {"model": (config or {}).get("model_id") or "(provider default)",
+                **({"tokens": f"{call.total:,}", "seconds": f"{call.seconds:.1f}"} if call else {}),
+                **({"note": failed} if failed else {})}
+        body = tr.render((getattr(agent, "messages", None) or [])[before:], question=prompt,
+                         heading=who, meta=meta,
+                         tools=bool(getattr(agent, "tool_names", None)))
+        with path.open("a", encoding="utf-8") as f:
+            f.write("\n" + body)
+    except Exception as e:                                           # noqa: BLE001
+        print(f"warning: the transcript was not written for {who}: {type(e).__name__}: {e}",
+              file=sys.stderr)
 
 
 def gate(ok: bool, said: str) -> str:
@@ -916,6 +960,12 @@ def stage_report(run: Run, said: str) -> str:
                       "header names it:", "", "```bash", audit_command(run), "```", ""]
         lines += ["## Reported", "", run.answered]
 
+    # WHERE THE EVIDENCE IS. Every verdict above rests on a draft an LLM wrote while calling tools;
+    # the transcript is what those tools actually said, to check the prose against.
+    if run.transcript:
+        lines += ["", f"Every LLM call this run made, with each tool call and its reply, is in "
+                      f"`{run.transcript.name}` beside this file."]
+
     # AND WHAT THIS DOCUMENT IS ALLOWED TO CLAIM. Both readings end in the same place -- nobody
     # wrote the property -- but a run a person steered is not an unattended one, and a footer that
     # said so either way would be wrong in one of the two directions every time.
@@ -1326,23 +1376,35 @@ def announce(what: str, requirement: str, out: str, args: argparse.Namespace,
              closing: str = "Each stage is announced as it starts, and each TLC run inside it."
              ) -> str:
     """What this run is about to do, from the options it was given. Said before the first stage,
-    because the first answer can be minutes away. `hitl` passes its own stages and closing."""
-    pad = " " * 20
+    because the first answer can be minutes away. `hitl` passes its own stages and closing.
+
+    WRAPPED HERE, EACH VALUE IN ITS OWN COLUMN, and no wider than the reading (88). `hitl` prints
+    this through a terminal that wraps at 92, and a longer line -- a requirement, a settings path --
+    was wrapped a second time there under the wrong indent, scattering the column."""
+    import textwrap                                                     # noqa: PLC0415
+    from checker.explain import WIDTH                                   # noqa: PLC0415
+
+    def row(label: str, *paragraphs: str) -> list[str]:
+        head, column = f"  {label:<18}", " " * 20
+        out: list[str] = []
+        for p in paragraphs:
+            out += textwrap.wrap(p, WIDTH, initial_indent=head if not out else column,
+                                 subsequent_indent=column, break_on_hyphens=False,
+                                 break_long_words=False)
+        return out
+
     stages = stages or [f"describe, draft (up to {args.rounds} round(s)), preflight, score (up to "
-                        f"{args.mutants} mutant(s), a TLC run each),",
-                        "review, check, answer, report"]
+                        f"{args.mutants} mutant(s), a TLC run each), review, check, answer, report"]
     return "\n".join([
-        f"{what}:",
-        f"  requirement       {requirement}",
-        f"  stages            {stages[0]}",
-        *[f"{pad}{line}" for line in stages[1:]],
-        f"  LLM               {ready.model} via {ready.provider}",
-        f"{pad}model: {ready.model_source}",
-        f"{pad}credentials: {ready.source}. Every draft and review is a live LLM call",
-        f"  reading           " + (f"the event schema {args.event_schema.name}" if args.event_schema
-                                   else "callerPrincipal pinned, Dogwood's default (--event-schema "
-                                        "to change)"),
-        f"  output            {out}",
+        *textwrap.wrap(f"{what}:", WIDTH, subsequent_indent="  ", break_long_words=False,
+                       break_on_hyphens=False),
+        *row("requirement", requirement),
+        *row("stages", *stages),
+        *row("LLM", f"{ready.model} via {ready.provider}", f"model: {ready.model_source}",
+             f"credentials: {ready.source}.", "Every draft and review is a live LLM call."),
+        *row("reading", f"the event schema {args.event_schema.name}" if args.event_schema
+             else "callerPrincipal pinned, Dogwood's default (--event-schema to change)"),
+        *row("output", out),
         closing,
         ""])
 
@@ -1615,7 +1677,8 @@ def main() -> int:
     said = args.intent if len(args.intent) <= 110 else args.intent[:107] + "..."
     print(announce(f"Drafting a property module for {args.policy} (unattended)",
                    f'from {source}: "{said}"',
-                   f"{run.out}: {args.name}.tla and .cfg, drafting/, findings.md", args, ready),
+                   f"{run.out}: {args.name}.tla and .cfg, drafting/, findings.md, and "
+                   f"transcript.md -- every LLM call, with its tool calls", args, ready),
           file=sys.stderr, flush=True)
 
     graph = build(run, provider=args.provider, model=args.llm, announce=stage_logger(run),

@@ -630,7 +630,17 @@ def says_what_it_is_doing() -> None:
             check("...and the audit that goes further",
                   "to audit with it: anchor check" in said and "--full --property" in said,
                   said[-900:])
+            # THE EVIDENCE BEHIND THE PROSE: every LLM call, in order, with what it was asked.
+            kept = (Path(tmp) / "transcript.md").read_text(encoding="utf-8") \
+                if (Path(tmp) / "transcript.md").exists() else ""
+            check("every LLM call is kept in transcript.md, in order",
+                  0 <= kept.find("## draft round 1") < kept.find("## the review")
+                  < kept.find("## the report"), kept[:600])
+            check("...each with what it was asked", kept.count("**Asked:**") == 3, kept[:600])
+            check("...and the reviewer is not flagged for calling no tools, having none",
+                  kept.count("No tools were called") <= 1, kept[-800:])
             text = (Path(tmp) / "findings.md").read_text(encoding="utf-8")
+            check("findings.md says where the transcript is", "transcript.md" in text, text[-600:])
             check("findings.md carries the same command",
                   "To audit the policy set with this property" in text and "--full --property" in text,
                   text[-1200:])

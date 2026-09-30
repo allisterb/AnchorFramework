@@ -145,6 +145,23 @@ whose schema has no universal pin. The reading is stated in every run, as before
   `--event-schema`, which had no help. The options the two share are defined once, so their help
   cannot drift apart again, and `--provider` rejects an unknown name when the command is read
   rather than when the first model is built.
+- **`auto` and `hitl` keep a transcript of every LLM call**, in `transcript.md` beside the run's
+  findings.md (for `hitl`, in each `attempt-<n>/`): the drafter with every tool call and its full
+  reply, the reviewer and the reporter, each with what it was asked, its model, tokens and time,
+  and a note when it failed or was cut off by a cap. Started afresh each run. Only the audit's
+  questions had one before; the prose these modes return is a claim, and the transcript is the
+  evidence to check it against. findings.md and the opening summary say where it is.
+- **The opening summary fits the terminal.** Its values wrap in their own column at 88, as the
+  reading does; a long requirement or settings path used to be wrapped again by `hitl`'s
+  92-column terminal under the wrong indent. And a stage's progress line is no longer wrapped at
+  all: wrapping turned its `\r` into a space, so the elapsed time landed after the description
+  instead of replacing it.
+- **The reading of a property module is laid out to be read**, wherever it appears: `anchor
+  explain`, `hitl`'s checkpoint, findings.md. Labels end in a colon with the value in a column of
+  its own, `says:` breaks at its `then` and `forbids:` at its `and yet`, and the states are ONE TO A
+  LINE -- a state is itself a comma-separated list, so several on a line could not be told apart.
+  It is drawn 88 wide, inside `hitl`'s 92-column terminal: it used to be 96, and the terminal
+  wrapped every longer line a second time, splitting a state across the label column.
 - **"Property module" for the `.tla` file, "claim" for one invariant in it**, in the checker's
   messages, `auto`'s and `hitl`'s output and reports, and the CLI help, which said "property" for
   both. A verdict is about the module (it holds when every claim in it does); "a claim nobody listed

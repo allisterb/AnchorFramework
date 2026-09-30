@@ -50,8 +50,11 @@ def result_text(result: dict) -> str:
 
 
 def render(messages: list[dict], *, question: str = "", heading: str = "",
-           meta: dict | None = None, limit: int = RESULT_LIMIT) -> str:
-    """One exchange as markdown. `messages` is the agent's own message list after a run."""
+           meta: dict | None = None, limit: int = RESULT_LIMIT, tools: bool = True) -> str:
+    """One exchange as markdown. `messages` is the agent's own message list after a run.
+
+    `tools=False` for an agent that has none -- the pipeline's reviewer and reporter answer from
+    what they are given, by design -- so the absence of tool calls is not flagged as a finding."""
     lines: list[str] = []
     if heading:
         lines += [f"## {heading}", ""]
@@ -87,7 +90,7 @@ def render(messages: list[dict], *, question: str = "", heading: str = "",
                           "```", body[:limit] + ("\n…" if clipped else ""), "```", "",
                           "</details>", ""]
 
-    if not calls:
+    if not calls and tools:
         # Worth saying out loud: an answer with no tool calls is the model talking about a policy
         # it never looked at, which reads exactly like one it checked.
         lines += ["> **No tools were called for this answer.**", ""]
@@ -95,13 +98,14 @@ def render(messages: list[dict], *, question: str = "", heading: str = "",
     return "\n".join(lines).rstrip() + "\n"
 
 
-def header(title: str, subtitle: str = "") -> str:
+def header(title: str, subtitle: str = "",
+           by: str = "src/agent/policy_agent.py --transcript") -> str:
     """The top of a transcript file, stamped so it can be told from a later run."""
     when = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     lines = [f"# {title}", ""]
     if subtitle:
         lines += [subtitle, ""]
-    lines += [f"*Generated {when} by `src/agent/policy_agent.py --transcript`. Tool calls and "
+    lines += [f"*Generated {when} by `{by}`. Tool calls and "
               "their full replies are included: the prose is a claim, and the tool output is the "
               "evidence for it.*", ""]
     return "\n".join(lines)

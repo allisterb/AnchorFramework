@@ -159,7 +159,13 @@ class Terminal(Console):
         # and re-flowing every line to the width turned that into a paragraph of run-on prose.
         out = []
         for line in str(text).split("\n"):
-            if not line.strip() or len(line) <= self.width:
+            # A PROGRESS LINE IS NEVER WRAPPED: one written to be overwritten (`newline=False`), or
+            # the one overwriting it (a leading `\r`). Wrapping split the first across two rows the
+            # `\r` could not climb back over, and turned the `\r` itself into a space -- so the
+            # elapsed time landed at the end of the description instead of painting over it.
+            if not newline or line.startswith("\r"):
+                out.append(line)
+            elif not line.strip() or len(line) <= self.width:
                 # NOT rstripped. A progress line overwrites a longer one by returning to column 0
                 # and painting over it, and the trailing spaces that do the painting are exactly
                 # what a tidy-up would remove -- leaving the tail of "asking the model ..." sitting
@@ -900,10 +906,11 @@ def main() -> int:
         f"Drafting a property module for {args.policy}, with you as one of the gates",
         f'from {source}: "{said}"',
         f"{args.out or args.policy.parent / 'anchor' / 'hitl'}: session.md, and attempt-<n>/ "
-        f"for each pass", args, ready,
+        f"for each pass, with that pass's findings.md and transcript.md -- every LLM call it "
+        f"made", args, ready,
         stages=[f"describe, draft (up to {args.rounds} round(s) a pass), preflight, score (up to "
-                f"{args.mutants} mutant(s), a check each),",
-                "review, confirm (you), check, answer, report",
+                f"{args.mutants} mutant(s), a check each), review, confirm (you), check, answer, "
+                f"report",
                 f"you are asked up to {args.refinements} time(s) before the session ends"],
         closing="Each stage is announced as it starts."))
 
