@@ -255,9 +255,11 @@ public class ProtocolTests : TestsRuntime, IAsyncLifetime
             ["policy"] = "../../CLAUDE.md"
         });
 
+        // BOTH, now: an error the caller can branch on, carrying the reason. The server's tool filter
+        // answers the refusal itself, rather than the SDK logging it as an unhandled exception.
         var text = Text(r);
-        Assert.True(r.IsError == true || text.Contains("outside this project's directory"),
-            $"a path escaping the project was not refused: {text}");
+        Assert.True(r.IsError == true, $"a path escaping the project was not refused: {text}");
+        Assert.Contains("outside this project's directory", text);
     }
 
     /// <summary>

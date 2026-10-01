@@ -4,16 +4,13 @@ using System;
 using System.IO;
 
 /// <summary>
-/// Resolves a script-supplied path against the project directory, and refuses one that escapes it.
+/// Resolves a caller-supplied path against the project directory, and refuses one that escapes it.
 /// </summary>
 /// <remarks>
-/// Shared by every call that takes a path from a script — <c>outFile</c>, <c>outSvg</c> and
-/// <c>Skia.Image.load</c> — so that one relative path means one thing whichever call receives it.
-/// It did not, once: <c>outFile: 'artifacts/x.webp'</c> resolved against the project while
-/// <c>Skia.Image.load('artifacts/x.webp')</c> resolved against the server's working directory and
-/// reported the file missing. An agent hit that, worked around it, and only mentioned it in passing.
+/// Shared by every MCP tool that takes a path — a policy set, a property module, an event schema,
+/// a <c>keep</c> directory — so that one relative path means one thing whichever tool receives it.
 /// <para>
-/// Containment applies to reads as well as writes. Reading is the milder of the two, but a harness
+/// Containment applies to reads as well as writes. Reading is the milder of the two, but a server
 /// whose whole premise is that the agent cannot reach outside its directory does not get to make an
 /// exception for the direction that happens to be less alarming.
 /// </para>
@@ -30,7 +27,7 @@ public static class ProjectPath
     /// <param name="path">The path as the script wrote it.</param>
     /// <param name="parameterName">Reported as the offending parameter.</param>
     /// <param name="action">The verb used in the message — "Write" or "Read".</param>
-    /// <exception cref="ArgumentException">The path resolves outside the project.</exception>
+    /// <exception cref="OutsideProjectException">The path resolves outside the project.</exception>
     public static string Resolve(string? projectRoot, string path, string parameterName, string action)
     {
         var full = string.IsNullOrEmpty(projectRoot)
@@ -49,9 +46,10 @@ public static class ProjectPath
 
         if (!contained)
         {
-            throw new ArgumentException(
+            throw new OutsideProjectException(
                 $"'{path}' resolves to '{full}', which is outside this project's directory " +
-                $"('{projectRoot}'). {action} a path inside the project, such as 'artifacts/stage1.webp'.",
+                $"('{projectRoot}'). {action} a path inside the project, such as " +
+                $"'examples/aws1/agent-policy.dw'.",
                 parameterName);
         }
 
@@ -59,3 +57,12 @@ public static class ProjectPath
     }
     #endregion
 }
+
+/// <summary>
+/// A path refused because it resolves outside the project directory. A refusal, not a fault: the
+/// MCP server answers it as a tool error and logs one warning line, where an exception that
+/// reached the SDK was logged as an unhandled failure with a stack trace.
+/// </summary>
+/// <remarks>An <see cref="ArgumentException"/> still, so callers that caught that keep working.</remarks>
+public class OutsideProjectException(string message, string parameterName)
+    : ArgumentException(message, parameterName);

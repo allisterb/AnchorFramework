@@ -141,12 +141,14 @@ public class PolicyToolTests : TestsRuntime
     {
         var tools = new PolicyTools(projectRoot: Path.Combine(Repo, "tests", "policies"));
 
-        var escape = await Assert.ThrowsAsync<ArgumentException>(
+        // Its own type, which is what the server's tool filter answers as a refusal rather than
+        // letting the SDK log it as an unhandled failure.
+        var escape = await Assert.ThrowsAsync<OutsideProjectException>(
             () => tools.CheckPolicyAsync(Path.Combine("..", "..", "CLAUDE.md")));
         Assert.Contains("outside this project's directory", escape.Message);
 
         // The same containment on every path-bearing parameter, not only the first.
-        var viaSchema = await Assert.ThrowsAsync<ArgumentException>(
+        var viaSchema = await Assert.ThrowsAsync<OutsideProjectException>(
             () => tools.CheckPolicyAsync("dead_forbid.dw", eventSchema: Path.Combine("..", "..", "CLAUDE.md")));
         Assert.Contains("outside this project's directory", viaSchema.Message);
     }

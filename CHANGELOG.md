@@ -95,6 +95,14 @@ whose schema has no universal pin. The reading is stated in every run, as before
   Bedrock key with no region, raised `SystemExit` from inside the question loop, which caught only
   ordinary exceptions. The audit ended after every check had run and before any was written up,
   exiting 1, which reads as "there are findings". The report is now always written.
+- **The MCP server's own logging goes to Anchor's log file**, over stdio and HTTP alike, through
+  the provider the CLI configures. Over stdio it was discarded entirely, failed tool calls
+  included; over HTTP it went to the host's defaults, which on Windows include the system Event
+  Log. A stdio launch stays file-only, so nothing reaches the JSON-RPC stream.
+- **A path outside the project is answered as a refusal.** It reached the MCP SDK as an exception,
+  which logged it as an unhandled failure with a stack trace; it is now a tool error carrying the
+  reason, and one warning line in the log. The message suggested `artifacts/stage1.webp`, a path
+  from another project, and now suggests `examples/aws1/agent-policy.dw`.
 - **`auto` ends with what it found.** It always model-checked the property it accepted, but said
   so only in findings.md, so it read as needing a `check` afterwards. The run now ends with the
   property's verdict, the rule-by-rule findings and the `check --full --property` command that

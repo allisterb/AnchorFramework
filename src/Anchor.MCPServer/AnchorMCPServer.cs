@@ -13,6 +13,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
+using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
 /// <summary>
@@ -29,12 +30,21 @@ public class AnchorMCPServer : Runtime
     #region Methods
 
     /// <summary>Serve over stdio, for an MCP host that launches us as a child process.</summary>
+    /// <remarks>
+    /// <b>Runtime logging must be file-only before this is called</b> — <c>Runtime.WithFileLogging</c>,
+    /// never <c>WithFileAndConsoleLogging</c> — because the host's logging is sent to that provider,
+    /// and one log line on stdout corrupts the JSON-RPC stream. The CLI guarantees it for a stdio
+    /// launch, redirects <c>Console.Out</c> to stderr as a second guard, and
+    /// <c>StdioTransportTests</c> parses every line the process writes to hold it to that.
+    /// </remarks>
     public static async Task RunStdioAsync(string? projectDir = null, string? anchorRoot = null)
     {
         var builder = Host.CreateEmptyApplicationBuilder(null);
 
         // Nothing may be written to stdout but MCP frames — a stray log line corrupts the protocol.
-        builder.Logging.ClearProviders().SetMinimumLevel(LogLevel.Warning);
+        // Anchor's provider is safe here because the CLI configures it file-only for a stdio launch;
+        // before, the SDK's own logging was cleared and went nowhere, a failed tool call included.
+        UseAnchorLogging(builder.Logging);
 
         Register(builder.Services.AddMcpServer(), projectDir, anchorRoot).WithStdioServerTransport();
 
@@ -53,6 +63,10 @@ public class AnchorMCPServer : Runtime
         // itself, which presents as a health check that never passes and a server that looks fine
         // from inside a shell on the same container.
         builder.WebHost.UseUrls($"http://0.0.0.0:{port ?? DefaultPort}");
+
+        // The host's defaults include the Windows Event Log, which is where a refused tool call
+        // used to end up -- and not in Anchor's own log, which never saw it.
+        UseAnchorLogging(builder.Logging);
 
         Register(builder.Services.AddMcpServer(), projectDir, anchorRoot).WithHttpTransport();
 
@@ -101,6 +115,23 @@ public class AnchorMCPServer : Runtime
         mcp.WithTools(tools);
         mcp.WithTools<KnowledgeTools>();
 
+        // A PATH OUTSIDE THE PROJECT IS A REFUSAL, NOT A FAULT. Thrown out of a tool it reached the
+        // SDK as an unhandled exception, logged with a stack trace as a failure. Answered here as a
+        // tool error instead -- the caller is told exactly why -- with one warning line in the log,
+        // because an agent reaching outside its directory is worth a record.
+        mcp.WithRequestFilters(filters => filters.AddCallToolFilter(next => async (request, ct) =>
+        {
+            try
+            {
+                return await next(request, ct);
+            }
+            catch (OutsideProjectException e)
+            {
+                Warn("Refused a call to {0}: {1}", request.Params?.Name ?? "a tool", e.Message);
+                return new CallToolResult { IsError = true, Content = [new TextContentBlock { Text = e.Message }] };
+            }
+        }));
+
         // The same articles twice, by design. Resources are the natural fit; some hosts never
         // surface them, and a reference an agent cannot reach is one that does not exist.
         mcp.WithResources(KnowledgeBase.Resources());
@@ -109,6 +140,17 @@ public class AnchorMCPServer : Runtime
 
         return mcp;
     }
+
+    /// <summary>
+    /// The host's logging, sent to the provider the CLI configured -- Anchor's own log file -- and
+    /// nowhere else. As Polson.MCPServer does. ASP.NET Core's per-request lines are held to
+    /// warnings, so the file records tool calls and failures rather than every HTTP request.
+    /// </summary>
+    static void UseAnchorLogging(ILoggingBuilder logging) =>
+        logging.ClearProviders()
+            .AddProvider(loggerProvider)
+            .SetMinimumLevel(LogLevel.Information)
+            .AddFilter("Microsoft.AspNetCore", LogLevel.Warning);
 
     #endregion
 
