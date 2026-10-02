@@ -196,6 +196,41 @@ public class ProtocolTests : TestsRuntime, IAsyncLifetime
         Assert.Contains("<<FALSE, TRUE>>", text);
     }
 
+    /// <summary>
+    /// A decision table, end to end: the tool is listed, tells an agent where a table has to come
+    /// from, and answers a row the article's own table gets wrong for its own policy.
+    /// </summary>
+    [PolicyCheck]
+    public async Task ADecisionTableIsCheckedOverTheProtocol()
+    {
+        await using var client = await NewClientAsync();
+
+        var tools = await client.ListToolsAsync();
+        var table = Assert.Single(tools, t => t.Name == "CheckDecisionTable");
+        // A table derived from the policy agrees with it whatever it says; that is the one way to
+        // use this tool that checks nothing.
+        Assert.Contains("WRITE THE TABLE FROM THE REQUIREMENT, NOT FROM THE", table.Description ?? "");
+
+        // The article's policy 7 table, first row: 3 minutes after the advisor, a trade is ALLOWED.
+        // The policy as published denies it -- its `unless` is the wrong way round.
+        var r = await client.CallToolAsync("CheckDecisionTable", new Dictionary<string, object?>
+        {
+            ["policy"] = "examples/aws1/07-trust-decay.dw",
+            ["rows"] = """
+                row table: 3 minutes since the last advisor interaction -- execute_trade -- ALLOW
+                @0    request  interact_advisor  { }  ALLOW
+                @1    response interact_advisor  { } -> { }
+                @181  request  execute_trade     { }  ALLOW
+                """,
+            ["engine"] = false,
+        });
+
+        Assert.True(r.IsError != true, Text(r));
+        var text = Text(r);
+        Assert.Contains("\"answered\":true", text.Replace(" ", ""));
+        Assert.Contains("\"agrees\":false", text.Replace(" ", ""));
+    }
+
     /// <summary>A verdict, end to end, through the pipeline an agent host uses.</summary>
     [PolicyCheck]
     public async Task CheckPolicyReturnsAVerdictOverTheProtocol()

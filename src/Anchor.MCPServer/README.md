@@ -89,6 +89,7 @@ wearing a verifier's name. Containment applies to reads for that reason, not onl
 |---|---|---|
 | `CheckPolicy` | is each rule load-bearing — VACUOUS, REDUNDANT, DEAD or live; `against` for a diff; `property` for a claim of your own | seconds to minutes (TLC once per rule) |
 | `DescribePolicyModule` | what a `property` module may name for this policy, plus a skeleton that already runs | well under a second (parses only) |
+| `CheckDecisionTable` | does the policy decide each session in a table the way the table says: every decision, from Anchor's model and the Dogwood engine, with the rules that decided it | seconds (one TLC evaluation, one `dogwood replay` per row) |
 | `ListKnowledge` / `ReadKnowledge` | the reference articles below | in-process |
 
 `CheckPolicy`'s `smoke` argument runs TLC as a random walk instead of exhaustively, for a model too
@@ -102,6 +103,14 @@ agent that folded the two together would recommend deleting a working rule. See
 TLA+ against a module we GENERATE, whose vocabulary comes from that policy's own text. It cannot be
 guessed, and a guess that parses is worse than one that does not: name a field the policy never
 reads and the claim ranges over nothing and PASSES, reporting success having examined nothing.
+
+`CheckDecisionTable` is the way to check a policy against what somebody meant without anyone writing
+TLA+. A table is a session and the ALLOW or DENY it should get; a compliance team can write one, and
+AWS's own temporal-policy posts print them. The tool holds the policy to every row through Anchor's
+model and the engine, and reports a decision where the two disagree **with each other** separately,
+as a defect in Anchor rather than a finding about the policy. The checker is
+[`src/checker/table.py`](../checker/table.py), and
+[`decision-tables`](knowledge/decision-tables.md) is the format.
 
 The skeleton is not a stub with holes. It elaborates and checks something, because the wiring —
 `EXTENDS`, the `DogwoodSemantics` instantiation, the shape of `Decide`'s arguments — is exactly the

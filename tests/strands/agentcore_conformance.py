@@ -54,37 +54,25 @@ SESSION_PINNED = (REPO / "ext" / "dogwood" / "dogwood-language" / "configuration
 sys.path.insert(0, str(REPO / "src"))
 
 from dogwood_differential import case_record, check, collect_disagreements, generate_module  # noqa: E402
+from checker import table  # noqa: E402
+from checker.table import actual  # noqa: E402,F401  -- re-exported for agentcore_replay.py
 from translator import Unsupported, apply_pins, parse_policies, parse_schema, parse_trace, stamp_keys  # noqa: E402
 from translator.agentcore import refuse_unsound, rejections  # noqa: E402
 
 PRINCIPAL = 'AgentCore::OAuthUser::"alice"'
-SESSION = "s1"
 SOURCES = ("aws-table", "aws-prose", "ours")
-
-ROW = re.compile(r"row\s+(\S+):\s*(.+)")
-# `@T session=s2 request ...` puts an event in another session. Without it every event is in one,
-# which is what a decision table describes; a second session is what a caller-chosen session ID buys.
-EVENT = re.compile(r"@(\d+)(?:\s+session=(\w+))?\s+(request|response|error)\s+(\w+)\s+(\{[^{}]*\})"
-                   r"(?:\s*->\s*(\{[^{}]*\}))?"
-                   r"(?:\s+(ALLOW|DENY)(?:\s+(?!finding\b)(\S+))?(?:\s+(finding))?)?\s*$")
-
-
-def actual(e: dict) -> bool:
-    """Whether the policy as written ALLOWS this decision.
-
-    The verdict on a line is what the SOURCE says should happen. `finding` marks a decision where
-    the policy as published does the opposite -- a disagreement we have established and expect to
-    keep seeing, so it is checked rather than tolerated: should the model or the engine ever agree
-    with the source there, the finding is gone and the run says so.
-    """
-    return (e["verdict"] == "ALLOW") != e.get("finding", False)
-
 
 # The two guide pages. `rejected/` beside them holds negative checks on the schema, which have no
 # decisions to reproduce and are read by agentcore_replay.py alone.
 PAGES = ("authoring", "examples")
 
 
+# ------------------------------------------------------------------------------------------------
+# The table format -- rows, events, `finding`, `session=` -- is src/checker/table.py's, which the
+# CheckDecisionTable MCP tool uses too. What is here is the suite's own: where its files live, the
+# AgentCore names its traces carry, and the two rules it holds its own ground truth to that a
+# general table need not meet -- every file names a `target`, and every expectation one of three
+# sources.
 # ------------------------------------------------------------------------------------------------
 def load_suite(suite: Path = SUITE) -> list[dict]:
     """The guide's two pages under the suite; or, for any other directory, every `.dw` in it."""
@@ -99,93 +87,26 @@ def load(path: Path) -> dict:
     gateway = re.search(r'AgentCore::Gateway::"([^"]+)"', text)
     # A policy set with no gateway in any scope -- the blog post's policies 2-6 -- applies at
     # whichever gateway it is deployed on; the article's own placeholder names that one.
-    case = {"name": f"{path.parent.name}/{path.stem}", "path": path, "text": text, "rows": [],
-            "problems": [], "target": None, "refused": False,
-            "gateway": gateway.group(1) if gateway else "<GATEWAY_ARN>"}
-
-    for n, line in enumerate(text.splitlines(), 1):
-        if not line.startswith("//|"):
-            continue
-        body = line[3:].strip()
-        if not body:
-            continue
-        if body.startswith("target "):
-            case["target"] = body.split()[1]
-        elif body == "expect refused":
-            case["refused"] = True
-        elif m := ROW.fullmatch(body):
-            case["rows"].append({"source": m.group(1), "title": m.group(2), "events": []})
-        elif m := EVENT.fullmatch(body):
-            if not case["rows"]:
-                case["problems"].append(f"line {n}: an event before any row")
-                continue
-            t, session, kind, tool, inp, out, verdict, source, finding = m.groups()
-            case["rows"][-1]["events"].append({
-                "time": int(t), "session": session or SESSION,
-                "kind": kind, "tool": tool, "input": inp, "output": out,
-                "verdict": verdict, "source": source or case["rows"][-1]["source"],
-                "finding": bool(finding), "line": n})
-        else:
-            case["problems"].append(f"line {n}: not a ground-truth line: {body[:60]}")
+    case = table.parse_table(text)
+    case.update(name=f"{path.parent.name}/{path.stem}", path=path, text=text,
+                gateway=gateway.group(1) if gateway else "<GATEWAY_ARN>")
     return case
 
 
 def consistency(case: dict) -> list[str]:
-    """What makes a row a history AgentCore could actually have recorded.
-
-    Checked before Anchor is asked anything, because a wrong row is a wrong oracle: a response for a
-    denied request, or a decision with no expectation, would turn a transcription slip into a
-    "disagreement" that blames the model.
-    """
-    problems = list(case["problems"])
+    """The format's own rules, and this suite's two stricter ones."""
+    problems = table.consistency(case)
     if not case["target"]:
         problems.append("no `//| target`")
     if case["refused"] and case["rows"]:
         problems.append("`expect refused` with rows to check")
-    if not case["refused"] and not case["rows"]:
-        problems.append("no rows, and not `expect refused`")
-
     for r, row in enumerate(case["rows"], 1):
-        where = f"row {r}"
         if row["source"] not in SOURCES:
-            problems.append(f"{where}: source {row['source']!r} is not one of {', '.join(SOURCES)}")
-        last, open_requests = -1, []
+            problems.append(f"row {r}: source {row['source']!r} is not one of {', '.join(SOURCES)}")
         for e in row["events"]:
-            at = f"{where}, line {e['line']}"
-            if e["time"] <= last:
-                problems.append(f"{at}: @{e['time']} is not after @{last}")
-            last = e["time"]
             if e["source"] not in SOURCES:
-                problems.append(f"{at}: source {e['source']!r} is not one of {', '.join(SOURCES)}")
-
-            if e["kind"] == "request":
-                if not e["verdict"]:
-                    problems.append(f"{at}: a request with no expected decision")
-                if e["output"]:
-                    problems.append(f"{at}: a request carries no output")
-                open_requests.append(e)
-                continue
-
-            if e["verdict"]:
-                problems.append(f"{at}: a {e['kind']} is history-only and is not decided")
-            if e["kind"] == "error" and e["output"]:
-                problems.append(f"{at}: an error carries no output")
-            # The request this event answers: the most recent unanswered one for the same tool
-            # with the same input, since AgentCore records the request's input on both.
-            match = next((q for q in reversed(open_requests)
-                          if q["tool"] == e["tool"] and q["input"] == e["input"]
-                          and q["session"] == e["session"]), None)
-            if match is None:
-                problems.append(f"{at}: a {e['kind']} with no earlier matching request")
-                continue
-            open_requests.remove(match)
-            # A response only for a permitted request that completed. An error answers either a
-            # denial or a permitted call whose tool failed, so it constrains nothing here.
-            # Against what the policy actually DOES, which is what was recorded: at a `finding`
-            # that is the opposite of what the source says.
-            if e["kind"] == "response" and not actual(match):
-                problems.append(f"{at}: a response for a request the policy DENIES")
-            e["requestId"] = f"r{match['time']}"
+                problems.append(f"row {r}, line {e['line']}: source {e['source']!r} is not one of "
+                                f"{', '.join(SOURCES)}")
     return problems
 
 
@@ -204,31 +125,14 @@ def strip(text: str) -> str:
 
 
 def trace(case: dict, row: dict, stripped: bool) -> list[str]:
-    """The row as Dogwood trace lines -- the format `dogwood replay` reads, so step 3 replays these.
+    """The row as Dogwood trace lines -- the format `dogwood replay` reads.
 
     The scope fields carry AgentCore's names verbatim and Dogwood's under `--stripped`, matching
-    the schema each mode reads under. `sessionId` rides on the payload and, for a decision, on the
-    request context too, which is where a `pin sessionId = context.sessionId` reads its two sides.
+    the schema each mode reads under.
     """
-    p, r = ("callerPrincipal", "callerResource") if stripped else ("eventPrincipal", "eventResource")
-    gateway = f'AgentCore::Gateway::"{case["gateway"]}"'
-    scope = f"scope(principal: {PRINCIPAL}, resource: {gateway})"
-    lines = []
-    for e in row["events"]:
-        # `target -` writes tool names as they stand, for a source that names actions without a
-        # gateway target -- the AgentCore blog post does, for six of its seven policies. A name
-        # already carrying a target is written as it stands too.
-        name = (e["tool"] if case["target"] == "-" or "___" in e["tool"]
-                else f'{case["target"]}___{e["tool"]}')
-        action = f'AgentCore::Action::"{name}"::{e["kind"]}'
-        request_id = f"r{e['time']}" if e["kind"] == "request" else e.get("requestId", "")
-        payload = (f"input: {e['input']}" + (f", output: {e['output']}" if e["output"] else "")
-                   + f', {p}: {PRINCIPAL}, {r}: {gateway}, requestId: "{request_id}", '
-                   f'sessionId: "{e["session"]}"')
-        context = (f'request_context(input: {e["input"]}, sessionId: "{e["session"]}") '
-                   if e["kind"] == "request" else "")
-        lines.append(f"@{e['time']} {scope} {context}{action}({payload})")
-    return lines
+    names = ("callerPrincipal", "callerResource") if stripped else ("eventPrincipal", "eventResource")
+    return table.trace(case, row, namespace="AgentCore", principal=PRINCIPAL,
+                       gateway=f'AgentCore::Gateway::"{case["gateway"]}"', names=names)
 
 
 def translate(case: dict, stripped: bool) -> tuple[list[str], str | None]:

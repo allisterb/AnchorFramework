@@ -443,6 +443,134 @@ public partial class PolicyTools : Runtime
         return new ExpressionValue(true, Evaluated(output), null);
     }
 
+    [McpServerTool(Name = "CheckDecisionTable")]
+    [Description(
+        "Checks a policy set against a DECISION TABLE -- sessions of requests, each with the ALLOW or " +
+        "DENY it should get -- through Anchor's model AND the Dogwood engine, and reports every " +
+        "decision: what the table expects, what each of the two decided, and which rules decided it.\n\n" +
+        "THIS IS HOW TO CHECK A POLICY AGAINST WHAT SOMEBODY MEANT. A policy that validates is legal, " +
+        "not correct, and reading a policy back into English and agreeing with yourself checks " +
+        "nothing. A table is the cheapest statement of intent there is, and a person can write or " +
+        "approve one without reading Dogwood. WRITE THE TABLE FROM THE REQUIREMENT, NOT FROM THE " +
+        "POLICY: rows derived from the policy's own text are a restatement of it and will agree with " +
+        "it whatever it says. Include the rows that should be DENIED -- most mistakes in a policy are " +
+        "things it allows.\n\n" +
+        "THE FORMAT, one line each:\n" +
+        "  row <source>: what this session is, in words\n" +
+        "  @0  request  verify_identity    { account: \"A-1\" }  ALLOW\n" +
+        "  @1  response verify_identity    { account: \"A-1\" } -> { verified: true }\n" +
+        "  @9  request  initiate_transfer  { account: \"A-1\", amount: 100 }  DENY\n" +
+        "Times are SECONDS. A request carries its expected decision; a response (the call completed) " +
+        "or an error (denied, or the tool failed) is history and carries none. A response may only " +
+        "follow a request the table says is ALLOWED. `@9 session=s2 request ...` puts an event in a " +
+        "second session. `target FinTarget` on its own line prefixes tool names with `FinTarget___`, " +
+        "AgentCore's naming for an MCP target's tools. `finding` after a verdict marks a decision the " +
+        "policy is KNOWN to decide the other way. Lines may carry a `//|` prefix, so a table can live " +
+        "in a .dw file's comments.\n\n" +
+        "READING THE RESULT. `agrees: false` is a finding about the policy: report the row, both " +
+        "verdicts and the rules. `modelVersusEngine: true` is DIFFERENT -- Anchor and the Dogwood " +
+        "engine disagree with each other, which is a defect in Anchor, not a finding about the " +
+        "policy, and must be reported as one. `rejectedByAgentCore` means AgentCore would refuse to " +
+        "create the policy, so nothing was checked.\n\n" +
+        "THE READING MATTERS. The same table can pass under one event schema and fail under another: " +
+        "a cap that holds across sessions under Dogwood's default can reset with every session on " +
+        "AgentCore. A policy binding `eventResource` is read under AgentCore's schema automatically; " +
+        "otherwise pass `eventSchema` for the deployment's own. The `reading` field says which was " +
+        "used; do not drop it from your summary.")]
+    public async Task<DecisionTableResult> CheckDecisionTableAsync(
+        [Description("Path to the .dw policy set, relative to the project directory.")] string policy,
+        [Description("Path to the table, relative to the project directory: a file of rows, or a .dw whose `//|` lines hold them. Give this or `rows`, not both.")] string? table = null,
+        [Description("The table's rows inline, in the format above. Give this or `table`, not both.")] string? rows = null,
+        [Description("Path to the .dwschema event schema the policy is deployed under. Without it, a policy binding eventResource is read under AgentCore's schema and any other under Dogwood's default.")] string? eventSchema = null,
+        [Description("Path to the Cedar .cedarschema action schema the engine should replay against. Without it one is generated from the policy and the table, with every field optional.")] string? policySchema = null,
+        [Description("The event-schema reading when there is no `eventSchema`: omitted or true is Dogwood's default (callerPrincipal pinned); false is unpinned, global-trace semantics.")] bool? pinned = null,
+        [Description("False to check with Anchor's model only, skipping `dogwood replay`. The engine is the stronger half; leave it on unless it is unavailable.")] bool? engine = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(table) == string.IsNullOrWhiteSpace(rows))
+        {
+            return new DecisionTableResult(false, null, "give exactly one of `table` (a path) or `rows` (the rows inline)");
+        }
+        if (!string.IsNullOrWhiteSpace(eventSchema) && pinned is not null)
+        {
+            return new DecisionTableResult(false, null, "`eventSchema` and `pinned` each choose the event-schema reading; pass one");
+        }
+
+        string? scratch = null;
+        try
+        {
+            var tablePath = table is { Length: > 0 } ? Resolve(table, nameof(table)) : null;
+            if (tablePath is null)
+            {
+                scratch = Path.GetTempFileName();
+                await File.WriteAllTextAsync(scratch, rows, cancellationToken);
+                tablePath = scratch;
+            }
+
+            var args = new List<string> { Resolve(policy, nameof(policy)), "--table", tablePath, "--json" };
+            Add(args, "--event-schema", eventSchema, nameof(eventSchema));
+            Add(args, "--policy-schema", policySchema, nameof(policySchema));
+            if (pinned == false)
+            {
+                args.Add("--unpinned");
+            }
+            if (engine == false)
+            {
+                args.Add("--no-engine");
+            }
+
+            // One TLC evaluation for the whole table and one `dogwood replay` per row: seconds for a
+            // few rows, a minute or two for a hundred. Ten minutes is a hung process, not a big table.
+            var r = await PythonProcess.RunAsync(TableScript, [.. args], root: AnchorRoot,
+                timeout: TimeSpan.FromMinutes(10), ct: cancellationToken);
+
+            if (!r.IsSuccess)
+            {
+                return new DecisionTableResult(false, null, r.Message ?? "the table checker could not be run");
+            }
+
+            // 0, 1 and 2 all carry the document: 1 is a disagreement -- the answer most worth having --
+            // and 2 says why no verdict was reached (a malformed table, a refused policy). Only its
+            // `answered` field says whether there is a verdict.
+            try
+            {
+                var doc = JsonSerializer.Deserialize<JsonElement>(r.Value.Output);
+                var answered = doc.TryGetProperty("answered", out var a) && a.GetBoolean();
+                return new DecisionTableResult(answered, doc, answered ? null : Unanswered(doc));
+            }
+            catch (JsonException e)
+            {
+                return new DecisionTableResult(false, null,
+                    $"the table checker's output was not valid JSON ({e.Message}): {r.Value.ErrorOutput.Trim()}");
+            }
+        }
+        finally
+        {
+            if (scratch is not null)
+            {
+                File.Delete(scratch);
+            }
+        }
+    }
+
+    /// <summary>Why a table produced no verdict, from the checker's own document.</summary>
+    static string Unanswered(JsonElement doc)
+    {
+        if (doc.TryGetProperty("malformed", out var m))
+        {
+            return "the table is malformed, so nothing was checked: " +
+                   string.Join("; ", m.EnumerateArray().Select(p => p.GetString()));
+        }
+        if (doc.TryGetProperty("rejectedByAgentCore", out var rej))
+        {
+            return "AgentCore would refuse to create this policy as written, so nothing was checked: " +
+                   string.Join("; ", rej.EnumerateArray().Select(p => p.GetString()));
+        }
+        return doc.TryGetProperty("refused", out var f)
+            ? $"the policy is outside the modelled subset: {f.GetString()}"
+            : "no verdict was reached";
+    }
+
     /// <summary>The value out of the checker's `--eval` report, without its echo of the question.</summary>
     /// <remarks>
     /// The report prints the expression, a blank line, and then the value indented. Everything from
@@ -630,6 +758,9 @@ public partial class PolicyTools : Runtime
     /// <summary>The property explainer, which runs no model checker. Relative to the Anchor root.</summary>
     public const string ExplainScript = "src/checker/explain.py";
 
+    /// <summary>The decision-table checker: model and engine, every decision. Relative to the Anchor root.</summary>
+    public const string TableScript = "src/checker/table.py";
+
     /// <summary>The one exit code that means no verdict was reached. See <c>Answered</c>.</summary>
     public const int DidNotAnswer = 2;
 
@@ -707,3 +838,12 @@ public record ExpressionValue(bool Answered, string? Value, string? Error);
 /// definition here to keep in step.
 /// </summary>
 public record SpecExplanation(bool Answered, JsonElement? Explanation, string? Error);
+
+/// <summary>
+/// A policy set against a decision table. <paramref name="Result"/> is the table checker's own
+/// document, passed through verbatim: the reading, every decision with the expected, model and engine
+/// verdicts and the rules that decided each, and the totals. <paramref name="Answered"/> false means no
+/// verdict -- a malformed table, a refused policy, or one AgentCore would not create -- and
+/// <paramref name="Error"/> says which.
+/// </summary>
+public record DecisionTableResult(bool Answered, JsonElement? Result, string? Error);

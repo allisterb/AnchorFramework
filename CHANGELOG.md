@@ -5,6 +5,22 @@ Container images are published to `public.ecr.aws/v4q7x8t1/anchor`, for `linux/a
 
 ## Unreleased
 
+### Added — `CheckDecisionTable`
+
+**A new MCP tool, and `src/checker/table.py` behind it, that checks a policy set against a decision
+table**: sessions of requests, each with the ALLOW or DENY it should get. Every decision goes to
+Anchor's model and to the Dogwood engine. Each one comes back with the expected verdict, both
+checkers' verdicts, and which rules decided it, and a decision where the two checkers disagree with
+each other is flagged as a defect in Anchor. It is the way to check a policy against what somebody
+meant without anyone writing TLA+. The table format is the one `examples/aws1/tables` uses; the
+`decision-tables` knowledge article describes it.
+
+The model's verdicts come from one TLC evaluation of `Decide` and `Determining` over every decision
+(`translator.cases.evaluate`), not from model-checking an oracle, so every disagreement is reported
+rather than only the first. The case-module code moved from `tests/strands/dogwood_differential.py`
+to `src/translator/cases.py`, and the table format from `agentcore_conformance.py` to
+`checker/table.py`; the harnesses now import both.
+
 ### Added — AgentCore policies, checked as published
 
 **A policy written for Amazon Bedrock AgentCore is checked as AWS writes it**: gateway scope
