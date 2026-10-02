@@ -293,8 +293,8 @@ public static class Program
         List<string> lines = [$"Check of {o.Policy} ({what}):", task, pad + bound, pad + "reading: " + reading];
         if (o.Syntax) lines.Add(pad + "parsed by `dogwood check-parse` first (--syntax)");
         if (!string.IsNullOrWhiteSpace(o.Keep)) lines.Add(pad + $"the generated TLA+ kept in {o.Keep}");
-        lines.Add("Prints the verdicts" + (string.IsNullOrWhiteSpace(o.Keep) ? ", writes nothing" : "") +
-                  " and asks no LLM; --full audits and writes a report.");
+        lines.Add("This prints the verdicts" + (string.IsNullOrWhiteSpace(o.Keep) ? ", without writing a report" : "") +
+                  " or asking an LLM; --full audits and writes a report.");
         return string.Join(Environment.NewLine, lines) + Environment.NewLine;
     }
 
@@ -359,7 +359,7 @@ public static class Program
             // silence otherwise. On stderr, so the verdicts on stdout stay exactly as they were.
             Progress = Console.Error.WriteLine
         };
-
+        Console.Error.WriteLine("Running TLC model checker...");
         PolicyCheckResult result;
         try
         {
@@ -390,6 +390,7 @@ public static class Program
 
         if (!string.IsNullOrWhiteSpace(result.Output))
         {
+            Console.Error.WriteLine("\nTLC model checker results:");
             Console.Write(result.Output);
         }
 

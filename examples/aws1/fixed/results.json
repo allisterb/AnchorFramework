@@ -1,0 +1,852 @@
+{
+  "directory": "C:\\Projects\\Anchor\\examples\\aws1\\fixed",
+  "derived": {
+    "07-trust-decay.dw": {
+      "kind": "derived",
+      "policy": "07-trust-decay.dw",
+      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
+      "bound": {
+        "attempts": 3,
+        "amount": 2,
+        "exhaustive": true,
+        "randomSessions": null
+      },
+      "rules": [
+        {
+          "index": 1,
+          "effect": "permit",
+          "actions": [
+            "interact_advisor"
+          ],
+          "verdict": "live",
+          "note": "witness: interact_advisor",
+          "witness": "interact_advisor",
+          "session": [
+            {
+              "action": "interact_advisor",
+              "kind": "request",
+              "input": {},
+              "output": {},
+              "time": 1,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            },
+            {
+              "action": "interact_advisor",
+              "kind": "response",
+              "input": {},
+              "output": {},
+              "time": 2,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            }
+          ],
+          "narrative": [
+            "1. interact_advisor()  allowed"
+          ],
+          "blame": null
+        },
+        {
+          "index": 2,
+          "effect": "permit",
+          "actions": [
+            "execute_trade"
+          ],
+          "verdict": "live",
+          "note": "witness: interact_advisor -> execute_trade",
+          "witness": "interact_advisor -> execute_trade",
+          "session": [
+            {
+              "action": "interact_advisor",
+              "kind": "request",
+              "input": {},
+              "output": {},
+              "time": 1,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            },
+            {
+              "action": "interact_advisor",
+              "kind": "response",
+              "input": {},
+              "output": {},
+              "time": 2,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            },
+            {
+              "action": "execute_trade",
+              "kind": "request",
+              "input": {},
+              "output": {},
+              "time": 3,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            },
+            {
+              "action": "execute_trade",
+              "kind": "response",
+              "input": {},
+              "output": {},
+              "time": 4,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            }
+          ],
+          "narrative": [
+            "1. interact_advisor()  allowed",
+            "2. execute_trade   ()  allowed"
+          ],
+          "blame": null
+        }
+      ],
+      "defects": [],
+      "unknown": [],
+      "artifacts": "C:\\Projects\\Anchor\\examples\\aws1\\fixed\\traces\\07-trust-decay"
+    },
+    "agent-policy.dw": {
+      "kind": "derived",
+      "policy": "agent-policy.dw",
+      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
+      "bound": {
+        "attempts": 3,
+        "amount": 2,
+        "exhaustive": true,
+        "randomSessions": null
+      },
+      "rules": [
+        {
+          "index": 1,
+          "effect": "permit",
+          "actions": [
+            "get_client_profile"
+          ],
+          "verdict": "live",
+          "note": "witness: get_client_profile",
+          "witness": "get_client_profile",
+          "session": [
+            {
+              "action": "get_client_profile",
+              "kind": "request",
+              "input": {
+                "profile_id": 1
+              },
+              "output": {},
+              "time": 1,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            },
+            {
+              "action": "get_client_profile",
+              "kind": "response",
+              "input": {
+                "profile_id": 1
+              },
+              "output": {},
+              "time": 2,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            }
+          ],
+          "narrative": [
+            "1. get_client_profile(profile_id = 1)  allowed"
+          ],
+          "blame": null
+        },
+        {
+          "index": 2,
+          "effect": "permit",
+          "actions": [
+            "get_market_price"
+          ],
+          "verdict": "live",
+          "note": "witness: get_market_price",
+          "witness": "get_market_price",
+          "session": [
+            {
+              "action": "get_market_price",
+              "kind": "request",
+              "input": {
+                "profile_id": 1
+              },
+              "output": {},
+              "time": 1,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            },
+            {
+              "action": "get_market_price",
+              "kind": "response",
+              "input": {
+                "profile_id": 1
+              },
+              "output": {},
+              "time": 2,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            }
+          ],
+          "narrative": [
+            "1. get_market_price(profile_id = 1)  allowed"
+          ],
+          "blame": null
+        },
+        {
+          "index": 3,
+          "effect": "permit",
+          "actions": [
+            "interact_advisor"
+          ],
+          "verdict": "live",
+          "note": "witness: interact_advisor",
+          "witness": "interact_advisor",
+          "session": [
+            {
+              "action": "interact_advisor",
+              "kind": "request",
+              "input": {
+                "profile_id": 1
+              },
+              "output": {},
+              "time": 1,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            },
+            {
+              "action": "interact_advisor",
+              "kind": "response",
+              "input": {
+                "profile_id": 1
+              },
+              "output": {},
+              "time": 2,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            }
+          ],
+          "narrative": [
+            "1. interact_advisor(profile_id = 1)  allowed"
+          ],
+          "blame": null
+        },
+        {
+          "index": 4,
+          "effect": "permit",
+          "actions": [
+            "load_portfolio"
+          ],
+          "verdict": "live",
+          "note": "witness: get_client_profile -> load_portfolio",
+          "witness": "get_client_profile -> load_portfolio",
+          "session": [
+            {
+              "action": "get_client_profile",
+              "kind": "request",
+              "input": {
+                "profile_id": 1
+              },
+              "output": {},
+              "time": 1,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            },
+            {
+              "action": "get_client_profile",
+              "kind": "response",
+              "input": {
+                "profile_id": 1
+              },
+              "output": {},
+              "time": 2,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            },
+            {
+              "action": "load_portfolio",
+              "kind": "request",
+              "input": {
+                "profile_id": 1
+              },
+              "output": {},
+              "time": 3,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            },
+            {
+              "action": "load_portfolio",
+              "kind": "response",
+              "input": {
+                "profile_id": 1
+              },
+              "output": {},
+              "time": 4,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            }
+          ],
+          "narrative": [
+            "1. get_client_profile(profile_id = 1)  allowed",
+            "2. load_portfolio    (profile_id = 1)  allowed"
+          ],
+          "blame": null
+        },
+        {
+          "index": 5,
+          "effect": "permit",
+          "actions": [
+            "rebalance_portfolio"
+          ],
+          "verdict": "live",
+          "note": "witness: get_client_profile -> load_portfolio -> rebalance_portfolio",
+          "witness": "get_client_profile -> load_portfolio -> rebalance_portfolio",
+          "session": [
+            {
+              "action": "get_client_profile",
+              "kind": "request",
+              "input": {
+                "profile_id": 1
+              },
+              "output": {},
+              "time": 1,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            },
+            {
+              "action": "get_client_profile",
+              "kind": "response",
+              "input": {
+                "profile_id": 1
+              },
+              "output": {},
+              "time": 2,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            },
+            {
+              "action": "load_portfolio",
+              "kind": "request",
+              "input": {
+                "profile_id": 1
+              },
+              "output": {},
+              "time": 3,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            },
+            {
+              "action": "load_portfolio",
+              "kind": "response",
+              "input": {
+                "profile_id": 1
+              },
+              "output": {},
+              "time": 4,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            },
+            {
+              "action": "rebalance_portfolio",
+              "kind": "request",
+              "input": {
+                "profile_id": 1
+              },
+              "output": {},
+              "time": 5,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            },
+            {
+              "action": "rebalance_portfolio",
+              "kind": "response",
+              "input": {
+                "profile_id": 1
+              },
+              "output": {},
+              "time": 6,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            }
+          ],
+          "narrative": [
+            "1. get_client_profile (profile_id = 1)  allowed",
+            "2. load_portfolio     (profile_id = 1)  allowed",
+            "3. rebalance_portfolio(profile_id = 1)  allowed"
+          ],
+          "blame": null
+        },
+        {
+          "index": 6,
+          "effect": "permit",
+          "actions": [
+            "execute_trade"
+          ],
+          "verdict": "live",
+          "note": "witness: get_client_profile -> get_market_price -> execute_trade",
+          "witness": "get_client_profile -> get_market_price -> execute_trade",
+          "session": [
+            {
+              "action": "get_client_profile",
+              "kind": "request",
+              "input": {
+                "profile_id": 1
+              },
+              "output": {},
+              "time": 1,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            },
+            {
+              "action": "get_client_profile",
+              "kind": "response",
+              "input": {
+                "profile_id": 1
+              },
+              "output": {},
+              "time": 2,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            },
+            {
+              "action": "get_market_price",
+              "kind": "request",
+              "input": {
+                "profile_id": 1
+              },
+              "output": {},
+              "time": 3,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            },
+            {
+              "action": "get_market_price",
+              "kind": "response",
+              "input": {
+                "profile_id": 1
+              },
+              "output": {},
+              "time": 4,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            },
+            {
+              "action": "execute_trade",
+              "kind": "request",
+              "input": {
+                "profile_id": 1
+              },
+              "output": {},
+              "time": 5,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            },
+            {
+              "action": "execute_trade",
+              "kind": "response",
+              "input": {
+                "profile_id": 1
+              },
+              "output": {},
+              "time": 6,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            }
+          ],
+          "narrative": [
+            "1. get_client_profile(profile_id = 1)  allowed",
+            "2. get_market_price  (profile_id = 1)  allowed",
+            "3. execute_trade     (profile_id = 1)  allowed"
+          ],
+          "blame": null
+        },
+        {
+          "index": 7,
+          "effect": "forbid",
+          "actions": [
+            "execute_trade"
+          ],
+          "verdict": "live",
+          "note": "witness: get_market_price -> execute_trade",
+          "witness": "get_market_price -> execute_trade",
+          "session": [
+            {
+              "action": "get_market_price",
+              "kind": "request",
+              "input": {
+                "profile_id": 1
+              },
+              "output": {},
+              "time": 1,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            },
+            {
+              "action": "get_market_price",
+              "kind": "response",
+              "input": {
+                "profile_id": 1
+              },
+              "output": {},
+              "time": 2,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            },
+            {
+              "action": "execute_trade",
+              "kind": "request",
+              "input": {
+                "profile_id": 1
+              },
+              "output": {},
+              "time": 3,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            },
+            {
+              "action": "execute_trade",
+              "kind": "error",
+              "input": {
+                "profile_id": 1
+              },
+              "output": {},
+              "time": 4,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            }
+          ],
+          "narrative": [
+            "1. get_market_price(profile_id = 1)  allowed",
+            "2. execute_trade   (profile_id = 1)  denied"
+          ],
+          "blame": null
+        }
+      ],
+      "defects": [],
+      "unknown": [],
+      "artifacts": "C:\\Projects\\Anchor\\examples\\aws1\\fixed\\traces\\agent-policy"
+    }
+  },
+  "properties": {
+    "TradeGate.tla": {
+      "policy": "agent-policy.dw",
+      "given": false,
+      "claims": {
+        "module": "TradeGate.tla",
+        "states": [
+          "prereq = \"both\"",
+          "prereq = \"freshPriceOnly\"",
+          "prereq = \"neither\"",
+          "prereq = \"profileOnly\"",
+          "prereq = \"stalePriceOnly\""
+        ],
+        "scope": "read from Init",
+        "claims": [
+          {
+            "name": "RequiresBothChecks",
+            "defined": true,
+            "says": "whenever the policy GRANTS it (Allowed(prereq)), then prereq is \"both\"",
+            "forbids": "the policy GRANTS it (Allowed(prereq)), and yet prereq is not \"both\"",
+            "condition": "Allowed(prereq)",
+            "appliesTo": [],
+            "states": 5,
+            "unknownIn": 5,
+            "settledWithoutThePolicy": 1,
+            "falseWithoutThePolicy": [],
+            "vacuous": false,
+            "notes": []
+          },
+          {
+            "name": "ProfileAloneIsNotEnough",
+            "defined": true,
+            "says": "whenever prereq is \"profileOnly\", then the policy REFUSES it (Allowed(prereq))",
+            "forbids": "prereq is \"profileOnly\", and yet the policy GRANTS it (Allowed(prereq))",
+            "condition": "prereq = \"profileOnly\"",
+            "appliesTo": [
+              "prereq = \"profileOnly\""
+            ],
+            "states": 5,
+            "unknownIn": 0,
+            "settledWithoutThePolicy": 4,
+            "falseWithoutThePolicy": [],
+            "vacuous": false,
+            "notes": []
+          },
+          {
+            "name": "FreshPriceAloneIsNotEnough",
+            "defined": true,
+            "says": "whenever prereq is \"freshPriceOnly\", then the policy REFUSES it (Allowed(prereq))",
+            "forbids": "prereq is \"freshPriceOnly\", and yet the policy GRANTS it (Allowed(prereq))",
+            "condition": "prereq = \"freshPriceOnly\"",
+            "appliesTo": [
+              "prereq = \"freshPriceOnly\""
+            ],
+            "states": 5,
+            "unknownIn": 0,
+            "settledWithoutThePolicy": 4,
+            "falseWithoutThePolicy": [],
+            "vacuous": false,
+            "notes": []
+          },
+          {
+            "name": "NothingAllowsNoTrade",
+            "defined": true,
+            "says": "whenever prereq is \"neither\", then the policy REFUSES it (Allowed(prereq))",
+            "forbids": "prereq is \"neither\", and yet the policy GRANTS it (Allowed(prereq))",
+            "condition": "prereq = \"neither\"",
+            "appliesTo": [
+              "prereq = \"neither\""
+            ],
+            "states": 5,
+            "unknownIn": 0,
+            "settledWithoutThePolicy": 4,
+            "falseWithoutThePolicy": [],
+            "vacuous": false,
+            "notes": []
+          },
+          {
+            "name": "BothIsAllowed",
+            "defined": true,
+            "says": "whenever prereq is \"both\", then the policy GRANTS it (Allowed(prereq))",
+            "forbids": "prereq is \"both\", and yet the policy REFUSES it (Allowed(prereq))",
+            "condition": "prereq = \"both\"",
+            "appliesTo": [
+              "prereq = \"both\""
+            ],
+            "states": 5,
+            "unknownIn": 0,
+            "settledWithoutThePolicy": 4,
+            "falseWithoutThePolicy": [],
+            "vacuous": false,
+            "notes": []
+          }
+        ],
+        "definedButNotChecked": [],
+        "vacuous": []
+      },
+      "witness": [],
+      "kind": "property",
+      "held": true,
+      "exitCode": 0,
+      "output": "no --event-schema given, so every answer below uses Dogwood's own default\n  reading: callerPrincipal pinned on every kind, so a temporal condition sees\n  only the requesting principal's events. Pass --event-schema for your\n  deployment's real one, or --unpinned if it has no universal pin.\n\nagent-policy.dw against TradeGate.tla: 7 rule(s)\n\n  every claim holds over every request the property module names.\n\nThat is not a proof about requests it does not name. A property module ranges over\nwhat it says it ranges over, and nothing warns you when that is less than you meant.",
+      "error": ""
+    },
+    "TrustDecay.tla": {
+      "policy": "07-trust-decay.dw",
+      "given": false,
+      "claims": {
+        "module": "TrustDecay.tla",
+        "states": [
+          "gap = 1",
+          "gap = 300",
+          "gap = 600",
+          "gap = 840",
+          "gap = 960",
+          "gap = 1800"
+        ],
+        "scope": "read from Init",
+        "claims": [
+          {
+            "name": "LosesWriteAfter15m",
+            "defined": true,
+            "says": "whenever gap is greater than 15 * Minute (= 900), then the policy REFUSES it (TradeAllowed(gap))",
+            "forbids": "gap is greater than 15 * Minute (= 900), and yet the policy GRANTS it (TradeAllowed(gap))",
+            "condition": "gap > 15 * Minute",
+            "appliesTo": [
+              "gap = 960",
+              "gap = 1800"
+            ],
+            "states": 6,
+            "unknownIn": 0,
+            "settledWithoutThePolicy": 4,
+            "falseWithoutThePolicy": [],
+            "vacuous": false,
+            "notes": []
+          },
+          {
+            "name": "KeepsWriteWhileAdvisorEngaged",
+            "defined": true,
+            "says": "whenever gap is at most 15 * Minute (= 900), then the policy GRANTS it (TradeAllowed(gap))",
+            "forbids": "gap is at most 15 * Minute (= 900), and yet the policy REFUSES it (TradeAllowed(gap))",
+            "condition": "gap <= 15 * Minute",
+            "appliesTo": [
+              "gap = 1",
+              "gap = 300",
+              "gap = 600",
+              "gap = 840"
+            ],
+            "states": 6,
+            "unknownIn": 0,
+            "settledWithoutThePolicy": 2,
+            "falseWithoutThePolicy": [],
+            "vacuous": false,
+            "notes": []
+          }
+        ],
+        "definedButNotChecked": [
+          "LosesWriteAfter10m"
+        ],
+        "vacuous": []
+      },
+      "witness": [],
+      "kind": "property",
+      "held": true,
+      "exitCode": 0,
+      "output": "no --event-schema given, so every answer below uses Dogwood's own default\n  reading: callerPrincipal pinned on every kind, so a temporal condition sees\n  only the requesting principal's events. Pass --event-schema for your\n  deployment's real one, or --unpinned if it has no universal pin.\n\n07-trust-decay.dw against TrustDecay.tla: 2 rule(s)\n\n  every claim holds over every request the property module names.\n\nThat is not a proof about requests it does not name. A property module ranges over\nwhat it says it ranges over, and nothing warns you when that is less than you meant.",
+      "error": ""
+    }
+  },
+  "smoke": null,
+  "reading": "pinned",
+  "unpaired": [],
+  "inputScan": {
+    "files": [
+      "07-trust-decay.dw",
+      "agent-policy.dw",
+      "TradeGate.cfg",
+      "TradeGate.tla",
+      "TrustDecay.cfg",
+      "TrustDecay.tla"
+    ],
+    "unreadable": [],
+    "summary": "6 input files scanned: clean",
+    "high": 0,
+    "medium": 0,
+    "hits": [],
+    "census": {},
+    "modelWithheld": false
+  },
+  "llm": {
+    "provider": null,
+    "model": null,
+    "answered": 0,
+    "skipped": "--no-llm",
+    "failed": []
+  }
+}

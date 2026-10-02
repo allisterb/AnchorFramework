@@ -1,0 +1,74 @@
+// ../agent-policy.dw with the trade gate made a CONJUNCTION -- the one change, at the bottom.
+//
+// The article states its two trade protections as two `permit` rules on `execute_trade`, and two
+// permits on one action are alternatives: either matching is enough. So a fresh price alone opened
+// the trade with no profile check at all -- the prompt-injection case the integrity rule exists to
+// prevent. Here the freshness permit grants the trade, and a `forbid` refuses it UNLESS this
+// trajectory loaded the profile the trade names. A forbid overrides any permit, so both must hold.
+//
+// Checked against TradeGate.tla beside it, all five claims: both prerequisites are now required,
+// and the intended path -- both present -- is still open.
+//
+// The same transcription notes as ../agent-policy.dw apply: resource scopes and `eventResource`
+// joins are dropped, and the read actions are permitted so the chain can run.
+
+// ---- the reads, which the article's snippets assume exist ---------------------------------
+permit (
+    principal,
+    action == AgentCore::Action::"get_client_profile",
+    resource
+);
+
+permit (
+    principal,
+    action == AgentCore::Action::"get_market_price",
+    resource
+);
+
+permit (
+    principal,
+    action == AgentCore::Action::"interact_advisor",
+    resource
+);
+
+// ---- policy 1: workflow sequencing, unchanged ---------------------------------------------
+permit (
+    principal,
+    action == AgentCore::Action::"load_portfolio",
+    resource
+)
+when temporal {
+    formerly within 5m AgentCore::Action::"get_client_profile"::response{ }
+};
+
+permit (
+    principal,
+    action == AgentCore::Action::"rebalance_portfolio",
+    resource
+)
+when temporal {
+    formerly within 5m AgentCore::Action::"load_portfolio"::response{ }
+};
+
+// ---- policies 2 and 3: the trade gate, now BOTH required -----------------------------------
+// Data freshness grants the trade.
+permit (
+    principal,
+    action == AgentCore::Action::"execute_trade",
+    resource
+)
+when temporal {
+    formerly within 30s AgentCore::Action::"get_market_price"::response{ }
+};
+
+// Output-to-input integrity refuses it unless the profile it names was loaded in this trajectory.
+forbid (
+    principal,
+    action == AgentCore::Action::"execute_trade",
+    resource
+)
+unless temporal {
+    formerly within 24h AgentCore::Action::"get_client_profile"::response{
+        input.profile_id: context.input.profile_id
+    }
+};

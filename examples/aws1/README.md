@@ -1,17 +1,11 @@
-# The AgentCore temporal policies, checked
 
-The policies from AWS's article [*Securing AI agents with temporal policies in Amazon Bedrock
+The policies from the AWS blog poost [*Securing AI agents with temporal policies in Amazon Bedrock
 AgentCore*](https://aws.amazon.com/blogs/machine-learning/securing-ai-agents-with-temporal-policies-in-amazon-bedrock-agentcore/),
 transcribed here and run through Anchor.
 
-They are a good test because they are real, published, written by people who know the language, and
-because every one of them is **temporal** — the thing no other policy verifier in this field can
-reason about. And because a policy set nobody has checked is the ordinary case.
 
 **Scope note before anything else.** These are code snippets from a blog post explaining ideas one
-at a time, not a deployed policy set. Nothing below is a vulnerability in a product. What it is:
-evidence about what can be true of a policy that looks right, passes validation, and passes every
-check that does not know what it was meant to do.
+at a time, not a deployed policy set. Nothing below is a vulnerability in a product.
 
 ## What was found
 
@@ -19,8 +13,9 @@ check that does not know what it was meant to do.
 |---|---|
 | **Policy 7 is inverted relative to its own description** | it permits writes *only while the advisor is absent*, which is the reverse of the sentence beside it. Machine-checked, with counterexamples |
 | **The two trade protections are alternatives, not requirements** | a trade goes through on a fresh price with **no profile check at all** — precisely the prompt-injection case one of them exists to prevent |
-| Every fragment is vacuous alone | expected, and worth seeing: a permit gated on `X::response` cannot fire where nothing permits `X` |
-| The derived checks pass all of it | which is the point of the intentional ones |
+
+Both findings have a proposed fix in [`fixed/`](fixed/README.md), checked against the same
+property modules with every claim listed: all of them hold, and every rule is live.
 
 ## The files
 
@@ -35,12 +30,7 @@ check that does not know what it was meant to do.
 | [`transcript.md`](transcript.md) | the agent answering all five, with **every tool call and its full reply** |
 | `TrustDecay10.tla` / `.cfg` | the ten-minute claim on its own, because TLC stops at the first violated invariant |
 
-**Six of the seven are here.** An earlier version of this note said policies 4, 5 and 6 were
-outside the modelled subset; that was written before aggregates were added and was wrong about 4
-and 5, which are now transcribed above and check like the rest. Policy 5 is the only one of the
-seven that uses `since`.
-
-**Policy 6 is not here because it does not parse — in Dogwood, not in Anchor.** As published it
+Six of the seven policies in the article are here. Policy 6 is not here because it does not parse — in Dogwood, not in Anchor. As published it
 reads:
 
 ```dogwood
@@ -67,10 +57,11 @@ input/output fields, not entity hierarchies. Recorded so the difference from the
 not mistaken for a finding. See
 [`the-modelled-subset`](../../src/Anchor.MCPServer/knowledge/the-modelled-subset.md).
 
-## 1. The derived questions, and what they cannot say
+Note that every policy is vacuous when evaluated alone. This is expected and worth seeing: a permit gated on `X::response` cannot fire where nothing permits `X`
+
 
 ```bash
-python src/checker/properties.py examples/aws1/agent-policy.dw --attempts 4
+./anchor check examples/aws1/agent-policy.dw --attempts 4
 ```
 
 ```
@@ -100,7 +91,7 @@ A permit gated on `get_market_price::response` cannot fire in a file where nothi
 `get_market_price`: the call is denied, AgentCore records an `::error` rather than a `::response`,
 and the gate never opens. That is a composition effect, not a defect in the article.
 
-## 2. Policy 7 says the opposite of what it does
+## 1. Policy 7 says the opposite of what it does
 
 The article's text:
 
@@ -149,7 +140,7 @@ is what `Ev(action, kind, input, output, time)` in the generated module is for.
 That is a real limit on the derived questions and it is stated rather than worked around: they
 bound the number of events, not elapsed time.
 
-## 3. The two trade protections are alternatives
+## 2. The two trade protections are alternatives
 
 The article introduces these as distinct protections:
 
