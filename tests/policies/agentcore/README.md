@@ -48,6 +48,12 @@ The ground truth sits in `//|` lines under the policy:
   as exact as a table: "the fourth call in a window is the first to be denied"), or `ours`. A
   decision takes its row's source unless the line names its own.
 - `expect refused` marks an example Anchor should refuse. Both guardrail examples carry it.
+- `finding` after a verdict marks a decision where the policy does the **opposite** of what the source
+  says. The verdict stays the source's, and both checkers are held to the opposite, so a finding
+  that stopped reproducing fails the run (`examples/aws1/tables`).
+- `@T session=s2 …` puts an event in a second session; without it every event is in one. A
+  caller-chosen session ID is what makes a second session reachable (`examples/aws2/tables`).
+- `target -` writes tool names as they stand, for a source that names actions without a gateway target.
 
 ## Rules the harness enforces on the ground truth itself
 

@@ -44,6 +44,22 @@ reproduced by Anchor and confirmed by the Dogwood engine. `examples/aws1/fixed/`
 corrected, and satisfies every row of every table. The conformance harnesses take `--suite DIR`, and
 a decision line may be marked `finding`.
 
+### Changed — `examples/aws2` under AgentCore's semantics
+
+**`examples/aws2` is checked under AgentCore's own reading** (history per session) and against its
+article's published text, which its transcriptions turn out to match exactly. That reading shows
+two things the earlier per-principal reading could not:
+
+- **The article's $50,000 / 12-hour transfer cap is a per-session cap.** A second $40,000 transfer
+  in a new session is allowed, which the engine confirms. The article itself names cross-session
+  limits as outside what enforcement can do, then translates one without saying so.
+- **AgentCore would refuse to create four of the five policies**, because none binds the
+  `eventResource: resource` the Developer Guide makes mandatory.
+
+The finding aws2 reported before, that a refused transfer counts against the cap, is now presented
+as the article's stated choice ("the safer reading for a cap"), with its cost. The conformance format
+gains `@T session=s2` for a second session.
+
 ### Changed
 
 The reading descriptions no longer imply Dogwood's default is what every deployment gets. It is

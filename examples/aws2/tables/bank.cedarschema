@@ -1,0 +1,34 @@
+// The action schema for the article's bank agent, for `dogwood validate` and `dogwood replay`.
+// Transcribed from the article's own tool table (Tool / Purpose / Input / Output), which gives every
+// tool's arguments and return values with their types -- so, unlike aws1's, this is the article's
+// schema and not a reconstruction. Ours: the entity types, `system.now` (policy 1 reads it), and
+// `sessionId` in every context, which AgentCore's session pin reads (docs/agentcore.md).
+
+namespace AgentCore {
+  type SystemContext = { now: datetime };
+
+  entity Gateway;
+  entity OAuthUser = { id: String } tags String;
+
+  type VerifyIn = { account: String };
+  type VerifyOut = { verified: Bool };
+  type TransferIn = { account: String, dest_account: String, amount: Long };
+  type TransferOut = { confirmation: String };
+  type RefundIn = { account: String, charge_id: String, amount: Long };
+  type RefundOut = { refunded: Bool };
+  type DisputeIn = { account: String, description: String };
+  type DisputeOut = { case_id: String };
+  type ApprovalIn = { charge_id: String };
+  type ApprovalOut = { approved: Bool };
+
+  action "verify_identity" appliesTo { principal: [OAuthUser], resource: [Gateway],
+    context: { input: VerifyIn, output?: VerifyOut, system: SystemContext, sessionId: String } };
+  action "initiate_transfer" appliesTo { principal: [OAuthUser], resource: [Gateway],
+    context: { input: TransferIn, output?: TransferOut, system: SystemContext, sessionId: String } };
+  action "issue_refund" appliesTo { principal: [OAuthUser], resource: [Gateway],
+    context: { input: RefundIn, output?: RefundOut, system: SystemContext, sessionId: String } };
+  action "file_dispute" appliesTo { principal: [OAuthUser], resource: [Gateway],
+    context: { input: DisputeIn, output?: DisputeOut, system: SystemContext, sessionId: String } };
+  action "request_approval" appliesTo { principal: [OAuthUser], resource: [Gateway],
+    context: { input: ApprovalIn, output?: ApprovalOut, system: SystemContext, sessionId: String } };
+}

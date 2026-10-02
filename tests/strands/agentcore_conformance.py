@@ -62,7 +62,9 @@ SESSION = "s1"
 SOURCES = ("aws-table", "aws-prose", "ours")
 
 ROW = re.compile(r"row\s+(\S+):\s*(.+)")
-EVENT = re.compile(r"@(\d+)\s+(request|response|error)\s+(\w+)\s+(\{[^{}]*\})"
+# `@T session=s2 request ...` puts an event in another session. Without it every event is in one,
+# which is what a decision table describes; a second session is what a caller-chosen session ID buys.
+EVENT = re.compile(r"@(\d+)(?:\s+session=(\w+))?\s+(request|response|error)\s+(\w+)\s+(\{[^{}]*\})"
                    r"(?:\s*->\s*(\{[^{}]*\}))?"
                    r"(?:\s+(ALLOW|DENY)(?:\s+(?!finding\b)(\S+))?(?:\s+(finding))?)?\s*$")
 
@@ -117,9 +119,10 @@ def load(path: Path) -> dict:
             if not case["rows"]:
                 case["problems"].append(f"line {n}: an event before any row")
                 continue
-            t, kind, tool, inp, out, verdict, source, finding = m.groups()
+            t, session, kind, tool, inp, out, verdict, source, finding = m.groups()
             case["rows"][-1]["events"].append({
-                "time": int(t), "kind": kind, "tool": tool, "input": inp, "output": out,
+                "time": int(t), "session": session or SESSION,
+                "kind": kind, "tool": tool, "input": inp, "output": out,
                 "verdict": verdict, "source": source or case["rows"][-1]["source"],
                 "finding": bool(finding), "line": n})
         else:
@@ -170,7 +173,8 @@ def consistency(case: dict) -> list[str]:
             # The request this event answers: the most recent unanswered one for the same tool
             # with the same input, since AgentCore records the request's input on both.
             match = next((q for q in reversed(open_requests)
-                          if q["tool"] == e["tool"] and q["input"] == e["input"]), None)
+                          if q["tool"] == e["tool"] and q["input"] == e["input"]
+                          and q["session"] == e["session"]), None)
             if match is None:
                 problems.append(f"{at}: a {e['kind']} with no earlier matching request")
                 continue
@@ -220,8 +224,8 @@ def trace(case: dict, row: dict, stripped: bool) -> list[str]:
         request_id = f"r{e['time']}" if e["kind"] == "request" else e.get("requestId", "")
         payload = (f"input: {e['input']}" + (f", output: {e['output']}" if e["output"] else "")
                    + f', {p}: {PRINCIPAL}, {r}: {gateway}, requestId: "{request_id}", '
-                   f'sessionId: "{SESSION}"')
-        context = (f'request_context(input: {e["input"]}, sessionId: "{SESSION}") '
+                   f'sessionId: "{e["session"]}"')
+        context = (f'request_context(input: {e["input"]}, sessionId: "{e["session"]}") '
                    if e["kind"] == "request" else "")
         lines.append(f"@{e['time']} {scope} {context}{action}({payload})")
     return lines

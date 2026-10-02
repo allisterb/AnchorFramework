@@ -1,0 +1,60 @@
+// The article's six policies as a SET, which is how they would be deployed -- plus permits for the
+// supporting reads, without which every gated permit is vacuous by composition rather than by
+// defect. Same construction as examples/aws1/agent-policy.dw and for the same reason.
+//
+// Policy 5 (the Bedrock Guardrails SSN check) is absent: it calls an information provider, which is
+// a sandboxed Rhai script. A verdict about it would not be a function of the policy and the trace,
+// so refusing is the correct answer rather than a gap. See the README.
+
+// -- the supporting reads, so the gated permits have something to be gated on
+permit ( principal, action == AgentCore::Action::"verify_identity", resource );
+permit ( principal, action == AgentCore::Action::"request_approval", resource );
+
+// -- policy 1: refunds only in business hours, and only for $2,500 or less
+permit ( principal, action == AgentCore::Action::"issue_refund", resource )
+when { context.system.now.toTime() >= duration("9h")
+    && context.system.now.toTime() <= duration("17h") }
+when { context.input.amount <= 2500 };
+
+// -- policy 2: a transfer needs identity verified for that account within 15 minutes
+permit ( principal, action == AgentCore::Action::"initiate_transfer", resource )
+when temporal {
+    formerly within 15m AgentCore::Action::"verify_identity"::response{
+        input.account:   context.input.account,
+        output.verified: true
+    }
+};
+
+// -- policy 3: block a transfer if the 12-hour total would exceed $50,000
+forbid ( principal, action == AgentCore::Action::"initiate_transfer", resource )
+when temporal {
+    exists (total: Long). (
+        (sum a for (a: Long), (t: Timepoint). where (
+            formerly within 12h (
+                AgentCore::Action::"initiate_transfer"::request{ input.amount: a } && tp(t)
+            )
+        )) == total && total > 50000
+    )
+};
+
+// -- policy 4: no more than three refund attempts per account per hour
+forbid ( principal, action == AgentCore::Action::"issue_refund", resource )
+when temporal {
+    exists (n: Long). (
+        (count for (t: Timepoint). where (
+            formerly within 1h (
+                AgentCore::Action::"issue_refund"::request{ input.account: context.input.account } && tp(t)
+            )
+        )) == n && n > 3
+    )
+};
+
+// -- policy 6: a refund over $500 needs a supervisor's approval for that charge within 30 minutes
+forbid ( principal, action == AgentCore::Action::"issue_refund", resource )
+when { context.input.amount > 500 }
+unless temporal {
+    formerly within 30m AgentCore::Action::"request_approval"::response{
+        input.charge_id: context.input.charge_id,
+        output.approved: true
+    }
+};

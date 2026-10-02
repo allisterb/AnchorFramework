@@ -122,7 +122,11 @@ table.findings tr:last-child td { border-bottom:none; }
   <p>9 input files scanned: clean.</p>
   <p class="footnote">What this looks for &mdash; hidden and reordering characters, look-alike letters in names, instructions aimed at a model, markup, terminal escapes and encoded payloads &mdash; is in <code>src/checker/scan.py</code>; <code>anchor scan</code> prints it.</p>
 </div>
-
+<div class="panel">
+  <h3>What the checks found</h3>
+  <ol class="checked"><li>**agent-policy.dw does not satisfy CumulativeCap.tla** — with scenario = &quot;afterRefused&quot;, the Dogwood engine REFUSES this session at t=4, where `ARefusedAttemptDoesNotConsumeTheBudget` says your policy set must ALLOW it</li></ol>
+  <p class="footnote">The reasoning behind each is in findings.md.</p>
+</div>
 
 <section class="finding" data-finding>
   <h2 class="claim">ARefusedAttemptDoesNotConsumeTheBudget</h2>

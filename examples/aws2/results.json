@@ -894,6 +894,7 @@
   "properties": {
     "CumulativeCap.tla": {
       "policy": "agent-policy.dw",
+      "given": false,
       "claims": {
         "module": "CumulativeCap.tla",
         "states": [
@@ -973,7 +974,7 @@
       "kind": "property",
       "held": false,
       "exitCode": 1,
-      "output": "no --event-schema given, so every answer below uses Dogwood's own default\n  reading: callerPrincipal pinned on every kind, so a temporal condition sees\n  only the requesting principal's events. Pass --event-schema for your\n  deployment's real one, or --unpinned if it has no universal pin.\n\nagent-policy.dw against CumulativeCap.tla: 7 rule(s)\n\n  BROKEN  Invariant ARefusedAttemptDoesNotConsumeTheBudget is violated by the initial state:\n      scenario = \"afterRefused\"\n        \\* A $1 transfer is permitted in both sessions. The refused $60,000 moved no money, so the\n        \\* twelve-hour total of what was TRANSFERRED is $0 either way.\n        ARefusedAttemptDoesNotConsumeTheBudget ==\n            Allowed(scenario)\n\nThe policy does not mean what the property says it means. The state above is the\nrequest that breaks the claim, and the claim is quoted beneath it -- read the two\ntogether, because a violated invariant says which direction failed only when you can\nsee what it asserted.",
+      "output": "no --event-schema given, so every answer below uses Dogwood's own default\n  reading: callerPrincipal pinned on every kind, so a temporal condition sees\n  only the requesting principal's events. Pass --event-schema for your\n  deployment's real one, or --unpinned if it has no universal pin.\n\nagent-policy.dw against CumulativeCap.tla: 7 rule(s)\n\n  BROKEN  Invariant ARefusedAttemptDoesNotConsumeTheBudget is violated by the initial state:\n      scenario = \"afterRefused\"\n        \\* A $1 transfer is permitted in both sessions. The refused $60,000 moved no money, so the\n        \\* twelve-hour total of what was TRANSFERRED is $0 either way.\n        ARefusedAttemptDoesNotConsumeTheBudget ==\n            Allowed(scenario)\n\nThe policy set does not mean what the property module says it means. The state above\nis the request that breaks the claim, and the claim is quoted beneath it -- read the two\ntogether, because a violated invariant says which direction failed only when you can\nsee what it asserted.",
       "error": ""
     }
   },
@@ -1001,5 +1002,12 @@
       "U+2014": 2
     },
     "modelWithheld": false
+  },
+  "llm": {
+    "provider": null,
+    "model": null,
+    "answered": 0,
+    "skipped": "--no-llm",
+    "failed": []
   }
 }

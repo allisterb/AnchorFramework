@@ -1,0 +1,101 @@
+// THE aws2 POLICY SET under AgentCore's semantics: ../agent-policy.dw, copied below unchanged (the
+// article's policies 1-4 and 6, verbatim, and the plain permits for the reads), with rows about the
+// $50,000 cap. Verdicts are what the article's prose says; `finding` marks where the set does the
+// opposite. Format: tests/policies/agentcore/README.md. `session=s2` puts an event in a second
+// session -- what a caller-chosen session ID buys.
+//
+// These policies bind no `eventResource`, so AgentCore would refuse to create them (see
+// ../README.md), and Anchor's AgentCore reading reports exactly that. The engine evaluates them
+// regardless, and Anchor's semantics are reached with `--stripped`, the same session-partitioned
+// reading under Dogwood's field names:
+//
+//   python tests/strands/agentcore_replay.py --suite examples/aws2/tables
+//   python tests/strands/agentcore_conformance.py --suite examples/aws2/tables --stripped
+
+// The article's six policies as a SET, which is how they would be deployed -- plus permits for the
+// supporting reads, without which every gated permit is vacuous by composition rather than by
+// defect. Same construction as examples/aws1/agent-policy.dw and for the same reason.
+//
+// Policy 5 (the Bedrock Guardrails SSN check) is absent: it calls an information provider, which is
+// a sandboxed Rhai script. A verdict about it would not be a function of the policy and the trace,
+// so refusing is the correct answer rather than a gap. See the README.
+
+// -- the supporting reads, so the gated permits have something to be gated on
+permit ( principal, action == AgentCore::Action::"verify_identity", resource );
+permit ( principal, action == AgentCore::Action::"request_approval", resource );
+
+// -- policy 1: refunds only in business hours, and only for $2,500 or less
+permit ( principal, action == AgentCore::Action::"issue_refund", resource )
+when { context.system.now.toTime() >= duration("9h")
+    && context.system.now.toTime() <= duration("17h") }
+when { context.input.amount <= 2500 };
+
+// -- policy 2: a transfer needs identity verified for that account within 15 minutes
+permit ( principal, action == AgentCore::Action::"initiate_transfer", resource )
+when temporal {
+    formerly within 15m AgentCore::Action::"verify_identity"::response{
+        input.account:   context.input.account,
+        output.verified: true
+    }
+};
+
+// -- policy 3: block a transfer if the 12-hour total would exceed $50,000
+forbid ( principal, action == AgentCore::Action::"initiate_transfer", resource )
+when temporal {
+    exists (total: Long). (
+        (sum a for (a: Long), (t: Timepoint). where (
+            formerly within 12h (
+                AgentCore::Action::"initiate_transfer"::request{ input.amount: a } && tp(t)
+            )
+        )) == total && total > 50000
+    )
+};
+
+// -- policy 4: no more than three refund attempts per account per hour
+forbid ( principal, action == AgentCore::Action::"issue_refund", resource )
+when temporal {
+    exists (n: Long). (
+        (count for (t: Timepoint). where (
+            formerly within 1h (
+                AgentCore::Action::"issue_refund"::request{ input.account: context.input.account } && tp(t)
+            )
+        )) == n && n > 3
+    )
+};
+
+// -- policy 6: a refund over $500 needs a supervisor's approval for that charge within 30 minutes
+forbid ( principal, action == AgentCore::Action::"issue_refund", resource )
+when { context.input.amount > 500 }
+unless temporal {
+    formerly within 30m AgentCore::Action::"request_approval"::response{
+        input.charge_id: context.input.charge_id,
+        output.approved: true
+    }
+};
+
+//| target -
+//|
+//| row aws-prose: "Block a transfer if the total amount transferred in the past 12 hours would exceed $50,000" -- two $40,000 transfers in ONE session: the second is blocked
+//| @0   request  verify_identity  { account: "A-1" }  ALLOW ours
+//| @1   response verify_identity  { account: "A-1" } -> { verified: true }
+//| @2   request  initiate_transfer  { account: "A-1", dest_account: "A-2", amount: 40000 }  ALLOW
+//| @3   response initiate_transfer  { account: "A-1", dest_account: "A-2", amount: 40000 } -> { confirmation: "c" }
+//| @10  request  verify_identity  { account: "A-1" }  ALLOW ours
+//| @11  response verify_identity  { account: "A-1" } -> { verified: true }
+//| @12  request  initiate_transfer  { account: "A-1", dest_account: "A-2", amount: 40000 }  DENY
+//|
+//| row aws-prose: the same two transfers, the second in a NEW session -- $80,000 within 12 hours. AgentCore keeps history per session and the caller chooses the session ID, so the cap is per session: the second is allowed
+//| @0   request  verify_identity  { account: "A-1" }  ALLOW ours
+//| @1   response verify_identity  { account: "A-1" } -> { verified: true }
+//| @2   request  initiate_transfer  { account: "A-1", dest_account: "A-2", amount: 40000 }  ALLOW
+//| @3   response initiate_transfer  { account: "A-1", dest_account: "A-2", amount: 40000 } -> { confirmation: "c" }
+//| @10  session=s2 request  verify_identity  { account: "A-1" }  ALLOW ours
+//| @11  session=s2 response verify_identity  { account: "A-1" } -> { verified: true }
+//| @12  session=s2 request  initiate_transfer  { account: "A-1", dest_account: "A-2", amount: 40000 }  DENY aws-prose finding
+//|
+//| row aws-prose: the article's stated reading of the cap: it sums ::request, "every transfer the agent attempted, which is the safer reading for a cap" -- so a refused $60,000 attempt still counts, and a $1 transfer after it is blocked although nothing moved
+//| @0   request  verify_identity  { account: "A-1" }  ALLOW ours
+//| @1   response verify_identity  { account: "A-1" } -> { verified: true }
+//| @2   request  initiate_transfer  { account: "A-1", dest_account: "A-2", amount: 60000 }  DENY
+//| @3   error    initiate_transfer  { account: "A-1", dest_account: "A-2", amount: 60000 }
+//| @4   request  initiate_transfer  { account: "A-1", dest_account: "A-2", amount: 1 }  DENY

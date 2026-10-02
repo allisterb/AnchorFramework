@@ -343,6 +343,20 @@ public class TranslationHarnessTests : TestsRuntime
         Assert.True(engine.ExitCode == 0, engine.Output);
         Assert.Contains("131 of 131 expected decisions confirmed by the engine", engine.Output);
         Assert.Contains("16 of them FINDINGS", engine.Output);
+
+        // The second article (examples/aws2): its $50,000 / 12h cap resets with a new session, which
+        // is AgentCore's reading and was invisible under Dogwood's per-principal default. Its
+        // policies bind no `eventResource`, so Anchor's AgentCore reading refuses them as AgentCore
+        // would; the same semantics are checked with --stripped, and the engine replays them as-is.
+        var aws2Model = await PythonHarness.RunAsync(
+            "tests/strands/agentcore_conformance.py", "--suite", "examples/aws2/tables", "--stripped");
+        Assert.True(aws2Model.ExitCode == 0, aws2Model.Output);
+        Assert.Contains("every one of the 1 findings", aws2Model.Output);
+
+        var aws2Engine = await PythonHarness.RunAsync(
+            "tests/strands/agentcore_replay.py", "--suite", "examples/aws2/tables");
+        Assert.True(aws2Engine.ExitCode == 0, aws2Engine.Output);
+        Assert.Contains("11 of 11 expected decisions confirmed by the engine", aws2Engine.Output);
     }
 
     /// <summary>

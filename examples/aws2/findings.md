@@ -25,7 +25,7 @@
 |---|---|
 | policy sets | 6 |
 | stated intentions (`.tla`) | 1 |
-| questions answered | 0 |
+| questions answered | 0 of 0 — not asked: --no-llm |
 | event-schema reading | pinned by `callerPrincipal`, Dogwood's default |
 
 ## Per policy set
