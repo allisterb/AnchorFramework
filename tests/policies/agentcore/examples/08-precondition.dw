@@ -1,0 +1,45 @@
+// AgentCore conformance -- example-policies-temporal.md, "Require a precondition that has not been
+// invalidated". The first statement is AWS's, verbatim. The other two are OURS: "Grant permits for
+// both approve_claim and get_claim_status". Expected decisions: the table, whose four rows are one
+// session in sequence.
+
+permit (
+    principal,
+    action == AgentCore::Action::"InsuranceAPI___disburse_payment",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/insurance-gw-a1b2c3d4e5"
+)
+when temporal {
+    !AgentCore::Action::"InsuranceAPI___get_claim_status"::response{ eventResource: resource }
+    since within 5m AgentCore::Action::"InsuranceAPI___approve_claim"::response{ eventResource: resource }
+};
+
+// ours
+permit (
+    principal,
+    action == AgentCore::Action::"InsuranceAPI___approve_claim",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/insurance-gw-a1b2c3d4e5"
+);
+
+// ours
+permit (
+    principal,
+    action == AgentCore::Action::"InsuranceAPI___get_claim_status",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/insurance-gw-a1b2c3d4e5"
+);
+
+//| target InsuranceAPI
+//|
+//| row aws-table: disburse before any approval DENY; approve then disburse ALLOW; get_claim_status occurs then disburse DENY; a new approval then disburse ALLOW
+//| @0  request  disburse_payment  { claimId: "CLM-1", amountCents: 100000 }  DENY
+//| @1  error    disburse_payment  { claimId: "CLM-1", amountCents: 100000 }
+//| @10 request  approve_claim     { claimId: "CLM-1", approved: true, approvedAmountCents: 100000 }  ALLOW aws-prose
+//| @11 response approve_claim     { claimId: "CLM-1", approved: true, approvedAmountCents: 100000 } -> { claimId: "CLM-1", approved: true, approvedAmountCents: 100000 }
+//| @20 request  disburse_payment  { claimId: "CLM-1", amountCents: 100000 }  ALLOW
+//| @21 response disburse_payment  { claimId: "CLM-1", amountCents: 100000 } -> { claimId: "CLM-1", status: "PAID", amountCents: 100000 }
+//| @30 request  get_claim_status  { claimId: "CLM-1" }  ALLOW aws-prose
+//| @31 response get_claim_status  { claimId: "CLM-1" } -> { claimId: "CLM-1", status: "REOPENED" }
+//| @40 request  disburse_payment  { claimId: "CLM-1", amountCents: 100000 }  DENY
+//| @41 error    disburse_payment  { claimId: "CLM-1", amountCents: 100000 }
+//| @50 request  approve_claim     { claimId: "CLM-1", approved: true, approvedAmountCents: 100000 }  ALLOW aws-prose
+//| @51 response approve_claim     { claimId: "CLM-1", approved: true, approvedAmountCents: 100000 } -> { claimId: "CLM-1", approved: true, approvedAmountCents: 100000 }
+//| @60 request  disburse_payment  { claimId: "CLM-1", amountCents: 100000 }  ALLOW

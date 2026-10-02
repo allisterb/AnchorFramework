@@ -1,0 +1,38 @@
+// AgentCore conformance -- example-policies-temporal.md, "Require a prerequisite action".
+// The first statement is AWS's, verbatim. The second is OURS: "Pair with a permit for
+// get_claim_status". No decision table; expected decisions come from AWS's prose -- the intent
+// ("only after someone looked up its status") and "Matching ::request means the prerequisite only
+// has to have been attempted, not to have succeeded".
+
+permit (
+    principal,
+    action == AgentCore::Action::"InsuranceAPI___approve_claim",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/insurance-gw-a1b2c3d4e5"
+)
+when temporal {
+    formerly within 5m AgentCore::Action::"InsuranceAPI___get_claim_status"::request{
+        eventResource: resource
+    }
+};
+
+// ours
+permit (
+    principal,
+    action == AgentCore::Action::"InsuranceAPI___get_claim_status",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/insurance-gw-a1b2c3d4e5"
+);
+
+//| target InsuranceAPI
+//|
+//| row aws-prose: approve_claim with no status lookup
+//| @0  request  approve_claim     { claimId: "CLM-1", approved: true, approvedAmountCents: 100000 }  DENY
+//|
+//| row aws-prose: a status lookup, then approve_claim
+//| @0  request  get_claim_status  { claimId: "CLM-1" }  ALLOW
+//| @1  response get_claim_status  { claimId: "CLM-1" } -> { claimId: "CLM-1", status: "OPEN" }
+//| @10 request  approve_claim     { claimId: "CLM-1", approved: true, approvedAmountCents: 100000 }  ALLOW
+//|
+//| row aws-prose: the lookup was attempted and the tool FAILED -- attempted is enough
+//| @0  request  get_claim_status  { claimId: "CLM-1" }  ALLOW
+//| @1  error    get_claim_status  { claimId: "CLM-1" }
+//| @10 request  approve_claim     { claimId: "CLM-1", approved: true, approvedAmountCents: 100000 }  ALLOW

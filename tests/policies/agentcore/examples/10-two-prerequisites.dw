@@ -1,0 +1,50 @@
+// AgentCore conformance -- example-policies-temporal.md, "Require two prerequisites in any order".
+// The first statement is AWS's, verbatim. The other two are OURS: both prerequisites must complete,
+// which needs permits the example does not print. No decision table; expected decisions come from
+// AWS's prose (intent: "only after both a status lookup and an approval have completed, in either
+// order").
+
+permit (
+    principal,
+    action == AgentCore::Action::"InsuranceAPI___disburse_payment",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/insurance-gw-a1b2c3d4e5"
+)
+when temporal {
+    formerly within 1h AgentCore::Action::"InsuranceAPI___get_claim_status"::response{ eventResource: resource }
+    && formerly within 1h AgentCore::Action::"InsuranceAPI___approve_claim"::response{ eventResource: resource }
+};
+
+// ours
+permit (
+    principal,
+    action == AgentCore::Action::"InsuranceAPI___get_claim_status",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/insurance-gw-a1b2c3d4e5"
+);
+
+// ours
+permit (
+    principal,
+    action == AgentCore::Action::"InsuranceAPI___approve_claim",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/insurance-gw-a1b2c3d4e5"
+);
+
+//| target InsuranceAPI
+//|
+//| row aws-prose: only the approval completed
+//| @0  request  approve_claim     { claimId: "CLM-1", approved: true, approvedAmountCents: 100000 }  ALLOW
+//| @1  response approve_claim     { claimId: "CLM-1", approved: true, approvedAmountCents: 100000 } -> { claimId: "CLM-1", approved: true, approvedAmountCents: 100000 }
+//| @10 request  disburse_payment  { claimId: "CLM-1", amountCents: 100000 }  DENY
+//|
+//| row aws-prose: lookup then approval
+//| @0  request  get_claim_status  { claimId: "CLM-1" }  ALLOW
+//| @1  response get_claim_status  { claimId: "CLM-1" } -> { claimId: "CLM-1", status: "OPEN" }
+//| @10 request  approve_claim     { claimId: "CLM-1", approved: true, approvedAmountCents: 100000 }  ALLOW
+//| @11 response approve_claim     { claimId: "CLM-1", approved: true, approvedAmountCents: 100000 } -> { claimId: "CLM-1", approved: true, approvedAmountCents: 100000 }
+//| @20 request  disburse_payment  { claimId: "CLM-1", amountCents: 100000 }  ALLOW
+//|
+//| row aws-prose: approval then lookup
+//| @0  request  approve_claim     { claimId: "CLM-1", approved: true, approvedAmountCents: 100000 }  ALLOW
+//| @1  response approve_claim     { claimId: "CLM-1", approved: true, approvedAmountCents: 100000 } -> { claimId: "CLM-1", approved: true, approvedAmountCents: 100000 }
+//| @10 request  get_claim_status  { claimId: "CLM-1" }  ALLOW
+//| @11 response get_claim_status  { claimId: "CLM-1" } -> { claimId: "CLM-1", status: "OPEN" }
+//| @20 request  disburse_payment  { claimId: "CLM-1", amountCents: 100000 }  ALLOW

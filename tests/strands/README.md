@@ -64,6 +64,7 @@ is stable. To time one harness, run it alone.
 | `cedar_differential.py` | the Cedar model against the real engine. See [`specs/policy/cedar/`](../../specs/policy/cedar). |
 | `condition_differential.py` | the edge-condition predicates in [`annotations`](../../src/annotations) against the Python callables they annotate. |
 | `dogwood_differential.py` | our TLA+ reading of Dogwood's temporal operators against that language's own regression corpus — 914 pairs, one TLC run. See [`specs/policy/TemporalPolicy/`](../../specs/policy/TemporalPolicy). |
+| `agentcore_conformance.py` | the same reading against **AWS's own decision tables**: the 28 worked temporal examples in the AgentCore guide, transcribed verbatim under [`tests/policies/agentcore/`](../policies/agentcore). `--stripped` (gateway scope and `eventResource` joins removed) conforms on all 26 checkable examples; verbatim is refused until Anchor models AgentCore's event schema. See [`docs/agentcore.md`](../../docs/agentcore.md). |
 | `dogwood_replay.py` | the same reading against the **built** engine, on five traces the corpus never recorded — it contains no `::error` event at all, and that kind is what the `specs/policy/TemporalPolicy` finding rests on. The policies are checked in as `tests/policies/approval_gate_*.dw`; the traces are generated here. Needs the compiled binary; skips without it. |
 
 ## The library is not here any more

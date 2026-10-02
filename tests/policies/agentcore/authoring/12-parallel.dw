@@ -1,0 +1,52 @@
+// AgentCore conformance -- policy-temporal-authoring.md, "Example: parallel prerequisites".
+// The first statement is AWS's, verbatim. The other two are OURS: "Grant permits for both
+// prerequisite actions so they are recorded". Expected decisions: the table, plus AWS's "the order
+// does not matter" as a row.
+
+permit (
+    principal,
+    action == AgentCore::Action::"FundsTarget___get_account_balance",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/my-gateway"
+)
+when temporal {
+    formerly within 1h AgentCore::Action::"FundsTarget___transfer_funds"::response{ eventResource: resource }
+    && formerly within 1h AgentCore::Action::"FundsTarget___get_transaction_history"::response{ eventResource: resource }
+};
+
+// ours
+permit (
+    principal,
+    action == AgentCore::Action::"FundsTarget___transfer_funds",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/my-gateway"
+);
+
+// ours
+permit (
+    principal,
+    action == AgentCore::Action::"FundsTarget___get_transaction_history",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/my-gateway"
+);
+
+//| target FundsTarget
+//|
+//| row aws-table: get_account_balance before both prerequisites
+//| @0  request  get_account_balance      { customerId: "CUST-1" }  DENY
+//|
+//| row aws-table: only one prerequisite completed, then get_account_balance
+//| @0  request  transfer_funds           { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }  ALLOW aws-prose
+//| @1  response transfer_funds           { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 } -> { status: "OK", fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }
+//| @10 request  get_account_balance      { customerId: "CUST-1" }  DENY
+//|
+//| row aws-table: both prerequisites completed, then get_account_balance
+//| @0  request  transfer_funds           { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }  ALLOW aws-prose
+//| @1  response transfer_funds           { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 } -> { status: "OK", fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }
+//| @10 request  get_transaction_history  { accountId: "ACC-1" }  ALLOW aws-prose
+//| @11 response get_transaction_history  { accountId: "ACC-1" } -> { status: "OK", accountId: "ACC-1" }
+//| @20 request  get_account_balance      { customerId: "CUST-1" }  ALLOW
+//|
+//| row aws-prose: both prerequisites completed in the other order
+//| @0  request  get_transaction_history  { accountId: "ACC-1" }  ALLOW
+//| @1  response get_transaction_history  { accountId: "ACC-1" } -> { status: "OK", accountId: "ACC-1" }
+//| @10 request  transfer_funds           { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }  ALLOW
+//| @11 response transfer_funds           { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 } -> { status: "OK", fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }
+//| @20 request  get_account_balance      { customerId: "CUST-1" }  ALLOW

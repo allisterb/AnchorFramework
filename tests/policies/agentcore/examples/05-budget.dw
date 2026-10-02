@@ -1,0 +1,30 @@
+// AgentCore conformance -- example-policies-temporal.md, "Cap a running total".
+// The forbid is AWS's, verbatim. The permit is OURS: the prose has disbursements being allowed, which
+// needs one. Expected decisions: AWS's prose ("With a 300000-cent cap and disbursements of 100000,
+// the first two are allowed and the third is denied").
+
+forbid (
+    principal,
+    action == AgentCore::Action::"InsuranceAPI___disburse_payment",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/insurance-gw-a1b2c3d4e5"
+)
+when temporal {
+    exists (total: Long).
+        (sum amt for (amt: Long), (t: Timepoint).
+            where (formerly within 5m (AgentCore::Action::"InsuranceAPI___disburse_payment"::request{ eventResource: resource, input.amountCents: amt } && tp(t)))) == total
+        && total >= 300000
+};
+
+// ours
+permit (
+    principal,
+    action == AgentCore::Action::"InsuranceAPI___disburse_payment",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/insurance-gw-a1b2c3d4e5"
+);
+
+//| target InsuranceAPI
+//|
+//| row aws-prose: disbursements of 100000 against a 300000 cap -- two allowed, the third denied
+//| @0  request  disburse_payment  { claimId: "CLM-1", amountCents: 100000 }  ALLOW
+//| @10 request  disburse_payment  { claimId: "CLM-1", amountCents: 100000 }  ALLOW
+//| @20 request  disburse_payment  { claimId: "CLM-1", amountCents: 100000 }  DENY

@@ -257,6 +257,28 @@ public class TranslationHarnessTests : TestsRuntime
     }
 
     /// <summary>
+    /// Our reading against <b>AWS's own statement</b> of how AgentCore decides: the 28 worked
+    /// temporal examples in the AgentCore guide, with their decision tables as the oracle.
+    /// </summary>
+    /// <remarks>
+    /// Run <c>--stripped</c>, with the gateway scope and <c>eventResource</c> joins removed, because
+    /// Anchor does not yet model AgentCore's event schema; with one gateway that removal changes no
+    /// decision (<c>docs/agentcore.md</c>). The verbatim run is the target for modelling it, and
+    /// refuses every case until then. Caught on its first run: the parser accepted only the
+    /// corpus's parenthesised <c>exists</c> body, which refused all six of AWS's aggregates.
+    /// </remarks>
+    [PythonHarness("agentcore_conformance.py",
+                   RequiresPath = "ext/dogwood/dogwood-language/configuration/event-schemas")]
+    public async Task DogwoodSemanticsReproduceAgentCoreDecisionTables()
+    {
+        var run = await PythonHarness.RunAsync("tests/strands/agentcore_conformance.py", "--stripped");
+        Assert.True(run.ExitCode == 0, run.Output);
+
+        Assert.Contains("every example conforms", run.Output);
+        Assert.DoesNotContain("DISAGREES", run.Output);
+    }
+
+    /// <summary>
     /// Our reading against Dogwood's own <b>documentation examples</b> — whole policies, rather
     /// than the unit corpus's one-construct-per-case.
     /// </summary>

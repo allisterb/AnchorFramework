@@ -1,0 +1,46 @@
+// AgentCore conformance -- policy-temporal-authoring.md, "Example: approval threshold".
+// The first statement is AWS's, verbatim -- including its correlation of a transfer's `toAccount`
+// with the balance request's `customerId`, an account id against a customer id. It type-checks
+// (both strings) and is transcribed as published, not corrected. The second statement is OURS: the
+// transfers must complete, which needs a permit the example does not print.
+// Expected decisions: the table, plus AWS's "to that customer's account" as a row.
+
+permit (
+    principal,
+    action == AgentCore::Action::"FundsTarget___get_account_balance",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/my-gateway"
+)
+when temporal {
+    exists (n: Long).
+        (count for (t: Timepoint).
+            where (formerly within 5m (AgentCore::Action::"FundsTarget___transfer_funds"::response{ eventResource: resource, input.toAccount: context.input.customerId } && tp(t)))) == n
+        && n >= 2
+};
+
+// ours
+permit (
+    principal,
+    action == AgentCore::Action::"FundsTarget___transfer_funds",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/my-gateway"
+);
+
+//| target FundsTarget
+//|
+//| row aws-table: fewer than 2 matching completed transfers
+//| @0  request  transfer_funds       { fromAccount: "ACC-1", toAccount: "CUST-1", amount: 100 }  ALLOW ours
+//| @1  response transfer_funds       { fromAccount: "ACC-1", toAccount: "CUST-1", amount: 100 } -> { status: "OK", fromAccount: "ACC-1", toAccount: "CUST-1", amount: 100 }
+//| @10 request  get_account_balance  { customerId: "CUST-1" }  DENY
+//|
+//| row aws-table: 2 or more matching completed transfers
+//| @0  request  transfer_funds       { fromAccount: "ACC-1", toAccount: "CUST-1", amount: 100 }  ALLOW ours
+//| @1  response transfer_funds       { fromAccount: "ACC-1", toAccount: "CUST-1", amount: 100 } -> { status: "OK", fromAccount: "ACC-1", toAccount: "CUST-1", amount: 100 }
+//| @10 request  transfer_funds       { fromAccount: "ACC-1", toAccount: "CUST-1", amount: 100 }  ALLOW ours
+//| @11 response transfer_funds       { fromAccount: "ACC-1", toAccount: "CUST-1", amount: 100 } -> { status: "OK", fromAccount: "ACC-1", toAccount: "CUST-1", amount: 100 }
+//| @20 request  get_account_balance  { customerId: "CUST-1" }  ALLOW
+//|
+//| row aws-prose: two completed transfers, but only one to this customer's account
+//| @0  request  transfer_funds       { fromAccount: "ACC-1", toAccount: "CUST-1", amount: 100 }  ALLOW ours
+//| @1  response transfer_funds       { fromAccount: "ACC-1", toAccount: "CUST-1", amount: 100 } -> { status: "OK", fromAccount: "ACC-1", toAccount: "CUST-1", amount: 100 }
+//| @10 request  transfer_funds       { fromAccount: "ACC-1", toAccount: "CUST-2", amount: 100 }  ALLOW ours
+//| @11 response transfer_funds       { fromAccount: "ACC-1", toAccount: "CUST-2", amount: 100 } -> { status: "OK", fromAccount: "ACC-1", toAccount: "CUST-2", amount: 100 }
+//| @20 request  get_account_balance  { customerId: "CUST-1" }  DENY

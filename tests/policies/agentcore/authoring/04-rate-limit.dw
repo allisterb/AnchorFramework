@@ -1,0 +1,40 @@
+// AgentCore conformance -- policy-temporal-authoring.md, "Example: session-based rate limiting".
+// The forbid is AWS's, verbatim. The permit is OURS: "Pair it with a permit for transfer_funds".
+// Expected decisions: AWS's prose ("the first three transfer_funds calls within any five-minute
+// window are allowed, and the fourth (or later) call in that window is denied"), plus a row of ours.
+
+forbid (
+    principal,
+    action == AgentCore::Action::"FundsTarget___transfer_funds",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/my-gateway"
+)
+when temporal {
+    exists (n: Long).
+        (count for (t: Timepoint).
+            where (formerly within 5m (AgentCore::Action::"FundsTarget___transfer_funds"::request{ eventResource: resource } && tp(t)))) == n
+        && n > 3
+};
+
+// ours
+permit (
+    principal,
+    action == AgentCore::Action::"FundsTarget___transfer_funds",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/my-gateway"
+);
+
+//| target FundsTarget
+//|
+//| row aws-prose: the first three calls in five minutes are allowed, the fourth is denied
+//| @0  request  transfer_funds  { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 1 }  ALLOW
+//| @10 request  transfer_funds  { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 1 }  ALLOW
+//| @20 request  transfer_funds  { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 1 }  ALLOW
+//| @30 request  transfer_funds  { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 1 }  DENY
+//|
+//| row ours: a DENIED call still records a request, so it counts toward the limit
+//| @0   request  transfer_funds  { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 1 }  ALLOW
+//| @10  request  transfer_funds  { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 1 }  ALLOW
+//| @20  request  transfer_funds  { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 1 }  ALLOW
+//| @30  request  transfer_funds  { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 1 }  DENY
+//| @31  error    transfer_funds  { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 1 }
+//| @301 request  transfer_funds  { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 1 }  DENY
+//| @400 request  transfer_funds  { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 1 }  ALLOW

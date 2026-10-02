@@ -1,0 +1,35 @@
+// AgentCore conformance -- example-policies-temporal.md, "Require a prior approval for the same
+// claim". Both statements are AWS's, verbatim. Expected decisions: the example's decision table.
+
+permit (
+    principal,
+    action == AgentCore::Action::"InsuranceAPI___disburse_payment",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/insurance-gw-a1b2c3d4e5"
+)
+when temporal {
+    formerly within 1h AgentCore::Action::"InsuranceAPI___approve_claim"::response{
+        eventResource: resource,
+        output.claimId: context.input.claimId
+    }
+};
+
+permit (
+    principal,
+    action == AgentCore::Action::"InsuranceAPI___approve_claim",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/insurance-gw-a1b2c3d4e5"
+);
+
+//| target InsuranceAPI
+//|
+//| row aws-table: disburse_payment with no prior approval
+//| @0  request  disburse_payment  { claimId: "CLM-1", amountCents: 100000 }  DENY
+//|
+//| row aws-table: approve_claim for a claim, then disburse_payment for the same claim
+//| @0  request  approve_claim     { claimId: "CLM-1", approved: true, approvedAmountCents: 100000 }  ALLOW aws-prose
+//| @1  response approve_claim     { claimId: "CLM-1", approved: true, approvedAmountCents: 100000 } -> { claimId: "CLM-1", approved: true, approvedAmountCents: 100000 }
+//| @10 request  disburse_payment  { claimId: "CLM-1", amountCents: 100000 }  ALLOW
+//|
+//| row aws-table: approve_claim for one claim, then disburse_payment for a different claim
+//| @0  request  approve_claim     { claimId: "CLM-1", approved: true, approvedAmountCents: 100000 }  ALLOW aws-prose
+//| @1  response approve_claim     { claimId: "CLM-1", approved: true, approvedAmountCents: 100000 } -> { claimId: "CLM-1", approved: true, approvedAmountCents: 100000 }
+//| @10 request  disburse_payment  { claimId: "CLM-2", amountCents: 100000 }  DENY

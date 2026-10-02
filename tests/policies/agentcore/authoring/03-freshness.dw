@@ -1,0 +1,43 @@
+// AgentCore conformance -- policy-temporal-authoring.md, "Example: data freshness".
+// The first statement is AWS's, verbatim. The second is OURS: the table has transfer_funds
+// completing, which needs a permit the example does not print. Expected decisions: the table, with
+// timings of our choosing, plus one row of ours on the window boundary.
+
+permit (
+    principal,
+    action == AgentCore::Action::"FundsTarget___get_account_balance",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/my-gateway"
+)
+when temporal {
+    formerly within 5m AgentCore::Action::"FundsTarget___transfer_funds"::response{
+        eventResource: resource
+    }
+};
+
+// ours
+permit (
+    principal,
+    action == AgentCore::Action::"FundsTarget___transfer_funds",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/my-gateway"
+);
+
+//| target FundsTarget
+//|
+//| row aws-table: get_account_balance before any completed transfer_funds
+//| @0  request  get_account_balance  { customerId: "CUST-1" }  DENY
+//|
+//| row aws-table: transfer_funds completes, then get_account_balance within the window
+//| @0  request  transfer_funds       { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }  ALLOW ours
+//| @1  response transfer_funds       { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 } -> { status: "OK", fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }
+//| @60 request  get_account_balance  { customerId: "CUST-1" }  ALLOW
+//|
+//| row aws-table: get_account_balance after the window elapses
+//| @0   request  transfer_funds      { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }  ALLOW ours
+//| @1   response transfer_funds      { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 } -> { status: "OK", fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }
+//| @400 request  get_account_balance { customerId: "CUST-1" }  DENY
+//|
+//| row ours: the window is closed -- exactly 5m after the response is still inside it, 5m01s is not
+//| @0   request  transfer_funds      { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }  ALLOW
+//| @1   response transfer_funds      { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 } -> { status: "OK", fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }
+//| @301 request  get_account_balance { customerId: "CUST-1" }  ALLOW
+//| @302 request  get_account_balance { customerId: "CUST-1" }  DENY

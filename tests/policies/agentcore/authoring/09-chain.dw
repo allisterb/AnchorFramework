@@ -1,0 +1,45 @@
+// AgentCore conformance -- policy-temporal-authoring.md, "Example: multi-hop chain".
+// The two links are AWS's, verbatim. The third statement is OURS: "Grant a permit for the first
+// action in the chain so it can start". Expected decisions: the table.
+
+// Link 1: permit get_transaction_history only after get_account_balance completed
+permit (
+    principal,
+    action == AgentCore::Action::"FundsTarget___get_transaction_history",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/my-gateway"
+)
+when temporal {
+    formerly within 5m AgentCore::Action::"FundsTarget___get_account_balance"::response{ eventResource: resource }
+};
+
+// Link 2: permit transfer_funds only after get_transaction_history completed
+permit (
+    principal,
+    action == AgentCore::Action::"FundsTarget___transfer_funds",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/my-gateway"
+)
+when temporal {
+    formerly within 5m AgentCore::Action::"FundsTarget___get_transaction_history"::response{ eventResource: resource }
+};
+
+// ours
+permit (
+    principal,
+    action == AgentCore::Action::"FundsTarget___get_account_balance",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/my-gateway"
+);
+
+//| target FundsTarget
+//|
+//| row aws-table: transfer_funds before get_account_balance
+//| @0  request  transfer_funds           { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }  DENY
+//|
+//| row aws-table: get_transaction_history before get_account_balance
+//| @0  request  get_transaction_history  { accountId: "ACC-1" }  DENY
+//|
+//| row aws-table: get_account_balance, then get_transaction_history, then transfer_funds -- ALLOW at each step
+//| @0  request  get_account_balance      { customerId: "CUST-1" }  ALLOW
+//| @1  response get_account_balance      { customerId: "CUST-1" } -> { status: "OK", customerId: "CUST-1", accountId: "ACC-2", balance: 500 }
+//| @10 request  get_transaction_history  { accountId: "ACC-1" }  ALLOW
+//| @11 response get_transaction_history  { accountId: "ACC-1" } -> { status: "OK", accountId: "ACC-1" }
+//| @20 request  transfer_funds           { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }  ALLOW

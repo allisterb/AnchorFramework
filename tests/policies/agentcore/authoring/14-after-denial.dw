@@ -1,0 +1,36 @@
+// AgentCore conformance -- policy-temporal-authoring.md, "Example: block an action after a prior
+// denial". Both statements are AWS's, verbatim. There is no permit for get_account_balance, so every
+// balance request is denied by default and recorded as an `error`. Expected decisions: the table,
+// plus a row of ours for the window lapsing.
+
+forbid (
+    principal,
+    action == AgentCore::Action::"FundsTarget___transfer_funds",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/my-gateway"
+)
+when temporal {
+    formerly within 3m AgentCore::Action::"FundsTarget___get_account_balance"::error{
+        eventResource: resource
+    }
+};
+
+permit (
+    principal,
+    action == AgentCore::Action::"FundsTarget___transfer_funds",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/my-gateway"
+);
+
+//| target FundsTarget
+//|
+//| row aws-table: transfer_funds with no prior denial
+//| @0  request  transfer_funds       { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }  ALLOW
+//|
+//| row aws-table: get_account_balance is denied, then transfer_funds
+//| @0  request  get_account_balance  { customerId: "CUST-1" }  DENY aws-prose
+//| @1  error    get_account_balance  { customerId: "CUST-1" }
+//| @10 request  transfer_funds       { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }  DENY
+//|
+//| row ours: the block lapses once the denial is more than 3m old
+//| @0   request  get_account_balance { customerId: "CUST-1" }  DENY
+//| @1   error    get_account_balance { customerId: "CUST-1" }
+//| @200 request  transfer_funds      { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }  ALLOW

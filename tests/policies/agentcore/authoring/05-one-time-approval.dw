@@ -1,0 +1,42 @@
+// AgentCore conformance -- policy-temporal-authoring.md, "Example: one-time-use approval".
+// The first statement is AWS's, verbatim. The second is OURS: "Pair this with a permit for
+// get_account_balance so approvals are recorded". Expected decisions: the table, whose three rows
+// are one session in sequence, plus a row of ours for the response-recording delay.
+
+permit (
+    principal,
+    action == AgentCore::Action::"FundsTarget___transfer_funds",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/my-gateway"
+)
+when temporal {
+    !AgentCore::Action::"FundsTarget___transfer_funds"::response{ eventResource: resource }
+    since within 1h AgentCore::Action::"FundsTarget___get_account_balance"::response{ eventResource: resource }
+};
+
+// ours
+permit (
+    principal,
+    action == AgentCore::Action::"FundsTarget___get_account_balance",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/my-gateway"
+);
+
+//| target FundsTarget
+//|
+//| row aws-table: approval then transfer ALLOW; a second transfer with no new approval DENY; a new approval then transfer ALLOW
+//| @0  request  get_account_balance  { customerId: "CUST-1" }  ALLOW aws-prose
+//| @1  response get_account_balance  { customerId: "CUST-1" } -> { status: "OK", customerId: "CUST-1", accountId: "ACC-2", balance: 500 }
+//| @10 request  transfer_funds       { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }  ALLOW
+//| @11 response transfer_funds       { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 } -> { status: "OK", fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }
+//| @20 request  transfer_funds       { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }  DENY
+//| @21 error    transfer_funds       { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }
+//| @30 request  get_account_balance  { customerId: "CUST-1" }  ALLOW aws-prose
+//| @31 response get_account_balance  { customerId: "CUST-1" } -> { status: "OK", customerId: "CUST-1", accountId: "ACC-2", balance: 500 }
+//| @40 request  transfer_funds       { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }  ALLOW
+//|
+//| row ours: PIPELINED -- the second transfer is sent before the first one's response is recorded, so nothing has consumed the approval yet
+//| @0  request  get_account_balance  { customerId: "CUST-1" }  ALLOW
+//| @1  response get_account_balance  { customerId: "CUST-1" } -> { status: "OK", customerId: "CUST-1", accountId: "ACC-2", balance: 500 }
+//| @10 request  transfer_funds       { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }  ALLOW
+//| @12 request  transfer_funds       { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }  ALLOW
+//| @13 response transfer_funds       { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 } -> { status: "OK", fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }
+//| @14 response transfer_funds       { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 } -> { status: "OK", fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }

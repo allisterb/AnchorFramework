@@ -1,0 +1,28 @@
+// AgentCore conformance -- example-policies-temporal.md, "Combine temporal, guardrail, and request
+// conditions". AWS's, verbatim. No decision table.
+//
+// EXPECTED: REFUSED. `BedrockGuardrails::SensitiveInformation` is an information provider, and
+// `principal.hasTag` / `getTag` read entity attributes; Anchor refuses both by design
+// (knowledge/the-modelled-subset.md). Conforming here means refusing, and saying why.
+
+permit (
+    principal is AgentCore::OAuthUser,
+    action == AgentCore::Action::"InsuranceAPI___file_claim",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/insurance-gw-a1b2c3d4e5"
+)
+when temporal {
+    exists (n: Long).
+        (count for (t: Timepoint).
+            where (formerly within 24h (AgentCore::Action::"InsuranceAPI___file_claim"::request{ eventResource: resource } && tp(t)))) == n
+        && n <= 3
+}
+when {
+    BedrockGuardrails::SensitiveInformation(["US_BANK_ACCOUNT_NUMBER"], [context.input.description]).count() == 0
+}
+unless {
+    principal.hasTag("role") &&
+    principal.getTag("role") == "restricted"
+};
+
+//| target InsuranceAPI
+//| expect refused

@@ -1,0 +1,30 @@
+// AgentCore conformance -- example-policies-temporal.md, "Cap how many times an action runs".
+// The forbid is AWS's, verbatim. The permit is OURS: "Pair with a permit for disburse_payment".
+// Expected decisions: AWS's prose ("the fourth call in a window is the first to be denied").
+
+forbid (
+    principal,
+    action == AgentCore::Action::"InsuranceAPI___disburse_payment",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/insurance-gw-a1b2c3d4e5"
+)
+when temporal {
+    exists (n: Long).
+        (count for (t: Timepoint).
+            where (formerly within 5m (AgentCore::Action::"InsuranceAPI___disburse_payment"::request{ eventResource: resource } && tp(t)))) == n
+        && n > 3
+};
+
+// ours
+permit (
+    principal,
+    action == AgentCore::Action::"InsuranceAPI___disburse_payment",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/insurance-gw-a1b2c3d4e5"
+);
+
+//| target InsuranceAPI
+//|
+//| row aws-prose: at most three disbursements in five minutes; the fourth is the first denied
+//| @0  request  disburse_payment  { claimId: "CLM-1", amountCents: 100 }  ALLOW
+//| @10 request  disburse_payment  { claimId: "CLM-1", amountCents: 100 }  ALLOW
+//| @20 request  disburse_payment  { claimId: "CLM-1", amountCents: 100 }  ALLOW
+//| @30 request  disburse_payment  { claimId: "CLM-1", amountCents: 100 }  DENY

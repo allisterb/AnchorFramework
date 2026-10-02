@@ -1,0 +1,57 @@
+// AgentCore conformance -- policy-temporal-authoring.md, "Example: mutual exclusion".
+// The two forbids are AWS's, verbatim. The two permits are OURS: "Pair both with permits for the
+// two actions". Expected decisions: the table, plus a row of ours -- a DENIED attempt is still a
+// recorded request, so it locks the other action out too.
+
+// Forbid get_transaction_history if a transfer_funds was requested within 2m
+forbid (
+    principal,
+    action == AgentCore::Action::"FundsTarget___get_transaction_history",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/my-gateway"
+)
+when temporal {
+    formerly within 2m AgentCore::Action::"FundsTarget___transfer_funds"::request{ eventResource: resource }
+};
+
+// Forbid transfer_funds if a get_transaction_history was requested within 2m
+forbid (
+    principal,
+    action == AgentCore::Action::"FundsTarget___transfer_funds",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/my-gateway"
+)
+when temporal {
+    formerly within 2m AgentCore::Action::"FundsTarget___get_transaction_history"::request{ eventResource: resource }
+};
+
+// ours
+permit (
+    principal,
+    action == AgentCore::Action::"FundsTarget___transfer_funds",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/my-gateway"
+);
+
+// ours
+permit (
+    principal,
+    action == AgentCore::Action::"FundsTarget___get_transaction_history",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/my-gateway"
+);
+
+//| target FundsTarget
+//|
+//| row aws-table: transfer_funds, then get_transaction_history -- transfer ALLOW, history DENY
+//| @0  request  transfer_funds           { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }  ALLOW
+//| @1  response transfer_funds           { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 } -> { status: "OK", fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }
+//| @10 request  get_transaction_history  { accountId: "ACC-1" }  DENY
+//|
+//| row aws-table: get_transaction_history, then transfer_funds -- history ALLOW, transfer DENY
+//| @0  request  get_transaction_history  { accountId: "ACC-1" }  ALLOW
+//| @1  response get_transaction_history  { accountId: "ACC-1" } -> { status: "OK", accountId: "ACC-1" }
+//| @10 request  transfer_funds           { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }  DENY
+//|
+//| row ours: the denied history attempt was still a request, so the next transfer is locked out as well
+//| @0  request  transfer_funds           { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }  ALLOW
+//| @1  response transfer_funds           { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 } -> { status: "OK", fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }
+//| @10 request  get_transaction_history  { accountId: "ACC-1" }  DENY
+//| @11 error    get_transaction_history  { accountId: "ACC-1" }
+//| @20 request  transfer_funds           { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }  DENY

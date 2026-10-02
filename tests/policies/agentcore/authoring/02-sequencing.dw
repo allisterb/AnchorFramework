@@ -1,0 +1,32 @@
+// AgentCore conformance -- policy-temporal-authoring.md, "Example: tool sequencing".
+// The first statement is AWS's, verbatim. The second is OURS: the guide says to "pair this with a
+// permit for transfer_funds" without printing it, so it is written in the plain form AWS prints
+// elsewhere on the page. Expected decisions: the example's decision table.
+
+permit (
+    principal,
+    action == AgentCore::Action::"FundsTarget___get_account_balance",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/my-gateway"
+)
+when temporal {
+    formerly within 5m AgentCore::Action::"FundsTarget___transfer_funds"::request{
+        eventResource: resource
+    }
+};
+
+// ours
+permit (
+    principal,
+    action == AgentCore::Action::"FundsTarget___transfer_funds",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/my-gateway"
+);
+
+//| target FundsTarget
+//|
+//| row aws-table: get_account_balance before any transfer_funds
+//| @0  request  get_account_balance  { customerId: "CUST-1" }  DENY
+//|
+//| row aws-table: transfer_funds, then get_account_balance
+//| @0  request  transfer_funds       { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }  ALLOW aws-prose
+//| @1  response transfer_funds       { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 } -> { status: "OK", fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }
+//| @10 request  get_account_balance  { customerId: "CUST-1" }  ALLOW

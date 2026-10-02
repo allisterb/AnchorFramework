@@ -1,0 +1,45 @@
+// AgentCore conformance -- policy-temporal-authoring.md, "Example: continuous precondition".
+// The first statement is AWS's, verbatim. The other two are OURS: "Grant permits for both
+// get_account_balance and get_transaction_history so they are recorded". Expected decisions: the
+// table, whose four rows are one session in sequence.
+
+permit (
+    principal,
+    action == AgentCore::Action::"FundsTarget___transfer_funds",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/my-gateway"
+)
+when temporal {
+    !AgentCore::Action::"FundsTarget___get_transaction_history"::response{ eventResource: resource }
+    since within 5m AgentCore::Action::"FundsTarget___get_account_balance"::response{ eventResource: resource }
+};
+
+// ours
+permit (
+    principal,
+    action == AgentCore::Action::"FundsTarget___get_account_balance",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/my-gateway"
+);
+
+// ours
+permit (
+    principal,
+    action == AgentCore::Action::"FundsTarget___get_transaction_history",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/my-gateway"
+);
+
+//| target FundsTarget
+//|
+//| row aws-table: transfer before any balance DENY; balance then transfer ALLOW; history occurs then transfer DENY; a new balance then transfer ALLOW
+//| @0  request  transfer_funds           { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }  DENY
+//| @1  error    transfer_funds           { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }
+//| @10 request  get_account_balance      { customerId: "CUST-1" }  ALLOW aws-prose
+//| @11 response get_account_balance      { customerId: "CUST-1" } -> { status: "OK", customerId: "CUST-1", accountId: "ACC-2", balance: 500 }
+//| @20 request  transfer_funds           { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }  ALLOW
+//| @21 response transfer_funds           { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 } -> { status: "OK", fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }
+//| @30 request  get_transaction_history  { accountId: "ACC-1" }  ALLOW aws-prose
+//| @31 response get_transaction_history  { accountId: "ACC-1" } -> { status: "OK", accountId: "ACC-1" }
+//| @40 request  transfer_funds           { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }  DENY
+//| @41 error    transfer_funds           { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }
+//| @50 request  get_account_balance      { customerId: "CUST-1" }  ALLOW aws-prose
+//| @51 response get_account_balance      { customerId: "CUST-1" } -> { status: "OK", customerId: "CUST-1", accountId: "ACC-2", balance: 500 }
+//| @60 request  transfer_funds           { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }  ALLOW

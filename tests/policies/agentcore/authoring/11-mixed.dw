@@ -1,0 +1,28 @@
+// AgentCore conformance -- policy-temporal-authoring.md, "Example: combining temporal, guardrail,
+// and Cedar conditions". AWS's, verbatim. No decision table.
+//
+// EXPECTED: REFUSED. `BedrockGuardrails::SensitiveInformation` is an information provider -- a
+// sandboxed script whose answer is not a function of the policy and the trace -- and
+// `principal in Group::...` is an entity hierarchy. Anchor refuses both by design
+// (knowledge/the-modelled-subset.md). Conforming here means refusing, and saying why.
+
+permit (
+    principal,
+    action == AgentCore::Action::"FundsTarget___transfer_funds",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/my-gateway"
+)
+when temporal {
+    exists (total: Long).
+        (sum amt for (amt: Long), (t: Timepoint).
+            where (formerly within 24h (AgentCore::Action::"FundsTarget___transfer_funds"::request{ eventResource: resource, input.amount: amt } && tp(t)))) == total
+        && total < 60000
+}
+when {
+    BedrockGuardrails::SensitiveInformation(["ACCOUNT_NUMBER"], [context.input.body]).count() == 0
+}
+unless {
+    principal in Group::"blocked_users"
+};
+
+//| target FundsTarget
+//| expect refused

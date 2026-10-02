@@ -1,0 +1,37 @@
+// AgentCore conformance -- policy-temporal-authoring.md, "Example: cumulative budget".
+// The forbid is AWS's, verbatim. The permit is OURS: "Pair the policy with a permit for
+// transfer_funds". Expected decisions: AWS's prose ("with a 3000 threshold and transfers of 1000,
+// the first two are allowed and the third, which would reach 3000, is denied"), plus a row of ours.
+
+forbid (
+    principal,
+    action == AgentCore::Action::"FundsTarget___transfer_funds",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/my-gateway"
+)
+when temporal {
+    exists (total: Long).
+        (sum amt for (amt: Long), (t: Timepoint).
+            where (formerly within 5m (AgentCore::Action::"FundsTarget___transfer_funds"::request{ eventResource: resource, input.amount: amt } && tp(t)))) == total
+        && total >= 3000
+};
+
+// ours
+permit (
+    principal,
+    action == AgentCore::Action::"FundsTarget___transfer_funds",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/my-gateway"
+);
+
+//| target FundsTarget
+//|
+//| row aws-prose: transfers of 1000 against 3000 -- two allowed, the third denied
+//| @0  request  transfer_funds  { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 1000 }  ALLOW
+//| @10 request  transfer_funds  { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 1000 }  ALLOW
+//| @20 request  transfer_funds  { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 1000 }  DENY
+//|
+//| row ours: the DENIED third transfer still records a request, so its 1000 counts toward the total
+//| @0  request  transfer_funds  { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 1000 }  ALLOW
+//| @10 request  transfer_funds  { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 1000 }  ALLOW
+//| @20 request  transfer_funds  { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 1000 }  DENY
+//| @21 error    transfer_funds  { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 1000 }
+//| @30 request  transfer_funds  { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 1 }     DENY

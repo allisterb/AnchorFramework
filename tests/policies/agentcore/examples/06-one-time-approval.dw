@@ -1,0 +1,42 @@
+// AgentCore conformance -- example-policies-temporal.md, "Make each approval good for one use".
+// The statement is AWS's, verbatim. The example has no paired permit for approve_claim in its own
+// text, but its table has approvals completing, so one is added -- OURS. Expected decisions: the
+// table, whose three rows are one session in sequence, plus a row of ours for the delay.
+
+permit (
+    principal,
+    action == AgentCore::Action::"InsuranceAPI___disburse_payment",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/insurance-gw-a1b2c3d4e5"
+)
+when temporal {
+    !AgentCore::Action::"InsuranceAPI___disburse_payment"::response{ eventResource: resource }
+    since within 1h AgentCore::Action::"InsuranceAPI___approve_claim"::response{ eventResource: resource }
+};
+
+// ours
+permit (
+    principal,
+    action == AgentCore::Action::"InsuranceAPI___approve_claim",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/insurance-gw-a1b2c3d4e5"
+);
+
+//| target InsuranceAPI
+//|
+//| row aws-table: approve then disburse ALLOW; a second disburse with no new approval DENY; a new approval then disburse ALLOW
+//| @0  request  approve_claim     { claimId: "CLM-1", approved: true, approvedAmountCents: 100000 }  ALLOW ours
+//| @1  response approve_claim     { claimId: "CLM-1", approved: true, approvedAmountCents: 100000 } -> { claimId: "CLM-1", approved: true, approvedAmountCents: 100000 }
+//| @10 request  disburse_payment  { claimId: "CLM-1", amountCents: 100000 }  ALLOW
+//| @11 response disburse_payment  { claimId: "CLM-1", amountCents: 100000 } -> { claimId: "CLM-1", status: "PAID", amountCents: 100000 }
+//| @20 request  disburse_payment  { claimId: "CLM-1", amountCents: 100000 }  DENY
+//| @21 error    disburse_payment  { claimId: "CLM-1", amountCents: 100000 }
+//| @30 request  approve_claim     { claimId: "CLM-1", approved: true, approvedAmountCents: 100000 }  ALLOW ours
+//| @31 response approve_claim     { claimId: "CLM-1", approved: true, approvedAmountCents: 100000 } -> { claimId: "CLM-1", approved: true, approvedAmountCents: 100000 }
+//| @40 request  disburse_payment  { claimId: "CLM-1", amountCents: 100000 }  ALLOW
+//|
+//| row ours: PIPELINED -- two disbursements sent before the first one's response is recorded both pass; one approval, two payouts
+//| @0  request  approve_claim     { claimId: "CLM-1", approved: true, approvedAmountCents: 100000 }  ALLOW
+//| @1  response approve_claim     { claimId: "CLM-1", approved: true, approvedAmountCents: 100000 } -> { claimId: "CLM-1", approved: true, approvedAmountCents: 100000 }
+//| @10 request  disburse_payment  { claimId: "CLM-1", amountCents: 100000 }  ALLOW
+//| @12 request  disburse_payment  { claimId: "CLM-1", amountCents: 100000 }  ALLOW
+//| @13 response disburse_payment  { claimId: "CLM-1", amountCents: 100000 } -> { claimId: "CLM-1", status: "PAID", amountCents: 100000 }
+//| @14 response disburse_payment  { claimId: "CLM-1", amountCents: 100000 } -> { claimId: "CLM-1", status: "PAID", amountCents: 100000 }

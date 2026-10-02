@@ -1,0 +1,42 @@
+// AgentCore conformance -- policy-temporal-authoring.md, "Example: cool-down".
+// The forbid is AWS's, verbatim. The permit is OURS: the table's first call is allowed, which needs
+// one. Expected decisions: the table, with timings of our choosing, plus two rows of ours.
+
+forbid (
+    principal,
+    action == AgentCore::Action::"FundsTarget___transfer_funds",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/my-gateway"
+)
+when temporal {
+    formerly within 1m AgentCore::Action::"FundsTarget___transfer_funds"::response{
+        eventResource: resource
+    }
+};
+
+// ours
+permit (
+    principal,
+    action == AgentCore::Action::"FundsTarget___transfer_funds",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/my-gateway"
+);
+
+//| target FundsTarget
+//|
+//| row aws-table: first transfer ALLOW; another within 1 minute DENY; after 1 minute has elapsed ALLOW
+//| @0   request  transfer_funds  { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }  ALLOW
+//| @1   response transfer_funds  { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 } -> { status: "OK", fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }
+//| @30  request  transfer_funds  { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }  DENY
+//| @31  error    transfer_funds  { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }
+//| @120 request  transfer_funds  { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }  ALLOW
+//|
+//| row ours: the window is closed -- exactly 60s after completion is still "within 1 minute"
+//| @0  request  transfer_funds  { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }  ALLOW
+//| @1  response transfer_funds  { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 } -> { status: "OK", fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }
+//| @61 request  transfer_funds  { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }  DENY
+//| @62 request  transfer_funds  { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }  ALLOW
+//|
+//| row ours: PIPELINED -- a second call sent before the first one's response is recorded escapes the cool-down
+//| @0  request  transfer_funds  { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }  ALLOW
+//| @5  request  transfer_funds  { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }  ALLOW
+//| @6  response transfer_funds  { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 } -> { status: "OK", fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }
+//| @7  response transfer_funds  { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 } -> { status: "OK", fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }

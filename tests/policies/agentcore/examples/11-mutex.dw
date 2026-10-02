@@ -1,0 +1,56 @@
+// AgentCore conformance -- example-policies-temporal.md, "Make two actions mutually exclusive".
+// The two forbids are AWS's, verbatim. The two permits are OURS: without them both actions are denied
+// by default. No decision table; expected decisions come from AWS's prose ("merely attempting one
+// action blocks the other"), plus a row of ours.
+
+// Forbid deletion if a disbursement was requested within 2m
+forbid (
+    principal,
+    action == AgentCore::Action::"InsuranceAPI___delete_claim",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/insurance-gw-a1b2c3d4e5"
+)
+when temporal {
+    formerly within 2m AgentCore::Action::"InsuranceAPI___disburse_payment"::request{ eventResource: resource }
+};
+
+// Forbid disbursement if a deletion was requested within 2m
+forbid (
+    principal,
+    action == AgentCore::Action::"InsuranceAPI___disburse_payment",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/insurance-gw-a1b2c3d4e5"
+)
+when temporal {
+    formerly within 2m AgentCore::Action::"InsuranceAPI___delete_claim"::request{ eventResource: resource }
+};
+
+// ours
+permit (
+    principal,
+    action == AgentCore::Action::"InsuranceAPI___disburse_payment",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/insurance-gw-a1b2c3d4e5"
+);
+
+// ours
+permit (
+    principal,
+    action == AgentCore::Action::"InsuranceAPI___delete_claim",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/insurance-gw-a1b2c3d4e5"
+);
+
+//| target InsuranceAPI
+//|
+//| row aws-prose: a disbursement blocks a deletion within two minutes
+//| @0  request  disburse_payment  { claimId: "CLM-1", amountCents: 100000 }  ALLOW
+//| @1  response disburse_payment  { claimId: "CLM-1", amountCents: 100000 } -> { claimId: "CLM-1", status: "PAID", amountCents: 100000 }
+//| @10 request  delete_claim      { claimId: "CLM-1" }  DENY
+//|
+//| row aws-prose: a deletion blocks a disbursement; merely requesting it is enough, with no response yet
+//| @0  request  delete_claim      { claimId: "CLM-1" }  ALLOW
+//| @10 request  disburse_payment  { claimId: "CLM-1", amountCents: 100000 }  DENY
+//|
+//| row ours: the DENIED deletion was still a request, so the next disbursement is locked out too
+//| @0  request  disburse_payment  { claimId: "CLM-1", amountCents: 100000 }  ALLOW
+//| @1  response disburse_payment  { claimId: "CLM-1", amountCents: 100000 } -> { claimId: "CLM-1", status: "PAID", amountCents: 100000 }
+//| @10 request  delete_claim      { claimId: "CLM-1" }  DENY
+//| @11 error    delete_claim      { claimId: "CLM-1" }
+//| @20 request  disburse_payment  { claimId: "CLM-1", amountCents: 100000 }  DENY

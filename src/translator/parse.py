@@ -415,13 +415,21 @@ class Parser:
 
         # `exists (n: T). ((AGG) == n && ...)` is the idiom; anything else is a real
         # existential over the value domain, and is read as one rather than refused.
-        if not (self.peek() == "(" and self.peek(1) == "(" and self.peek(2) in ("count", "sum")):
+        #
+        # The idiom comes in two wrappings. The corpus and Dogwood's guide parenthesise the whole
+        # body; every aggregate in AgentCore's guide leaves it bare -- `exists (n: Long). (AGG)
+        # == n && n > 3` -- which is legal because an `exists` scope is greedy to the right.
+        # Both mean `AGG CMP k`. Refusing the bare one refused all six of AWS's aggregates.
+        wrapped = self.peek() == "(" and self.peek(1) == "(" and self.peek(2) in ("count", "sum")
+        bare = self.peek() == "(" and self.peek(1) in ("count", "sum")
+        if not (wrapped or bare):
             body = self.group() if self.peek() == "(" else self.expr()
             return {"op": "exists",
                     "agg": {"kind": "exists", "over": "",
                             "binders": [{"name": var, "type": ty}], "cond": body}}
 
-        self.expect("(")
+        if wrapped:
+            self.expect("(")
         self.expect("(")
         agg = self.aggregate()
         self.expect(")")
@@ -434,7 +442,8 @@ class Parser:
             raise Unsupported("exists comparison does not start from the bound variable")
         cmp_op = self.comparison_op()
         value = self.integer_bound()
-        self.expect(")")
+        if wrapped:
+            self.expect(")")
         return {"op": "agg", "agg": agg, "cmp": cmp_op, "value": value}
 
     def integer_bound(self) -> int:

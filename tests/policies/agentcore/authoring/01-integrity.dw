@@ -1,0 +1,35 @@
+// AgentCore conformance -- policy-temporal-authoring.md, "Example: output-to-input integrity".
+// Both statements are AWS's, verbatim. Expected decisions: the example's decision table.
+
+permit (
+    principal,
+    action == AgentCore::Action::"FundsTarget___transfer_funds",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/my-gateway"
+)
+when temporal {
+    formerly within 1h AgentCore::Action::"FundsTarget___get_account_balance"::response{
+        eventResource: resource,
+        output.accountId: context.input.toAccount
+    }
+};
+
+permit (
+    principal,
+    action == AgentCore::Action::"FundsTarget___get_account_balance",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/my-gateway"
+);
+
+//| target FundsTarget
+//|
+//| row aws-table: transfer_funds with no prior lookup
+//| @0  request  transfer_funds       { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }  DENY
+//|
+//| row aws-table: get_account_balance for an account, then transfer_funds to the same account
+//| @0  request  get_account_balance  { customerId: "CUST-1" }  ALLOW aws-prose
+//| @1  response get_account_balance  { customerId: "CUST-1" } -> { status: "OK", customerId: "CUST-1", accountId: "ACC-2", balance: 500 }
+//| @10 request  transfer_funds       { fromAccount: "ACC-1", toAccount: "ACC-2", amount: 100 }  ALLOW
+//|
+//| row aws-table: get_account_balance for one account, then transfer_funds to a different account
+//| @0  request  get_account_balance  { customerId: "CUST-1" }  ALLOW aws-prose
+//| @1  response get_account_balance  { customerId: "CUST-1" } -> { status: "OK", customerId: "CUST-1", accountId: "ACC-2", balance: 500 }
+//| @10 request  transfer_funds       { fromAccount: "ACC-1", toAccount: "ACC-3", amount: 100 }  DENY

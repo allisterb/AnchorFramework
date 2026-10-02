@@ -1,0 +1,46 @@
+// AgentCore conformance -- example-policies-temporal.md, "Require a chain of actions in order".
+// The two links are AWS's, verbatim. The third statement is OURS: "Grant a plain permit for the
+// first action so the chain can start". No decision table; expected decisions come from AWS's prose
+// ("A step attempted out of order is denied until its prerequisite completes").
+
+// Link 1: approve only after a completed status lookup
+permit (
+    principal,
+    action == AgentCore::Action::"InsuranceAPI___approve_claim",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/insurance-gw-a1b2c3d4e5"
+)
+when temporal {
+    formerly within 5m AgentCore::Action::"InsuranceAPI___get_claim_status"::response{ eventResource: resource }
+};
+
+// Link 2: disburse only after a completed approval
+permit (
+    principal,
+    action == AgentCore::Action::"InsuranceAPI___disburse_payment",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/insurance-gw-a1b2c3d4e5"
+)
+when temporal {
+    formerly within 5m AgentCore::Action::"InsuranceAPI___approve_claim"::response{ eventResource: resource }
+};
+
+// ours
+permit (
+    principal,
+    action == AgentCore::Action::"InsuranceAPI___get_claim_status",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/insurance-gw-a1b2c3d4e5"
+);
+
+//| target InsuranceAPI
+//|
+//| row aws-prose: disbursement attempted before its prerequisite
+//| @0  request  disburse_payment  { claimId: "CLM-1", amountCents: 100000 }  DENY
+//|
+//| row aws-prose: approval attempted before its prerequisite
+//| @0  request  approve_claim     { claimId: "CLM-1", approved: true, approvedAmountCents: 100000 }  DENY
+//|
+//| row aws-prose: status lookup, then approval, then disbursement, each after the last completed
+//| @0  request  get_claim_status  { claimId: "CLM-1" }  ALLOW
+//| @1  response get_claim_status  { claimId: "CLM-1" } -> { claimId: "CLM-1", status: "OPEN" }
+//| @10 request  approve_claim     { claimId: "CLM-1", approved: true, approvedAmountCents: 100000 }  ALLOW
+//| @11 response approve_claim     { claimId: "CLM-1", approved: true, approvedAmountCents: 100000 } -> { claimId: "CLM-1", approved: true, approvedAmountCents: 100000 }
+//| @20 request  disburse_payment  { claimId: "CLM-1", amountCents: 100000 }  ALLOW

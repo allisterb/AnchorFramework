@@ -3,6 +3,24 @@
 Container images are published to `public.ecr.aws/v4q7x8t1/anchor`, for `linux/amd64` and
 `linux/arm64` under each tag.
 
+## Unreleased
+
+### Fixed
+
+**An aggregate written `exists (n: Long). (count …) == n && n > 3` is no longer refused.** Anchor
+accepted the `exists` idiom only with its body in parentheses, `exists (n: Long). ((count …) == n
+&& n > 3)`, which is how Dogwood's corpus writes it. AWS's AgentCore guide writes every aggregate
+without them. That is equally legal Dogwood, since an `exists` scope runs to the right, and
+`dogwood check-parse` accepts it. So every rate limit, budget cap and threshold copied from the
+guide was refused as outside the modelled subset. Both forms now mean the same thing. Dogwood's
+corpus differential is unchanged at 923 pairs.
+
+### Added
+
+`tests/policies/agentcore/`: the 28 worked temporal examples from the AgentCore Developer Guide,
+verbatim, with AWS's decision tables as expected decisions, checked by
+`tests/strands/agentcore_conformance.py`. See `docs/agentcore.md`.
+
 ## 0.1.3
 
 ### Changed — breaking
