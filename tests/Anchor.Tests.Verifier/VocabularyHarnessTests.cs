@@ -356,6 +356,24 @@ public class VocabularyHarnessTests : TestsRuntime
 
         Assert.True(impossible.ExitCode == 0, impossible.Output);
         Assert.Contains("VACUOUS", impossible.Output);
+
+        // Cedar's duration-to-integer conversions: `toTime().toHours() >= 9` and the like. They
+        // truncate, so each becomes a comparison on milliseconds at a whole-unit boundary.
+        var converted = await PythonHarness.RunAsync(
+            "src/checker/properties.py", "tests/policies/business_hours_converted.dw");
+
+        Assert.True(converted.ExitCode == 0, converted.Output);
+        Assert.Equal(3, System.Text.RegularExpressions.Regex.Matches(converted.Output, @"\blive\b").Count);
+        Assert.DoesNotContain("VACUOUS", converted.Output);
+
+        // Three rules past the end of the day. The 25h one was reported live while the clock's
+        // domain ran past 24h, with a witness at 25:00 that no request can carry.
+        var pastMidnight = await PythonHarness.RunAsync(
+            "src/checker/properties.py", "tests/policies/wall_clock_impossible.dw");
+
+        Assert.True(pastMidnight.ExitCode == 0, pastMidnight.Output);
+        Assert.Equal(3, System.Text.RegularExpressions.Regex.Matches(pastMidnight.Output, @"VACUOUS permit #\d").Count);
+        Assert.DoesNotContain(" live ", pastMidnight.Output);
     }
 
     /// <summary>

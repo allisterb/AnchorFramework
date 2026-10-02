@@ -15,11 +15,30 @@ without them. That is equally legal Dogwood, since an `exists` scope runs to the
 guide was refused as outside the modelled subset. Both forms now mean the same thing. Dogwood's
 corpus differential is unchanged at 923 pairs.
 
+**A wall-clock rule demanding a time past midnight is reported VACUOUS, not live.** The model's
+domain for `context.system.now.toTime()` ran past 24h. So `toTime() >= duration("25h")`, which no
+request can satisfy, found a witness at 25:00 and was reported live. The time of day now stays
+within [0h, 24h).
+
+**Two refusals now name what they refused.** `context.system.now >= datetime(…)` used to be refused
+with `expected '.', got '>='`, and a method on a request field (`context.input.wait.toHours()`)
+with `comparison operator '.'`. Neither said what the construct was. Both now do.
+
 ### Added
+
+**`context.system.now.toTime()` converted to an integer**, with `.toMilliseconds()`,
+`.toSeconds()`, `.toMinutes()`, `.toHours()` or `.toDays()` and compared against an integer
+literal. Cedar truncates these conversions, so `toHours() < 17` admits 16:59 and nothing later, and
+the model does the same. Comparing one against a `duration(…)` literal is refused as the Cedar
+type error it is. Other datetime methods (`.durationSince`, `.toDate`, `.offset`) are still
+refused: they need calendar arithmetic.
 
 `tests/policies/agentcore/`: the 28 worked temporal examples from the AgentCore Developer Guide,
 verbatim, with AWS's decision tables as expected decisions, checked by
-`tests/strands/agentcore_conformance.py`. See `docs/agentcore.md`.
+`tests/strands/agentcore_conformance.py`. It also holds a transcription of AgentCore's event
+schema, an action schema for the guide's two gateways, and `tests/strands/agentcore_replay.py`,
+which runs the Dogwood engine over the same examples. The engine confirms all 163 expected
+decisions and reproduces a rejection message AWS quotes from the service. See `docs/agentcore.md`.
 
 ## 0.1.3
 

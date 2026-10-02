@@ -30,7 +30,11 @@ and recorded in the reference ledger:
   operator AgentCore documents. Positive-left `since` and `previous` are the exceptions; see below.
 - **Two findings are worth carrying into step 4 and the email.** The response-recording delay lets
   a pipelining client spend a one-time approval twice. And in the mutual-exclusion pattern, a
-  *denied* attempt still locks out the other action. Neither appears in AWS's decision tables.
+  *denied* attempt still locks out the other action. Neither appears in AWS's decision tables. Both
+  are confirmed by the Dogwood engine, on AWS's policies verbatim, under AgentCore's schema.
+- **The transcribed schema is corroborated** (step 3). AWS's examples validate under it as written,
+  it reproduces a rejection message AWS quotes from the service, and the engine reproduces all 163
+  expected decisions in the conformance suite.
 
 ## AgentCore's event schema
 
@@ -66,8 +70,22 @@ semantics: it is a known one, under different field names. The transcription is
   under the default schema (HANDOFF, *What is already established*). So AgentCore's validator is
   very likely Dogwood's, run under this schema.
 
-Step 3 checks it directly: `dogwood validate` should accept the guide's examples under the
-transcribed schema, and `dogwood replay` should reproduce the decision tables.
+**Step 3 checked it directly (2026-10-02, `tests/strands/agentcore_replay.py`):**
+
+- All 26 of the guide's checkable examples **validate verbatim** under the transcribed schema,
+  `eventResource` joins and gateway scopes included. The two guardrail examples cannot be
+  validated, because AWS's managed provider has no published declaration.
+- An `output.*` field on a tool with no output schema is rejected with **the message AWS quotes**,
+  and the same declared-field list, `eventPrincipal, eventResource, input.claimId, requestId,
+  sessionId`, in the same order.
+- `dogwood replay` reproduces **every one of the 163 expected decisions**, AWS's and ours.
+- The action schema has to declare `sessionId` in **every action's context**, or the pin
+  `= context.sessionId` does not resolve and nothing validates. So that is how the session header
+  must reach the engine.
+
+That is as close as reading and running can get. It establishes that AWS's documented schema is
+coherent, that it accepts AWS's examples, and that it produces the service's quoted messages. It
+cannot establish that a deployed gateway runs it. That needs a real gateway (open question 3).
 
 **What it means for Anchor's code.** `src/translator/schema.py` knows the scope fields by **name**:
 `SCOPE_PINS = {"callerPrincipal": …, "callerResource": …}`, with every other name refused through
@@ -203,6 +221,12 @@ of the decision. So the delay matters exactly where a **negated or forbidding** 
 `response`. In those places, a policy's guarantee holds only for a client that sequences its calls,
 and an agent is precisely the client nobody should assume does.
 
+**Confirmed by the engine (step 3).** Given the trace where the second call precedes the first
+one's response, `dogwood replay` allows both disbursements under AWS's one-time-approval policy,
+verbatim, under AgentCore's schema. The same holds for both calls of the cool-down. What remains an
+inference is the *timing*: that AgentCore's "shortly after" leaves a window in which a client can
+send that trace. The guide's own advice to wait for the response is the evidence that it does.
+
 **Classification: assumption now, and a candidate to model in step 4.** A response could be
 recorded at any later point, interleaved with later requests. That is a small nondeterministic step
 in the model, and it would turn the paragraph above into a checked counterexample. It also bears on
@@ -233,15 +257,15 @@ mutually exclusive*, a request is recorded whether or not it is permitted. So:
 2. `delete_claim`: DENY, and its `request` event is recorded anyway
 3. `disburse_payment` within 2m of step 2: **DENY**, because a deletion "was requested"
 
-The same mechanism reaches rate limits and running totals: a denied request still counts toward the
-`count` or `sum`, so a client that keeps retrying stays locked out. Anchor's model agrees with both
-(`tests/policies/agentcore/`), and both still need `dogwood replay`.
-
 A denied attempt at one action locks out the other for the full window. An agent that retries, or
 one that probes, can block the action it was permitted to take. That may be what AWS intends, since
 the example says "merely **attempting**". But it is a property of the pattern a reader of the table
-would not predict. It belongs in the conformance suite as a row **we** derived, labelled as ours,
-and checked with `dogwood replay` before it is stated anywhere as AgentCore's behaviour.
+would not predict. It is in the conformance suite as a row **we** derived, labelled as ours.
+
+The same mechanism reaches rate limits and running totals: a denied request still counts toward the
+`count` or `sum`, so a client that keeps retrying stays locked out. **Anchor's model and the Dogwood
+engine both agree on all of these rows**, the engine under AgentCore's schema with AWS's policies
+verbatim (`tests/policies/agentcore/`).
 
 ## Ground truth for the conformance suite (step 2)
 
@@ -299,8 +323,11 @@ Three details to carry into the transcription:
    row.
 2. **How the 3-operator quota counts aggregates and `since`.** Only a real gateway settles this:
    create policies at the boundary and see which are refused. Owner's call, as in step 3.
-3. **Whether the published schema is the deployed one.** Step 3 corroborates it with `dogwood`.
-   Only a real gateway confirms it.
+3. **Whether the published schema is the deployed one.** Step 3 corroborated it as far as offline
+   checks can: AWS's examples validate under it verbatim, and it reproduces a rejection message AWS
+   quotes from the service, field list and all. Only a real gateway confirms it. The cheapest
+   decisive test would be one session against a real gateway running the one-time-approval policy,
+   with two disbursements sent back to back.
 4. **What "enforcement fails" decides** when the token is missing: deny everything, or skip the
    temporal policies? The difference is fail-closed versus fail-open. Not stated anywhere in the
    four pages.

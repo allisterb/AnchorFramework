@@ -6,8 +6,9 @@ AWS's own statement of how AgentCore decides, as test cases. Step 2 of the Agent
 Run it with:
 
 ```
-python tests/strands/agentcore_conformance.py              # verbatim: the target
-python tests/strands/agentcore_conformance.py --stripped   # what Anchor can check today
+python tests/strands/agentcore_conformance.py              # Anchor, verbatim: the target
+python tests/strands/agentcore_conformance.py --stripped   # Anchor, what it can check today
+python tests/strands/agentcore_replay.py                   # the Dogwood engine, verbatim
 ```
 
 ## What is here
@@ -17,6 +18,8 @@ python tests/strands/agentcore_conformance.py --stripped   # what Anchor can che
 | `authoring/` | the 14 examples of `policy-temporal-authoring.md`, *Use cases* (the `FundsTarget` tools) |
 | `examples/` | the 14 examples of `example-policies-temporal.md` (the `InsuranceAPI` reference gateway) |
 | `agentcore.dwschema` | AgentCore's event schema, transcribed from `policy-temporal-authoring.md`, *Event schema*. It is Dogwood's `session-pinned` preset with the scope fields renamed |
+| `agentcore.cedarschema` | the action schema for both gateways' tools, **ours**, built from the guide's tool lists and its JSON-to-Cedar type table. AWS does not publish the generated one |
+| `rejected/` | negative checks: policies AWS says the service rejects, each with the rejection message AWS quotes (`//| rejects …`). Read by `agentcore_replay.py` only |
 
 Both pages are in `reference/docs/`, scanned and recorded in the ledger.
 
@@ -61,9 +64,10 @@ Otherwise a transcription slip turns into a "disagreement" that blames the model
 
 AWS's tables are qualitative: "within the window", "after the window elapses". The timestamps are
 ours. Rows tagged `ours` go further, testing what the tables leave out. Dogwood's guide gives the
-semantics (`04-temporal-expressions.md`, *Evaluation semantics*). Anchor's model agrees with every
-one of these rows. **They still need `dogwood replay` (step 3) before they are stated anywhere as
-AgentCore's behaviour.**
+semantics (`04-temporal-expressions.md`, *Evaluation semantics*). **Both Anchor's model and the
+Dogwood engine agree with every one of these rows**, the engine reading AWS's policies verbatim
+under AgentCore's schema. What neither can say is that a deployed gateway runs this schema; only a
+real gateway settles that.
 
 | file | the row of ours tests |
 |---|---|
@@ -76,10 +80,20 @@ AgentCore's behaviour.**
 
 ## Results, 2026-10-02
 
-| mode | result |
+| run | result |
 |---|---|
-| verbatim | **all 28 refused**: the event schema declares `eventPrincipal` / `eventResource`. This is the target for step 4 |
-| `--stripped` | **all 26 checkable examples conform**, on 163 expected decisions (47 from tables, 70 from AWS's prose, 46 ours). The two guardrail examples are refused as expected |
+| Anchor, verbatim | **all 28 refused**: the event schema declares `eventPrincipal` / `eventResource`. This is the target for step 4 |
+| Anchor, `--stripped` | **all 26 checkable examples conform**, on 163 expected decisions (47 from tables, 70 from AWS's prose, 46 ours). The two guardrail examples are refused as expected |
+| Dogwood engine, verbatim | **all 26 validate as written**, and **all 163 decisions are confirmed**, ours included. `rejected/undeclared-output` is rejected with the message AWS quotes from the service, the declared-field list identical in names and order |
+
+Two things the engine run established about the schema:
+
+- **Every action's context must declare `sessionId`.** AgentCore's pin reads `context.sessionId`,
+  and `dogwood validate` rejects every example until the action schema carries it. So the session
+  header reaches the engine as a context field on every action. This is our inference about
+  AgentCore's generated schema, but it is the only arrangement under which AWS's examples validate.
+- **The guardrail examples cannot be validated here.** `BedrockGuardrails::SensitiveInformation` is
+  AWS's managed provider, and no declaration of it is published.
 
 The stripped run found one Anchor parser gap on its first run, now fixed. The parser accepted only
 the `exists ((AGG) == n && …)` wrapping that Dogwood's corpus uses. Every aggregate in AWS's guide

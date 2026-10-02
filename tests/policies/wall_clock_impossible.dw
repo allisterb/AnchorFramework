@@ -1,0 +1,16 @@
+// Three rules no time of day satisfies, each of which a checker gets wrong in a different way if
+// the clock is modelled carelessly. Each must be reported VACUOUS.
+//
+//   - `toHours() > 23` is "24:00 or later": truncation makes the last hour 23, so nothing.
+//   - `toTime() >= duration("25h")`: a time of day never reaches 24h. Unbounded, the model's
+//     domain had a witness at 25h and called this live.
+//   - `toDays() >= 1`: the same, in days, and an integer the model would otherwise overflow on.
+
+permit ( principal, action == AgentCore::Action::"after_midnight", resource )
+when { context.system.now.toTime().toHours() > 23 };
+
+permit ( principal, action == AgentCore::Action::"tomorrow", resource )
+when { context.system.now.toTime() >= duration("25h") };
+
+permit ( principal, action == AgentCore::Action::"next_day", resource )
+when { context.system.now.toTime().toDays() >= 1 };

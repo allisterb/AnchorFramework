@@ -267,6 +267,30 @@ public class TranslationHarnessTests : TestsRuntime
     /// refuses every case until then. Caught on its first run: the parser accepted only the
     /// corpus's parenthesised <c>exists</c> body, which refused all six of AWS's aggregates.
     /// </remarks>
+    /// <summary>
+    /// The Dogwood engine against the same AgentCore decision tables, with the guide's policies
+    /// verbatim under our transcription of AgentCore's event schema.
+    /// </summary>
+    /// <remarks>
+    /// Corroborates the schema two ways: all of AWS's checkable examples validate as written,
+    /// <c>eventResource</c> and gateway scope included, and an undeclared <c>output.*</c> field is
+    /// rejected with the message AWS quotes from the service, field list and all. It also confirms
+    /// the rows we derived rather than read off a table, among them the pipelined double-spend of a
+    /// one-time approval. Mutation-checked: one flipped expectation turns it red. Skipped unless the
+    /// binary has been built.
+    /// </remarks>
+    [PythonHarness("agentcore_replay.py",
+                   RequiresExecutable = "ext/dogwood/target/release/dogwood")]
+    public async Task TheEngineReproducesAgentCoreDecisionTablesUnderItsSchema()
+    {
+        var run = await PythonHarness.RunAsync("tests/strands/agentcore_replay.py");
+        Assert.True(run.ExitCode == 0, run.Output);
+
+        Assert.Contains("the engine agrees with every expected decision", run.Output);
+        Assert.Contains("rejected as AWS quotes", run.Output);
+        Assert.DoesNotContain("ENGINE DISAGREES", run.Output);
+    }
+
     [PythonHarness("agentcore_conformance.py",
                    RequiresPath = "ext/dogwood/dogwood-language/configuration/event-schemas")]
     public async Task DogwoodSemanticsReproduceAgentCoreDecisionTables()

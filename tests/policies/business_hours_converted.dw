@@ -1,0 +1,13 @@
+// Business hours written with Cedar's duration-to-integer conversions rather than duration
+// literals. `toHours()` truncates, so `< 17` admits 16:59 and nothing later -- the same window as
+// `<= duration("16h59m59s999ms")`. Every rule here is satisfiable, so each must be reported live.
+
+permit ( principal, action == AgentCore::Action::"issue_refund", resource )
+when { context.system.now.toTime().toHours() >= 9
+    && context.system.now.toTime().toHours() < 17 };
+
+permit ( principal, action == AgentCore::Action::"close_books", resource )
+when { 12 == context.system.now.toTime().toHours() };
+
+permit ( principal, action == AgentCore::Action::"open_desk", resource )
+when { context.system.now.toTime().toMilliseconds() >= 32400000 };

@@ -59,7 +59,7 @@ Measured against Dogwood's own grammar, with each construct confirmed legal by
 |---|---|---|
 | **a temporal operator where an ATOM is expected** | `formerly within 1h A since within 1h B`, `!formerly within 15m A`, `formerly within 2h (A && formerly within 30m B)` | **not modelled.** A `since`'s left operand, a bare `!`'s operand and a `formerly` body are *atoms* — a predicate, or a parenthesised Cedar-level condition — and another temporal operator cannot nest there. Measured cost of the gap: **2 of 620** policy files in Dogwood's own regression corpus, **0 of 94** docs examples, **0 of 7** in AWS's temporal-policies article |
 | **information providers** | `BedrockGuardrails::SensitiveInformation(…)`, `Strings::Matches(…)` | not modelled, and **refusing is the correct answer** rather than a gap: a provider is a sandboxed Rhai script, so the decision is not a function of the policy and the trace at all. Nothing a model checker could say about it would be true |
-| other `context.system` fields | `context.system.now` compared as a datetime | only `.toTime()` is modelled — the time of day. A datetime comparison needs calendar arithmetic |
+| other `context.system` fields | `context.system.now` compared as a datetime, `.durationSince(…)`, `.toDate()`, `.offset(…)` | only `.toTime()` is modelled — the time of day, optionally converted with `.toHours()` and the like. A datetime comparison needs calendar arithmetic |
 | an aggregate compared against an aggregate | `(count …) < (count …)` | not modelled — an aggregate's bound must be an integer literal |
 | entity attributes | `principal.dept` | deliberate: Anchor models actions, event kinds and input/output fields, not entity hierarchies |
 | a scope naming an entity | `resource == AgentCore::Gateway::"arn:…"`, `principal == User::"alice"` | **not yet modelled — a gap, because AgentCore's examples scope every policy to its gateway.** Refused rather than dropped: `principal` and `resource` are modelled only as the caller of each event — what pins and `callerPrincipal` / `callerResource` binds correlate on — not as which entity it is, and dropping the scope would widen the policy to every entity. When every request goes through one gateway, removing the scope by hand is safe; say so in the file |
@@ -92,6 +92,19 @@ satisfies it.
 Cedar counts a duration in **milliseconds** and so does the model, so `duration("9h")` is
 32400000. Only `.toTime()` is modelled; `now` compared as a datetime would need calendar
 arithmetic and is refused.
+
+Cedar's duration-to-integer methods work on it too: `.toMilliseconds()`, `.toSeconds()`,
+`.toMinutes()`, `.toHours()`, `.toDays()`, compared against an **integer** literal:
+
+```
+when { context.system.now.toTime().toHours() >= 9
+    && context.system.now.toTime().toHours() < 17 }
+```
+
+They **truncate**, so `toHours() < 17` admits 16:59 and nothing later, and `toHours() > 23` is
+never true. Comparing one against a `duration(…)` literal is a Cedar type error (Long against
+duration), and is refused as one. A time of day lies in [0h, 24h), and the model keeps it there:
+a rule demanding `toTime() >= duration("25h")` is reported **VACUOUS**, not live.
 
 ## Is it even a Dogwood policy?
 

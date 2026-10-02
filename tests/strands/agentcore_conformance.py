@@ -63,7 +63,16 @@ EVENT = re.compile(r"@(\d+)\s+(request|response|error)\s+(\w+)\s+(\{[^{}]*\})"
                    r"(?:\s*->\s*(\{[^{}]*\}))?(?:\s+(ALLOW|DENY)(?:\s+(\S+))?)?\s*$")
 
 
+# The two guide pages. `rejected/` beside them holds negative checks on the schema, which have no
+# decisions to reproduce and are read by agentcore_replay.py alone.
+PAGES = ("authoring", "examples")
+
+
 # ------------------------------------------------------------------------------------------------
+def load_suite(suite: Path = SUITE) -> list[dict]:
+    return [load(p) for page in PAGES for p in sorted((suite / page).glob("*.dw"))]
+
+
 def load(path: Path) -> dict:
     """One example: its policy text, and the ground truth read out of its `//|` lines."""
     text = path.read_text(encoding="utf-8")
@@ -224,7 +233,7 @@ def main() -> int:
     ap.add_argument("--suite", type=Path, default=SUITE, help=argparse.SUPPRESS)
     args = ap.parse_args()
 
-    cases = [load(p) for p in sorted(args.suite.glob("*/*.dw"))]
+    cases = load_suite(args.suite)
     if not cases:
         print(f"no cases under {args.suite}", file=sys.stderr)
         return 1

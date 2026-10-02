@@ -135,7 +135,15 @@ SYSTEM_NOW = "systemNowTime"
 # midnight, `duration("9h")` is 32400000, and comparing them is comparing like with like. Seconds
 # would have been tidier and would have silently truncated `500ms`.
 DURATION_UNITS = {"ms": 1, "s": 1000, "m": 60 * 1000, "h": 3600 * 1000, "d": 86400 * 1000}
+DAY_MS = DURATION_UNITS["d"]
 DURATION_PART = re.compile(r"(\d+)(ms|[smhd])")
+
+# Cedar's duration-to-Long methods, by the milliseconds in one unit. `toTime().toHours()` is the
+# time of day in WHOLE hours: Cedar truncates, and since a time of day is never negative that is
+# the floor, so `toHours() OP k` is exactly a comparison of the milliseconds against `k` hours.
+DURATION_METHODS = {"toMilliseconds": DURATION_UNITS["ms"], "toSeconds": DURATION_UNITS["s"],
+                    "toMinutes": DURATION_UNITS["m"], "toHours": DURATION_UNITS["h"],
+                    "toDays": DURATION_UNITS["d"]}
 
 
 def parse_duration(text: str) -> int:
@@ -776,6 +784,7 @@ class Parser:
 
         if self.peek() == "context":
             field = self.context_field()
+            unit = self.duration_method(field)
 
             # `context.input.stock like "A*"`. Only this way round: Cedar's `like` takes the
             # string on the left and a pattern LITERAL on the right, never an expression.
@@ -792,19 +801,93 @@ class Parser:
             if self.peek() == "context":
                 # Two fields and no literal: `context.input.amount > context.input.limit`,
                 # a comparison between two parts of the SAME request.
+                if unit:
+                    raise Unsupported(f"policy compares context.system.now.toTime() converted to "
+                                      f"an integer against another field, which is not modelled "
+                                      f"-- only against an integer literal")
                 return {"op": "cmp2", "field": field, "cmp": op,
                         "other": self.context_field()}
+            is_duration = self.peek() == "duration"
             value = self.literal()
         else:
+            is_duration = self.peek() == "duration"
             value = self.literal()
             op = FLIP[self.comparison_op()]
             field = self.context_field()
+            unit = self.duration_method(field)
+
+        if unit:
+            if is_duration:
+                # `literal()` hands a duration back as milliseconds, which would otherwise be
+                # compared as a count of hours -- and land as an overflow nobody could place.
+                raise Unsupported("policy compares an integer from a duration conversion "
+                                  "(`.toHours()` and the like) against a `duration(...)` literal; "
+                                  "Cedar rejects that as a type error, Long against duration")
+            return self.scaled_time(op, value, unit)
+
+        if field == SYSTEM_NOW and isinstance(value, int) and not isinstance(value, bool):
+            # Every bound past the end of the day compares the same as the end of the day, and one
+            # written in days -- `duration("1000d")` -- would not fit in TLC's integers otherwise.
+            value = min(max(value, -1), DAY_MS)
 
         if not isinstance(value, int) or isinstance(value, bool):
             if op not in ("==", "!="):
                 raise Unsupported(f"operator {op!r} on a non-numeric value")
 
         return {"op": "cmp", "field": field, "cmp": op, "value": value}
+
+    def duration_method(self, field: str) -> int | None:
+        """The unit of a `.toHours()`-style conversion after `context.system.now.toTime()`, if any.
+
+        `None` when there is none, which leaves the time of day as a duration in milliseconds --
+        compared against a `duration("9h")` literal. A method on any OTHER context field is refused
+        by name here rather than reaching `comparison_op` as an operator called `.`.
+        """
+        if self.peek() != ".":
+            return None
+        method = self.peek(1)
+        if field == SYSTEM_NOW and method in DURATION_METHODS:
+            self.take()
+            self.take()
+            self.expect("(")
+            self.expect(")")
+            return DURATION_METHODS[method]
+        if field == SYSTEM_NOW:
+            raise Unsupported(
+                f"policy calls context.system.now.toTime().{method}(), which is not modelled -- "
+                f"only the duration-to-integer conversions are: "
+                f"{', '.join(f'.{m}()' for m in DURATION_METHODS)}",
+                "uses a method on the wall clock we do not model")
+        raise Unsupported(f"policy calls `.{method}()` on context.input.{field}, which is not "
+                          f"modelled", "uses a method on a context field we do not model")
+
+    def scaled_time(self, op: str, value, unit: int) -> dict:
+        """`context.system.now.toTime().toHours() OP k`, as a comparison on milliseconds.
+
+        The method truncates, so each comparison against `k` units becomes one against a
+        millisecond boundary: `toHours() > 9` is "10:00 or later", not "after 09:00". Equality
+        is a whole unit's worth of milliseconds, so it becomes a range.
+        """
+        if not isinstance(value, int) or isinstance(value, bool):
+            raise Unsupported(f"policy compares an integer from a duration conversion against "
+                              f"{value!r}, which is not an integer")
+        # Clamped to the day, which is every value a time of day takes: `toDays() >= 25` is never
+        # true, and should be checked as never true rather than refused as too big for TLC.
+        lo, hi = (min(max(v * unit, 0), DAY_MS) for v in (value, value + 1))
+
+        def cmp(c: str, v: int) -> dict:
+            return {"op": "cmp", "field": SYSTEM_NOW, "cmp": c, "value": v}
+
+        if op == ">=":
+            return cmp(">=", lo)
+        if op == ">":
+            return cmp(">=", hi)
+        if op == "<":
+            return cmp("<", lo)
+        if op == "<=":
+            return cmp("<", hi)
+        within = {"op": "and", "args": [cmp(">=", lo), cmp("<", hi)]}
+        return within if op == "==" else {"op": "not", "args": [within]}
 
     def ip_method_ahead(self) -> bool:
         """Does an ipaddr method follow the context field at the cursor?
@@ -858,6 +941,12 @@ class Parser:
             if (what := self.take()) != "now":
                 raise Unsupported(f"policy reads context.system.{what}, which is not modelled -- "
                                   f"only `now`")
+            if self.peek() != ".":
+                raise Unsupported(
+                    "policy compares context.system.now as a datetime, which is not modelled. "
+                    "Only `.toTime()` is -- the time of day, which is what a business-hours rule "
+                    "compares. A datetime comparison would need calendar arithmetic",
+                    "compares the wall clock as a datetime")
             self.expect(".")
             if (method := self.take()) != "toTime":
                 raise Unsupported(

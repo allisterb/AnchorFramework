@@ -1,0 +1,139 @@
+// The action schema for the two gateways the AgentCore guide's temporal examples authorize, so
+// `dogwood validate` and `dogwood replay` can read those examples as written. Ours, built from:
+//
+//   FundsTarget   policy-temporal-authoring.md, "Available tools"
+//   InsuranceAPI  example-policies-reference.md, "MCP tools on the InsuranceAPI target"
+//   types         example-policies-reference.md, "Parameter types in conditions":
+//                 string -> String, integer -> Long, number -> decimal, boolean -> Bool,
+//                 object -> record; an optional parameter is an optional attribute
+//   principals    example-policies-reference.md, "Principals" -- OAuthUser carries its token's
+//                 claims as tags, which is what `principal.hasTag("role")` reads
+//
+// AN OUTPUT RECORD ONLY WHERE THE GUIDE GIVES THE TOOL ONE. `output.*` exists on a response "only
+// when the target declares an output schema for the tool" (example-policies-temporal.md), so
+// delete_claim, file_claim and the rest declare inputs alone -- and a policy naming an output
+// field on them is rejected, which `tests/policies/agentcore/rejected/` relies on.
+//
+// The guide's actual generated schema is not published. This is a reconstruction, and a wrong one
+// shows up as a validation failure on AWS's own examples, which the replay harness reports.
+
+// `principal in Group::"blocked_users"` names Group unqualified, so it lives outside the namespace.
+entity Group;
+
+namespace AgentCore {
+  type SystemContext = {
+    now: datetime
+  };
+
+  entity Gateway;
+
+  entity OAuthUser in [Group] = {
+    id: String
+  } tags String;
+
+  entity IamEntity = {
+    id: String
+  };
+
+  // ---- FundsTarget --------------------------------------------------------------------------
+
+  type GetAccountBalanceInput = { customerId: String };
+  type GetAccountBalanceOutput = { status: String, customerId: String, accountId: String, balance: Long };
+
+  type TransferFundsInput = { fromAccount: String, toAccount: String, amount: Long };
+  type TransferFundsOutput = { status: String, fromAccount: String, toAccount: String, amount: Long };
+
+  type GetTransactionHistoryInput = { accountId: String, startDate?: String, endDate?: String };
+  type GetTransactionHistoryOutput = { status: String, accountId: String };
+
+  action "FundsTarget___get_account_balance" appliesTo {
+    principal: [OAuthUser, IamEntity],
+    resource: [Gateway],
+    context: { input: GetAccountBalanceInput, output?: GetAccountBalanceOutput, system: SystemContext, sessionId: String }
+  };
+
+  action "FundsTarget___transfer_funds" appliesTo {
+    principal: [OAuthUser, IamEntity],
+    resource: [Gateway],
+    context: { input: TransferFundsInput, output?: TransferFundsOutput, system: SystemContext, sessionId: String }
+  };
+
+  action "FundsTarget___get_transaction_history" appliesTo {
+    principal: [OAuthUser, IamEntity],
+    resource: [Gateway],
+    context: { input: GetTransactionHistoryInput, output?: GetTransactionHistoryOutput, system: SystemContext, sessionId: String }
+  };
+
+  // ---- InsuranceAPI -------------------------------------------------------------------------
+
+  type GetContractInput = { contractId: String };
+
+  type FileClaimInput = {
+    contractId: String, claimType: String, amount: decimal, policyTermMonths: Long,
+    description?: String
+  };
+
+  type UpdateCoverageInput = { contractId: String, coverageType: String, newLimit: decimal };
+
+  type GetClaimStatusInput = { claimId: String };
+  type GetClaimStatusOutput = { claimId: String, status: String };
+
+  type RiskFactors = { region?: String, priorClaims?: Long };
+  type CalculatePremiumInput = { coverageType: String, coverageAmount: decimal, riskFactors?: RiskFactors };
+
+  type ApproveClaimInput = { claimId: String, approved: Bool, approvedAmountCents: Long };
+  type ApproveClaimOutput = { claimId: String, approved: Bool, approvedAmountCents: Long };
+
+  type DisbursePaymentInput = { claimId: String, amountCents: Long };
+  type DisbursePaymentOutput = { claimId: String, status: String, amountCents: Long };
+
+  type DeleteClaimInput = { claimId: String };
+
+  action "InsuranceAPI___get_contract" appliesTo {
+    principal: [OAuthUser, IamEntity],
+    resource: [Gateway],
+    context: { input: GetContractInput, system: SystemContext, sessionId: String }
+  };
+
+  action "InsuranceAPI___file_claim" appliesTo {
+    principal: [OAuthUser, IamEntity],
+    resource: [Gateway],
+    context: { input: FileClaimInput, system: SystemContext, sessionId: String }
+  };
+
+  action "InsuranceAPI___update_coverage" appliesTo {
+    principal: [OAuthUser, IamEntity],
+    resource: [Gateway],
+    context: { input: UpdateCoverageInput, system: SystemContext, sessionId: String }
+  };
+
+  action "InsuranceAPI___get_claim_status" appliesTo {
+    principal: [OAuthUser, IamEntity],
+    resource: [Gateway],
+    context: { input: GetClaimStatusInput, output?: GetClaimStatusOutput, system: SystemContext, sessionId: String }
+  };
+
+  action "InsuranceAPI___calculate_premium" appliesTo {
+    principal: [OAuthUser, IamEntity],
+    resource: [Gateway],
+    context: { input: CalculatePremiumInput, system: SystemContext, sessionId: String }
+  };
+
+  action "InsuranceAPI___approve_claim" appliesTo {
+    principal: [OAuthUser, IamEntity],
+    resource: [Gateway],
+    context: { input: ApproveClaimInput, output?: ApproveClaimOutput, system: SystemContext, sessionId: String }
+  };
+
+  action "InsuranceAPI___disburse_payment" appliesTo {
+    principal: [OAuthUser, IamEntity],
+    resource: [Gateway],
+    context: { input: DisbursePaymentInput, output?: DisbursePaymentOutput, system: SystemContext, sessionId: String }
+  };
+
+  action "InsuranceAPI___delete_claim" appliesTo {
+    principal: [OAuthUser, IamEntity],
+    resource: [Gateway],
+    context: { input: DeleteClaimInput, system: SystemContext, sessionId: String }
+  };
+}

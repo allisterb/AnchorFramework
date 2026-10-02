@@ -24,7 +24,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from .emit import policy_seq
-from .parse import TLC_MAX_INT, Unsupported, like_matches, pattern_witnesses
+from .parse import DAY_MS, SYSTEM_NOW, TLC_MAX_INT, Unsupported, like_matches, pattern_witnesses
 
 KINDS = ["request", "response", "error"]
 DECISION_KIND = "request"
@@ -136,7 +136,11 @@ def vocabulary(policies: list[dict], amounts: int = 2, max_fields: int = 4) -> d
     if unknown:
         raise Unsupported(f"event kinds outside AgentCore's convention: {', '.join(sorted(unknown))}")
 
-    seen["domains"] = {key: field_domain(lits, amounts)
+    # The wall clock is a time of day, so it never leaves [0h, 24h). Unbounded, a policy demanding
+    # `toTime() >= duration("25h")` would find a witness at 25h and be reported live when nothing
+    # can ever satisfy it.
+    seen["domains"] = {key: field_domain(lits, amounts,
+                                         (0, DAY_MS - 1) if key[1] == SYSTEM_NOW else None)
                        for key, lits in _all_fields(seen)}
     return seen
 
@@ -171,7 +175,7 @@ def joint_witness(patterns) -> str | None:
     return None
 
 
-def field_domain(literals: set, amounts: int) -> list:
+def field_domain(literals: set, amounts: int, bounds: tuple[int, int] | None = None) -> list:
     """The values one field may take: every literal the policy names, plus ones it does not.
 
     The extra values are what make "this field does not match" reachable. Without them a field
@@ -187,6 +191,9 @@ def field_domain(literals: set, amounts: int) -> list:
 
     A field with no literals -- bound only by `_` or by a join with the request's own context --
     gets a small numeric range, which needs at least two values for a join to mean anything.
+
+    `bounds` is the range a numeric field can actually take. Every value is clamped into it, so a
+    literal outside it contributes the nearest value that exists rather than one that does not.
     """
     if not literals:
         return [("n", x) for x in range(1, max(2, amounts) + 1)]
@@ -221,6 +228,9 @@ def field_domain(literals: set, amounts: int) -> list:
     # generate a model that does not run.
     values.append(("n", min(max(literals) + 1, TLC_MAX_INT)))
     values.append(("n", max(min(literals) - 1, -TLC_MAX_INT)))
+    if bounds:
+        lo, hi = bounds
+        values = [("n", min(max(v, lo), hi)) for _, v in values]
     return sorted(set(values), key=lambda kv: kv[1])
 
 

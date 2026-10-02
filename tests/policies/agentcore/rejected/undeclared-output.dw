@@ -1,0 +1,26 @@
+// MUST BE REJECTED. A negative check on agentcore.dwschema, from the Important box under "Require a
+// prior approval for the same claim" in example-policies-temporal.md. AWS quotes the service's
+// rejection of an output field on a tool that declares no output schema:
+//
+//   predicate `AgentCore::Action::"MyTarget___verify_purchase"::response` mentions field
+//   `output.orderId`, which is not declared on that event (declared fields: eventPrincipal,
+//   eventResource, input.orderId, requestId, sessionId)
+//
+// delete_claim declares one input and no output (example-policies-reference.md), so under our
+// transcription of AgentCore's schema `dogwood validate` must reject this with the same shape of
+// message -- the declared fields in the same order, under the same names. If it does, the event
+// schema we transcribed derives what AgentCore's derives, for this case at least.
+
+permit (
+    principal,
+    action == AgentCore::Action::"InsuranceAPI___disburse_payment",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/insurance-gw-a1b2c3d4e5"
+)
+when temporal {
+    formerly within 1h AgentCore::Action::"InsuranceAPI___delete_claim"::response{
+        eventResource: resource,
+        output.claimId: context.input.claimId
+    }
+};
+
+//| rejects mentions field `output.claimId`, which is not declared on that event (declared fields: eventPrincipal, eventResource, input.claimId, requestId, sessionId)
