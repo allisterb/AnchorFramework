@@ -3,8 +3,8 @@
 // create a policy without it (example-policies-temporal.md, "Before you use these examples"). The
 // Dogwood engine validates this policy happily: the rule is AgentCore's, not Dogwood's.
 //
-// So the checker must say AgentCore would reject it, and check nothing -- a verdict about a policy
-// that cannot be deployed is a verdict about nothing.
+// The expected answer is therefore REJECTED BY AGENTCORE, with nothing checked: a verdict about a
+// policy that cannot be deployed is a verdict about nothing.
 
 permit (
     principal,
