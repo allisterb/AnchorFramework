@@ -28,31 +28,42 @@ public class IntentHarnessTests : TestsRuntime
 
     /// <summary>
     /// The worked example under <c>examples/aws1</c>: AWS's published AgentCore temporal policies,
-    /// and the two findings that only an <b>intentional</b> property can reach.
+    /// verbatim, and the findings that only an <b>intentional</b> property can reach.
     /// </summary>
     /// <remarks>
     /// <para>
     /// Pinned as a test because it is the project's headline claim and the most expensive thing to
-    /// discover twice. Both halves matter: the derived questions must keep <b>passing</b> the
-    /// policy set — that is what makes the intentional failures meaningful — and the intentional
-    /// claims must keep failing for the reasons stated in that directory's README.
+    /// discover twice. The headline: deployed together, the article's policies allow a trade from an
+    /// EMPTY trajectory, and the corrected set in <c>fixed/</c> does not. Both directions are
+    /// asserted, because a claim that broke on every policy set would be about the claim.
     /// </para>
     /// <para>
-    /// The positive claims are asserted too. A property module that broke everything would more
-    /// likely be wrong about the policy than the policy about itself, so <c>BothIsAllowed</c>
-    /// holding is what licenses reading the rest as findings rather than as noise.
+    /// No rule-by-rule run of the whole set here. Exhaustively, at the 4 attempts a trade needs
+    /// under the fixed set, it does not finish -- that run is what used to time this suite out.
+    /// The article's own decision tables, checked in
+    /// <see cref="TranslationHarnessTests.TheBlogPostsPoliciesAreCheckedAgainstItsOwnTables"/>, are
+    /// the stronger control.
     /// </para>
     /// </remarks>
     [PythonHarness("properties.py")]
     public async Task TheAwsExampleFindsWhatOnlyIntentCanFind()
     {
-        // The derived questions PASS the set as deployed. This is the control.
-        var derived = await PythonHarness.RunAsync(
-            "src/checker/properties.py", "examples/aws1/agent-policy.dw", "--attempts", "4");
+        // The headline, on the set as published: a trade with nothing before it is allowed.
+        var empty = await PythonHarness.RunAsync(
+            "src/checker/properties.py", "examples/aws1/agent-policy.dw",
+            "--property", "examples/aws1/EmptyTrajectory.tla");
 
-        Assert.True(derived.ExitCode == 0, derived.Output);
-        Assert.Contains("every rule is load-bearing", derived.Output);
-        Assert.DoesNotContain("VACUOUS", derived.Output);
+        Assert.True(empty.ExitCode == 1, empty.Output);
+        Assert.Contains("BROKEN", empty.Output);
+        Assert.Contains("AgentCore's event schema", empty.Output);
+
+        // And on the corrected set, the same claim holds.
+        var fixedSet = await PythonHarness.RunAsync(
+            "src/checker/properties.py", "examples/aws1/fixed/agent-policy.dw",
+            "--property", "examples/aws1/fixed/EmptyTrajectory.tla");
+
+        Assert.True(fixedSet.ExitCode == 0, fixedSet.Output);
+        Assert.Contains("every claim holds", fixedSet.Output);
 
         // Policy 7, against the sentence the article prints beside it. `unless` blocks the rule
         // when its body holds, so this permits writes only while the advisor is ABSENT.
@@ -81,7 +92,8 @@ public class IntentHarnessTests : TestsRuntime
 
         Assert.True(alone.ExitCode == 0, alone.Output);
         Assert.Contains("VACUOUS", alone.Output);
-        Assert.Contains("because: formerly within 30s get_market_price::response", alone.Output);
+        Assert.Contains("because: formerly within 30s get_market_price::response{ eventResource: resource }",
+                        alone.Output);
     }
 
     /// <summary>

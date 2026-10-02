@@ -1095,6 +1095,9 @@ class Parser:
                 f"fields {', '.join(sorted(self.scope_fields)) or 'not at all'}",
                 "binds a scope field the event schema does not declare")
         if lhs in self.scope_fields:
+            # The name the policy WROTE, kept for display: a blame line reading `callerResource`
+            # about a policy that says `eventResource` cannot be matched to its own text.
+            written = lhs
             lhs = self.scope_fields[lhs]
             self.expect(":")
             rhs = self.take()
@@ -1102,14 +1105,14 @@ class Parser:
             # which partitions the candidate events before any bind is consulted. Corpus case
             # 1119 is named for exactly that: `pin_not_bypassed_by_wildcard`.
             if rhs in ("_", "*"):
-                return {"side": "scope", "field": lhs, "kind": "any", "name": "", "value": ""}
+                return {"side": "scope", "field": lhs, "kind": "any", "name": "", "value": "", "as": written}
             # A bare name binds the event's caller to a variable, so two predicates can correlate
             # on "the same principal" without naming which -- `exists (pr: Drupe::OAuthUser)`.
             if rhs not in ("principal", "resource"):
                 if re.fullmatch(r"[A-Za-z_]\w*", rhs):
-                    return {"side": "scope", "field": lhs, "kind": "var", "name": rhs, "value": ""}
+                    return {"side": "scope", "field": lhs, "kind": "var", "name": rhs, "value": "", "as": written}
                 raise Unsupported(f"scope bind value {rhs!r}")
-            return {"side": "scope", "field": lhs, "kind": "scope", "name": rhs, "value": ""}
+            return {"side": "scope", "field": lhs, "kind": "scope", "name": rhs, "value": "", "as": written}
 
         # The one nested reserved leaf the corpus writes directly. Deeper paths under
         # `__drupe` are a separate feature and stay refused.

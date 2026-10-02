@@ -374,7 +374,10 @@ def describe_term(term) -> str:
         # term in a temporal policy, and it used to render as `<pred>` -- which named the shape of
         # the parse tree and nothing a reader could act on.
         pred = term.get("pred", {})
+        # A scope bind reads as written -- `eventResource: resource` -- rather than as the side and
+        # internal field name the model keeps it under.
         binds = ", ".join(
+            f"{b['as']}: {b.get('name') or b.get('value')}" if b.get("as") else
             f"{b.get('side', '?')}.{b.get('field', '?')}: {b.get('name') or b.get('value')!r}"
             for b in pred.get("binds", []))
         return (f"{pred.get('action', '?')}::{pred.get('kind', '?')}"

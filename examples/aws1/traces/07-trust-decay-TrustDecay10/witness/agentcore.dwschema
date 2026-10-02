@@ -1,0 +1,39 @@
+// AgentCore's temporal event schema, transcribed from policy-temporal-authoring.md, "Event schema:
+// fields you can reference" (AgentCore Developer Guide; see reference/README.md). AWS prints it in
+// Dogwood's own .dwschema syntax; only these comments are ours.
+//
+// It is Dogwood's shipped session-pinned preset
+// (ext/dogwood/dogwood-language/configuration/event-schemas/session-pinned.dwschema) with the two
+// scope fields renamed: callerPrincipal -> eventPrincipal, callerResource -> eventResource. The one
+// pin is sessionId, on every kind, so history is partitioned by session and by nothing else.
+//
+// This is AWS's DOCUMENTATION of the schema, not the service's file. Step 3 of the plan in
+// docs/agent/HANDOFF.md corroborates it with `dogwood validate` and `dogwood replay`.
+
+// Recorded for each authorized request.
+decision event <A>::request {
+    ...inputs(A),
+    eventPrincipal: principalType(A),
+    eventResource:  resourceType(A),
+    requestId:      String,
+    pin sessionId:  String = context.sessionId,
+}
+
+// Recorded when the tool returns successfully; carries inputs and outputs.
+event <A>::response {
+    ...inputs(A),
+    ...outputs(A),
+    eventPrincipal: principalType(A),
+    eventResource:  resourceType(A),
+    requestId:      String,
+    pin sessionId:  String = context.sessionId,
+}
+
+// Recorded when the request is denied or the tool returns an error; history-only.
+event <A>::error {
+    ...inputs(A),
+    eventPrincipal: principalType(A),
+    eventResource:  resourceType(A),
+    requestId:      String,
+    pin sessionId:  String = context.sessionId,
+}

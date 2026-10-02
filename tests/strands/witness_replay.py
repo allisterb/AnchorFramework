@@ -156,14 +156,18 @@ def main() -> int:
         check("a value with no Dogwood form is refused, not guessed", True)
 
     # --- the generated schema ---------------------------------------------------------------------
-    from translator import DEFAULT_MAX_WINDOW, parse_policies, vocabulary  # noqa: PLC0415
+    from translator import DEFAULT_MAX_WINDOW, parse_policies, parse_schema, vocabulary  # noqa: PLC0415
+    from translator.agentcore import AGENTCORE_SCHEMA  # noqa: PLC0415
 
     policy = EXAMPLES / "agent-policy.dw"
     body = policy.read_text(encoding="utf-8")
     check("the namespace comes from the policy", namespace_of(body) == "AgentCore",
           namespace_of(body))
 
-    vocab = vocabulary(parse_policies(body, "", DEFAULT_MAX_WINDOW), 2, 8)
+    # The article's policies as published bind `eventResource`, a field of AgentCore's event schema
+    # and not of Dogwood's default -- so they are read under that schema's spelling.
+    scope_fields = parse_schema(AGENTCORE_SCHEMA.read_text(encoding="utf-8"))["scope_fields"]
+    vocab = vocabulary(parse_policies(body, "", DEFAULT_MAX_WINDOW, scope_fields), 2, 8)
     schema = cedar_schema(vocab, "AgentCore", gd.events)
     check("every action the policy names is declared",
           all(f'action "{a}"' in schema for a in vocab["actions"]), schema[:200])

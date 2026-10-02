@@ -1,0 +1,36 @@
+// The article's policy 3, VERBATIM from the published page (the policy text below the plain
+// permits), against the article's OWN decision table for it, as `//|` rows. The table is AWS's
+// statement of what the policy is for; a row marked `finding` is one where the policy as
+// published does the opposite, and both Anchor and the Dogwood engine are held to that.
+// Format and harness: tests/policies/agentcore/README.md. Timings are ours where the table's
+// are qualitative; input values are ours where the table names none.
+
+// ours: the plain permit the table assumes
+permit (principal, action == AgentCore::Action::"get_market_price", resource);
+
+// ---- policy 3, verbatim ----
+permit (
+    principal,
+    action == AgentCore::Action::"execute_trade",
+    resource
+)
+when temporal {
+    formerly within 30s (
+        AgentCore::Action::"get_market_price"::response{eventResource: resource}
+    )
+};
+
+//| target -
+//|
+//| row aws-table: 4 seconds ago -- BUY Stock A -- ALLOW
+//| @0   request  get_market_price  { stock_symbol: "A", cost: 1000 }  ALLOW ours
+//| @1   response get_market_price  { stock_symbol: "A", cost: 1000 } -> { price: 10 }
+//| @5    request  execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 1000 }  ALLOW
+//|
+//| row aws-table: 2 minutes ago -- BUY Stock A -- DENY
+//| @0   request  get_market_price  { stock_symbol: "A", cost: 1000 }  ALLOW ours
+//| @1   response get_market_price  { stock_symbol: "A", cost: 1000 } -> { price: 10 }
+//| @121  request  execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 1000 }  DENY
+//|
+//| row aws-table: Never called -- BUY Stock A -- DENY
+//| @0    request  execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 1000 }  DENY

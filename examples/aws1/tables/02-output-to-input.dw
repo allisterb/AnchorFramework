@@ -1,0 +1,39 @@
+// The article's policy 2, VERBATIM from the published page (the policy text below the plain
+// permits), against the article's OWN decision table for it, as `//|` rows. The table is AWS's
+// statement of what the policy is for; a row marked `finding` is one where the policy as
+// published does the opposite, and both Anchor and the Dogwood engine are held to that.
+// Format and harness: tests/policies/agentcore/README.md. Timings are ours where the table's
+// are qualitative; input values are ours where the table names none.
+//
+// The table is about a portfolio_id RETURNED by get_client_profile; the policy correlates the
+// trade's input.profile_id with the lookup's input.profile_id. The table's DENY row is a finding.
+
+// ours: the plain permit the table assumes
+permit (principal, action == AgentCore::Action::"get_client_profile", resource);
+
+// ---- policy 2, verbatim ----
+permit (
+    principal,
+    action == AgentCore::Action::"execute_trade",
+    resource
+)
+when temporal {
+    formerly within 24h (
+        AgentCore::Action::"get_client_profile"::response{
+            input.profile_id: context.input.profile_id,
+            eventResource: resource
+        }
+    )
+};
+
+//| target -
+//|
+//| row aws-table: get_client_profile returned port-8821, execute_trade portfolio_id port-8821 -- ALLOW
+//| @0   request  get_client_profile  { profile_id: "client-1" }  ALLOW ours
+//| @1   response get_client_profile  { profile_id: "client-1" } -> { portfolio_id: "port-8821" }
+//| @10   request  execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 1000 }  ALLOW
+//|
+//| row aws-table: get_client_profile returned port-8821, execute_trade portfolio_id port-3347 -- DENY. The trade is for the same client (profile_id) with a portfolio the lookup did not return; the policy compares profile_id, the ID the lookup was ASKED for, and never reads a portfolio_id
+//| @0   request  get_client_profile  { profile_id: "client-1" }  ALLOW ours
+//| @1   response get_client_profile  { profile_id: "client-1" } -> { portfolio_id: "port-8821" }
+//| @10   request  execute_trade  { profile_id: "client-1", portfolio_id: "port-3347", cost: 1000 }  DENY aws-table finding

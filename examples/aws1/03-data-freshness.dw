@@ -1,4 +1,11 @@
-// Policy 3 of 7 -- "Data freshness". Intent: the agent cannot act on a stale quote.
+// Policy 3 of 7 -- "Data freshness".
+// From "Securing AI agents with temporal policies in Amazon Bedrock AgentCore", AWS Machine
+// Learning Blog, 06 AUG 2026. The policy below is the article's listing VERBATIM, copied byte
+// for byte from the published page on 2026-10-02 (reference/README.md has the provenance).
+//
+// THE ARTICLE'S STATED INTENT:
+//   A get_market_price call must have completed within the last 30 seconds before
+//   execute_trade is authorized. The agent cannot act on stale quotes.
 
 permit (
     principal,
@@ -6,5 +13,7 @@ permit (
     resource
 )
 when temporal {
-    formerly within 30s AgentCore::Action::"get_market_price"::response{ }
+    formerly within 30s (
+        AgentCore::Action::"get_market_price"::response{eventResource: resource}
+    )
 };

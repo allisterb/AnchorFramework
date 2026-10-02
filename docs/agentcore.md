@@ -200,7 +200,10 @@ says to correlate on `eventPrincipal` for multi-party approval, only makes sense
 differ within a session, so it agrees.
 
 **2. Quotas and the operator limit.** 20 temporal policies per engine, 3 temporal operators per
-policy, 24h maximum window (Temporal, *Quotas*). The 24h cap is already Dogwood's default
+policy, 24h maximum window (Temporal, *Quotas*). The AWS blog post on temporal policies says "your
+first 100 temporal policies per policy engine" are included in the per-request price, which
+disagrees with the guide's 20. It may be a pricing threshold above a quota that is since raised, or
+an error in one of them; the lint keeps to the guide. The 24h cap is already Dogwood's default
 `max_window`. **The 3-operator rule is under-specified.** Two `formerly` terms are "two of the
 three". Whether `count for … where (formerly …)` counts as one operator or two, and whether `since`
 counts as one, is not stated. Dogwood's own vocabulary does not settle it either. Its guide says

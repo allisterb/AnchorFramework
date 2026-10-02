@@ -1,0 +1,47 @@
+// The article's policy 7, VERBATIM from the published page (the policy text below the plain
+// permits), against the article's OWN decision table for it, as `//|` rows. The table is AWS's
+// statement of what the policy is for; a row marked `finding` is one where the policy as
+// published does the opposite, and both Anchor and the Dogwood engine are held to that.
+// Format and harness: tests/policies/agentcore/README.md. Timings are ours where the table's
+// are qualitative; input values are ours where the table names none.
+
+// ours: the plain permit the table assumes
+permit (principal, action == AgentCore::Action::"interact_advisor", resource == AgentCore::Gateway::"<GATEWAY_ARN>");
+
+// ours: the plain permit the table assumes
+permit (principal, action == AgentCore::Action::"get_market_price", resource == AgentCore::Gateway::"<GATEWAY_ARN>");
+
+// ---- policy 7, verbatim ----
+permit (
+    principal,
+    action in [
+        AgentCore::Action::"execute_trade",
+        AgentCore::Action::"rebalance_portfolio"
+    ],
+    resource == AgentCore::Gateway::"<GATEWAY_ARN>"
+)
+unless temporal {
+    formerly within 15m AgentCore::Action::"interact_advisor"::response{eventResource: resource}
+};
+
+//| target -
+//|
+//| row aws-table: 3 minutes since the last advisor interaction -- execute_trade -- ALLOW
+//| @0    request  interact_advisor  { }  ALLOW ours
+//| @1    response interact_advisor  { } -> { }
+//| @181  request  execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 1000 }  ALLOW aws-table finding
+//|
+//| row aws-table: 20 minutes -- execute_trade -- DENY
+//| @0    request  interact_advisor  { }  ALLOW ours
+//| @1    response interact_advisor  { } -> { }
+//| @1201 request  execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 1000 }  DENY aws-table finding
+//|
+//| row aws-table: 20 minutes -- get_market_price -- ALLOW (read-only)
+//| @0    request  interact_advisor  { }  ALLOW ours
+//| @1    response interact_advisor  { } -> { }
+//| @1201 request  get_market_price  { stock_symbol: "A", cost: 1000 }  ALLOW
+//|
+//| row aws-prose: 20 minutes -- rebalance_portfolio, the other write operation the prose names -- loses access
+//| @0    request  interact_advisor  { }  ALLOW ours
+//| @1    response interact_advisor  { } -> { }
+//| @1201 request  rebalance_portfolio  { portfolio_id: "8821", amount: 15000 }  DENY aws-prose finding

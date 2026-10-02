@@ -320,6 +320,32 @@ public class TranslationHarnessTests : TestsRuntime
     }
 
     /// <summary>
+    /// The AgentCore blog post's policies, as published, against the post's OWN decision tables --
+    /// and the corrected set against every row of them.
+    /// </summary>
+    /// <remarks>
+    /// <c>examples/aws1/tables</c>. A row marked <c>finding</c> is one where the published policy does
+    /// the opposite of what the post says; both checkers are held to that, so a finding that stopped
+    /// reproducing fails this as surely as a new disagreement. The headline among them: deployed
+    /// together, the post's policies allow a trade from an empty trajectory, because two of its four
+    /// <c>execute_trade</c> permits match one. The engine half is skipped without the binary.
+    /// </remarks>
+    [PythonHarness("agentcore_replay.py", RequiresExecutable = "ext/dogwood/target/release/dogwood")]
+    public async Task TheBlogPostsPoliciesAreCheckedAgainstItsOwnTables()
+    {
+        var model = await PythonHarness.RunAsync(
+            "tests/strands/agentcore_conformance.py", "--suite", "examples/aws1/tables");
+        Assert.True(model.ExitCode == 0, model.Output);
+        Assert.Contains("every one of the 16 findings", model.Output);
+
+        var engine = await PythonHarness.RunAsync(
+            "tests/strands/agentcore_replay.py", "--suite", "examples/aws1/tables");
+        Assert.True(engine.ExitCode == 0, engine.Output);
+        Assert.Contains("131 of 131 expected decisions confirmed by the engine", engine.Output);
+        Assert.Contains("16 of them FINDINGS", engine.Output);
+    }
+
+    /// <summary>
     /// Our reading against <b>AWS's own statement</b> of how AgentCore decides: the 28 worked
     /// temporal examples in the AgentCore guide, with their decision tables as the oracle.
     /// </summary>

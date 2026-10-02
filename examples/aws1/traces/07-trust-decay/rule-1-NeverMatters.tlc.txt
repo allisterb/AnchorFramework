@@ -1,0 +1,98 @@
+TLC2 Version 2.19 of 08 August 2024 (rev: 5a47802)
+Warning: Please run the Java VM which executes TLC with a throughput optimized garbage collector by passing the "-XX:+UseParallelGC" property.
+(Use the -nowarning option to disable this warning.)
+Running Random Simulation with seed 0 with 1 worker on 8 cores with 16344MB heap and 64MB offheap memory [pid: 66588] (Windows 10 10.0 amd64, Microsoft 11.0.16.1 x86_64).
+Parsing file C:\Projects\Anchor\examples\aws1\traces\07-trust-decay\Vacuity.tla
+Parsing file C:\Projects\Anchor\examples\aws1\traces\07-trust-decay\Integers.tla
+Parsing file C:\Projects\Anchor\examples\aws1\traces\07-trust-decay\Sequences.tla
+Parsing file C:\Projects\Anchor\examples\aws1\traces\07-trust-decay\FiniteSets.tla
+Parsing file C:\Projects\Anchor\examples\aws1\traces\07-trust-decay\PolicyUnderTest.tla
+Parsing file C:\Projects\Anchor\examples\aws1\traces\07-trust-decay\Naturals.tla
+Parsing file C:\Projects\Anchor\examples\aws1\traces\07-trust-decay\DogwoodSemantics.tla
+Parsing file C:\Projects\Anchor\examples\aws1\traces\07-trust-decay\TLC.tla
+Semantic processing of module Naturals
+Semantic processing of module Integers
+Semantic processing of module Sequences
+Semantic processing of module FiniteSets
+Semantic processing of module PolicyUnderTest
+Semantic processing of module TLC
+Semantic processing of module DogwoodSemantics
+Semantic processing of module Vacuity
+Starting... (2026-10-02 14:46:44)
+Computed 1 initial states...
+Error: Invariant NeverMatters is violated.
+Error: The behavior up to this point is:
+State 1: <Initial predicate>
+/\ widened = FALSE
+/\ fired = {}
+/\ trace = <<>>
+/\ narrowed = FALSE
+
+State 2: <Attempt line 239, col 5 to line 263, col 90 of module Vacuity>
+/\ widened = FALSE
+/\ fired = {}
+/\ trace = << [ action |-> "interact_advisor",
+     kind |-> "request",
+     input |-> << >>,
+     output |-> << >>,
+     time |-> 1,
+     principal |-> [k |-> "s", v |-> "stranger"],
+     resource |-> [k |-> "s", v |-> "caller"],
+     session |-> [k |-> "s", v |-> "stranger"],
+     pins |-> [sessionId |-> [k |-> "s", v |-> "stranger"]] ],
+   [ action |-> "interact_advisor",
+     kind |-> "error",
+     input |-> << >>,
+     output |-> << >>,
+     time |-> 2,
+     principal |-> [k |-> "s", v |-> "stranger"],
+     resource |-> [k |-> "s", v |-> "caller"],
+     session |-> [k |-> "s", v |-> "stranger"],
+     pins |-> [sessionId |-> [k |-> "s", v |-> "stranger"]] ] >>
+/\ narrowed = FALSE
+
+State 3: <Attempt line 239, col 5 to line 263, col 90 of module Vacuity>
+/\ widened = TRUE
+/\ fired = {1}
+/\ trace = << [ action |-> "interact_advisor",
+     kind |-> "request",
+     input |-> << >>,
+     output |-> << >>,
+     time |-> 1,
+     principal |-> [k |-> "s", v |-> "stranger"],
+     resource |-> [k |-> "s", v |-> "caller"],
+     session |-> [k |-> "s", v |-> "stranger"],
+     pins |-> [sessionId |-> [k |-> "s", v |-> "stranger"]] ],
+   [ action |-> "interact_advisor",
+     kind |-> "error",
+     input |-> << >>,
+     output |-> << >>,
+     time |-> 2,
+     principal |-> [k |-> "s", v |-> "stranger"],
+     resource |-> [k |-> "s", v |-> "caller"],
+     session |-> [k |-> "s", v |-> "stranger"],
+     pins |-> [sessionId |-> [k |-> "s", v |-> "stranger"]] ],
+   [ action |-> "rebalance_portfolio",
+     kind |-> "request",
+     input |-> << >>,
+     output |-> << >>,
+     time |-> 3,
+     principal |-> [k |-> "s", v |-> "caller"],
+     resource |-> [k |-> "s", v |-> "caller"],
+     session |-> [k |-> "s", v |-> "caller"],
+     pins |-> [sessionId |-> [k |-> "s", v |-> "caller"]] ],
+   [ action |-> "rebalance_portfolio",
+     kind |-> "response",
+     input |-> << >>,
+     output |-> << >>,
+     time |-> 4,
+     principal |-> [k |-> "s", v |-> "caller"],
+     resource |-> [k |-> "s", v |-> "caller"],
+     session |-> [k |-> "s", v |-> "caller"],
+     pins |-> [sessionId |-> [k |-> "s", v |-> "caller"]] ] >>
+/\ narrowed = FALSE
+
+The number of states generated: 15
+Simulation using seed 0 and aril 0
+Progress: 16 states checked.
+Finished in 00s at (2026-10-02 14:46:44)

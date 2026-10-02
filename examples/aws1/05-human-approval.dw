@@ -1,19 +1,12 @@
-// Policy 5 of 7 -- "Human approval for large trades", from the AWS AgentCore temporal-policies
-// article.
+// Policy 5 of 7 -- "Human approval for large trades (one-time consumption)".
+// From "Securing AI agents with temporal policies in Amazon Bedrock AgentCore", AWS Machine
+// Learning Blog, 06 AUG 2026. The policy below is the article's listing VERBATIM, copied byte
+// for byte from the published page on 2026-10-02 (reference/README.md has the provenance).
 //
-// THE ARTICLE'S STATED INTENT, verbatim:
-//   "Any individual trade over $25,000 requires advisor approval, one approval per trade."
-//
-// Transcribed as published, with the `eventResource: resource` joins dropped as everywhere else
-// in this directory.
-//
-// THE ONLY POLICY OF THE SEVEN THAT USES `since`, and it is the operator that makes "one approval
-// per trade" statable: an approval counts only while no trade has consumed it. `!(A) since within
-// W B` is standard past-time MFOTL Since with a negated left operand -- B held inside the window,
-// and A has held at NO point after it.
-//
-// It is also the only one that puts a Cedar comparison and a temporal block on either side of a
-// `||`, which is how "under $25,000, or approved" is written as one condition.
+// THE ARTICLE'S STATED INTENT:
+//   Any trade exceeding $25,000 requires the advisor's explicit approval. Each approval is
+//   consumed by a single trade. A second large trade requires a fresh approval.
+
 permit (
     principal,
     action == AgentCore::Action::"execute_trade",
@@ -22,10 +15,10 @@ permit (
 when {
     context.input.cost < 25000 || temporal {
         !(
-            AgentCore::Action::"execute_trade"::response{ }
+            AgentCore::Action::"execute_trade"::response{eventResource: resource}
         )
         since within 24h (
-            AgentCore::Action::"approve_trade"::response{ input.status: "approved" }
+            AgentCore::Action::"approve_trade"::response{ input.status: "approved", eventResource: resource}
         )
     }
 };

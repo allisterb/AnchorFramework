@@ -1,7 +1,16 @@
-// Policy 2 of 7 -- "Output-to-input integrity". Intent: the profile traded against must be the
-// one this trajectory actually loaded, so a prompt injection cannot redirect the trade.
+// Policy 2 of 7 -- "Output-to-input integrity".
+// From "Securing AI agents with temporal policies in Amazon Bedrock AgentCore", AWS Machine
+// Learning Blog, 06 AUG 2026. The policy below is the article's listing VERBATIM, copied byte
+// for byte from the published page on 2026-10-02 (reference/README.md has the provenance).
 //
-// This is the FIRST-ORDER join -- not "some profile was loaded" but "THIS profile was".
+// THE ARTICLE'S STATED INTENT:
+//   The portfolio_id passed to execute_trade must exactly match one of the portfolio IDs
+//   returned by get_client_profile. The agent cannot fabricate or substitute a different
+//   portfolio ID.
+//
+// NOTE what the policy compares: the trade's `input.profile_id` against an earlier
+// get_client_profile's `input.profile_id` -- what that call was ASKED for, not what it RETURNED,
+// and a profile id, not a portfolio id. See README.md, finding 3.
 
 permit (
     principal,
@@ -9,7 +18,10 @@ permit (
     resource
 )
 when temporal {
-    formerly within 24h AgentCore::Action::"get_client_profile"::response{
-        input.profile_id: context.input.profile_id
-    }
+    formerly within 24h (
+        AgentCore::Action::"get_client_profile"::response{
+            input.profile_id: context.input.profile_id,
+            eventResource: resource
+        }
+    )
 };

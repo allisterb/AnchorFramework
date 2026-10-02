@@ -1,20 +1,24 @@
-// Policy 1 of 7 -- "Workflow sequencing", from the AWS AgentCore temporal-policies article.
-// Intent: rebalance requires load_portfolio, which requires get_client_profile, in order.
+// Policy 1 of 7 -- "Workflow sequencing (multi-hop chain)".
+// From "Securing AI agents with temporal policies in Amazon Bedrock AgentCore", AWS Machine
+// Learning Blog, 06 AUG 2026. The policy below is the article's listing VERBATIM, copied byte
+// for byte from the published page on 2026-10-02 (reference/README.md has the provenance).
+//
+// THE ARTICLE'S STATED INTENT:
+//   The compliance team requires that the agent follow get_client_profile, then load_portfolio,
+//   then rebalance_portfolio in sequence.
+//
+// ONE EDIT, the only one in this directory: the article writes the gateway as an unquoted
+// placeholder, `AgentCore::Gateway::<GATEWAY_ARN>`, which does not parse (`dogwood check-parse`:
+// "unexpected token `<`"). It is quoted here, `"<GATEWAY_ARN>"`, as policy 7 writes its own
+// placeholder. This is also the only policy whose action names carry a gateway target,
+// `FinTarget___`; the other six name `execute_trade` and the rest bare.
 
-permit (
-    principal,
-    action == AgentCore::Action::"load_portfolio",
-    resource
-)
+permit (principal, action == AgentCore::Action::"FinTarget___load_portfolio", resource == AgentCore::Gateway::"<GATEWAY_ARN>")
 when temporal {
-    formerly within 5m AgentCore::Action::"get_client_profile"::response{ }
+    formerly within 5m (AgentCore::Action::"FinTarget___get_client_profile"::response{eventResource: resource})
 };
 
-permit (
-    principal,
-    action == AgentCore::Action::"rebalance_portfolio",
-    resource
-)
+permit (principal, action == AgentCore::Action::"FinTarget___rebalance_portfolio", resource == AgentCore::Gateway::"<GATEWAY_ARN>")
 when temporal {
-    formerly within 5m AgentCore::Action::"load_portfolio"::response{ }
+    formerly within 5m (AgentCore::Action::"FinTarget___load_portfolio"::response{eventResource: resource})
 };

@@ -1,0 +1,37 @@
+// The article's policy 1, VERBATIM from the published page (the policy text below the plain
+// permits), against the article's OWN decision table for it, as `//|` rows. The table is AWS's
+// statement of what the policy is for; a row marked `finding` is one where the policy as
+// published does the opposite, and both Anchor and the Dogwood engine are held to that.
+// Format and harness: tests/policies/agentcore/README.md. Timings are ours where the table's
+// are qualitative; input values are ours where the table names none.
+
+// ours: the plain permit the table assumes
+permit (principal, action == AgentCore::Action::"FinTarget___get_client_profile", resource == AgentCore::Gateway::"<GATEWAY_ARN>");
+
+// ---- policy 1, verbatim ----
+permit (principal, action == AgentCore::Action::"FinTarget___load_portfolio", resource == AgentCore::Gateway::"<GATEWAY_ARN>")
+when temporal {
+    formerly within 5m (AgentCore::Action::"FinTarget___get_client_profile"::response{eventResource: resource})
+};
+
+permit (principal, action == AgentCore::Action::"FinTarget___rebalance_portfolio", resource == AgentCore::Gateway::"<GATEWAY_ARN>")
+when temporal {
+    formerly within 5m (AgentCore::Action::"FinTarget___load_portfolio"::response{eventResource: resource})
+};
+
+//| target -
+//|
+//| row aws-table: Empty -- rebalance_portfolio (portfolio_id: 8821, amount: 15000) -- DENY
+//| @0   request  FinTarget___rebalance_portfolio  { portfolio_id: "8821", amount: 15000 }  DENY
+//|
+//| row aws-table: get_client_profile completed -- rebalance_portfolio -- DENY
+//| @0   request  FinTarget___get_client_profile  { profile_id: "client-1" }  ALLOW ours
+//| @1   response FinTarget___get_client_profile  { profile_id: "client-1" } -> { portfolio_id: "8821" }
+//| @10  request  FinTarget___rebalance_portfolio  { portfolio_id: "8821", amount: 15000 }  DENY
+//|
+//| row aws-table: get_client_profile then load_portfolio completed -- rebalance_portfolio -- ALLOW
+//| @0   request  FinTarget___get_client_profile  { profile_id: "client-1" }  ALLOW ours
+//| @1   response FinTarget___get_client_profile  { profile_id: "client-1" } -> { portfolio_id: "8821" }
+//| @10  request  FinTarget___load_portfolio  { portfolio_id: "8821" }  ALLOW
+//| @11  response FinTarget___load_portfolio  { portfolio_id: "8821" } -> { }
+//| @20  request  FinTarget___rebalance_portfolio  { portfolio_id: "8821", amount: 15000 }  ALLOW

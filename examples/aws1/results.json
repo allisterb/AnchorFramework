@@ -4,67 +4,57 @@
     "01-workflow-sequencing.dw": {
       "kind": "derived",
       "policy": "01-workflow-sequencing.dw",
-      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
+      "reading": "the policy binds eventResource/eventPrincipal, so every answer below uses AgentCore's event schema: history partitioned by session, and one gateway in the model -- a rule scoped to it applies to every request. Not modelled: a response is assumed recorded before the next request, where AgentCore records it \"shortly after\" (docs/agentcore.md, question 4).",
       "bound": {
-        "attempts": 3,
+        "attempts": 4,
         "amount": 2,
-        "exhaustive": true,
-        "randomSessions": null
+        "exhaustive": false,
+        "randomSessions": 1000
       },
       "rules": [
         {
           "index": 1,
           "effect": "permit",
           "actions": [
-            "load_portfolio"
+            "FinTarget___load_portfolio"
           ],
-          "verdict": "VACUOUS",
-          "note": "no session of up to 3 attempts makes it grant",
+          "verdict": "unknown",
+          "note": "no witness in 1000 random sessions -- not a verdict",
           "witness": null,
           "session": [],
           "narrative": [],
-          "blame": {
-            "kind": "terms",
-            "terms": [
-              "formerly within 5m get_client_profile::response"
-            ]
-          }
+          "blame": null
         },
         {
           "index": 2,
           "effect": "permit",
           "actions": [
-            "rebalance_portfolio"
+            "FinTarget___rebalance_portfolio"
           ],
-          "verdict": "VACUOUS",
-          "note": "no session of up to 3 attempts makes it grant",
+          "verdict": "unknown",
+          "note": "no witness in 1000 random sessions -- not a verdict",
           "witness": null,
           "session": [],
           "narrative": [],
-          "blame": {
-            "kind": "terms",
-            "terms": [
-              "formerly within 5m load_portfolio::response"
-            ]
-          }
+          "blame": null
         }
       ],
-      "defects": [
+      "defects": [],
+      "unknown": [
         1,
         2
       ],
-      "unknown": [],
       "artifacts": "examples\\aws1\\traces\\01-workflow-sequencing"
     },
     "02-output-to-input.dw": {
       "kind": "derived",
       "policy": "02-output-to-input.dw",
-      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
+      "reading": "the policy binds eventResource/eventPrincipal, so every answer below uses AgentCore's event schema: history partitioned by session, and one gateway in the model -- a rule scoped to it applies to every request. Not modelled: a response is assumed recorded before the next request, where AgentCore records it \"shortly after\" (docs/agentcore.md, question 4).",
       "bound": {
-        "attempts": 3,
+        "attempts": 4,
         "amount": 2,
-        "exhaustive": true,
-        "randomSessions": null
+        "exhaustive": false,
+        "randomSessions": 1000
       },
       "rules": [
         {
@@ -73,34 +63,29 @@
           "actions": [
             "execute_trade"
           ],
-          "verdict": "VACUOUS",
-          "note": "no session of up to 3 attempts makes it grant",
+          "verdict": "unknown",
+          "note": "no witness in 1000 random sessions -- not a verdict",
           "witness": null,
           "session": [],
           "narrative": [],
-          "blame": {
-            "kind": "terms",
-            "terms": [
-              "formerly within 24h get_client_profile::response{ input.profile_id: 'profile_id' }"
-            ]
-          }
+          "blame": null
         }
       ],
-      "defects": [
+      "defects": [],
+      "unknown": [
         1
       ],
-      "unknown": [],
       "artifacts": "examples\\aws1\\traces\\02-output-to-input"
     },
     "03-data-freshness.dw": {
       "kind": "derived",
       "policy": "03-data-freshness.dw",
-      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
+      "reading": "the policy binds eventResource/eventPrincipal, so every answer below uses AgentCore's event schema: history partitioned by session, and one gateway in the model -- a rule scoped to it applies to every request. Not modelled: a response is assumed recorded before the next request, where AgentCore records it \"shortly after\" (docs/agentcore.md, question 4).",
       "bound": {
-        "attempts": 3,
+        "attempts": 4,
         "amount": 2,
-        "exhaustive": true,
-        "randomSessions": null
+        "exhaustive": false,
+        "randomSessions": 1000
       },
       "rules": [
         {
@@ -109,34 +94,29 @@
           "actions": [
             "execute_trade"
           ],
-          "verdict": "VACUOUS",
-          "note": "no session of up to 3 attempts makes it grant",
+          "verdict": "unknown",
+          "note": "no witness in 1000 random sessions -- not a verdict",
           "witness": null,
           "session": [],
           "narrative": [],
-          "blame": {
-            "kind": "terms",
-            "terms": [
-              "formerly within 30s get_market_price::response"
-            ]
-          }
+          "blame": null
         }
       ],
-      "defects": [
+      "defects": [],
+      "unknown": [
         1
       ],
-      "unknown": [],
       "artifacts": "examples\\aws1\\traces\\03-data-freshness"
     },
     "04-cumulative-budget-cap.dw": {
       "kind": "derived",
       "policy": "04-cumulative-budget-cap.dw",
-      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
+      "reading": "the policy binds eventResource/eventPrincipal, so every answer below uses AgentCore's event schema: history partitioned by session, and one gateway in the model -- a rule scoped to it applies to every request. Not modelled: a response is assumed recorded before the next request, where AgentCore records it \"shortly after\" (docs/agentcore.md, question 4).",
       "bound": {
-        "attempts": 3,
+        "attempts": 4,
         "amount": 2,
-        "exhaustive": true,
-        "randomSessions": null
+        "exhaustive": false,
+        "randomSessions": 1000
       },
       "rules": [
         {
@@ -153,35 +133,35 @@
               "action": "execute_trade",
               "kind": "request",
               "input": {
-                "cost": 1
+                "cost": 2
               },
               "output": {},
               "time": 1,
-              "principal": "caller",
+              "principal": "stranger",
               "resource": "caller",
-              "session": "caller",
+              "session": "stranger",
               "pins": {
-                "principal": "caller"
+                "sessionId": "stranger"
               }
             },
             {
               "action": "execute_trade",
               "kind": "response",
               "input": {
-                "cost": 1
+                "cost": 2
               },
               "output": {},
               "time": 2,
-              "principal": "caller",
+              "principal": "stranger",
               "resource": "caller",
-              "session": "caller",
+              "session": "stranger",
               "pins": {
-                "principal": "caller"
+                "sessionId": "stranger"
               }
             }
           ],
           "narrative": [
-            "1. execute_trade(cost = 1)  allowed"
+            "1. execute_trade(cost = 2)  allowed"
           ],
           "blame": null
         }
@@ -193,12 +173,12 @@
     "05-human-approval.dw": {
       "kind": "derived",
       "policy": "05-human-approval.dw",
-      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
+      "reading": "the policy binds eventResource/eventPrincipal, so every answer below uses AgentCore's event schema: history partitioned by session, and one gateway in the model -- a rule scoped to it applies to every request. Not modelled: a response is assumed recorded before the next request, where AgentCore records it \"shortly after\" (docs/agentcore.md, question 4).",
       "bound": {
-        "attempts": 3,
+        "attempts": 4,
         "amount": 2,
-        "exhaustive": true,
-        "randomSessions": null
+        "exhaustive": false,
+        "randomSessions": 1000
       },
       "rules": [
         {
@@ -208,9 +188,73 @@
             "execute_trade"
           ],
           "verdict": "live",
-          "note": "witness: execute_trade",
-          "witness": "execute_trade",
+          "note": "witness: execute_trade -> execute_trade -> execute_trade",
+          "witness": "execute_trade -> execute_trade -> execute_trade",
           "session": [
+            {
+              "action": "execute_trade",
+              "kind": "request",
+              "input": {
+                "cost": 25001,
+                "status": "\u0000none"
+              },
+              "output": {},
+              "time": 1,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "sessionId": "caller"
+              }
+            },
+            {
+              "action": "execute_trade",
+              "kind": "error",
+              "input": {
+                "cost": 25001,
+                "status": "\u0000none"
+              },
+              "output": {},
+              "time": 2,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "sessionId": "caller"
+              }
+            },
+            {
+              "action": "execute_trade",
+              "kind": "request",
+              "input": {
+                "cost": 25001,
+                "status": "approved"
+              },
+              "output": {},
+              "time": 3,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "sessionId": "caller"
+              }
+            },
+            {
+              "action": "execute_trade",
+              "kind": "error",
+              "input": {
+                "cost": 25001,
+                "status": "approved"
+              },
+              "output": {},
+              "time": 4,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "sessionId": "caller"
+              }
+            },
             {
               "action": "execute_trade",
               "kind": "request",
@@ -219,12 +263,12 @@
                 "status": "approved"
               },
               "output": {},
-              "time": 1,
-              "principal": "caller",
+              "time": 5,
+              "principal": "stranger",
               "resource": "caller",
-              "session": "caller",
+              "session": "stranger",
               "pins": {
-                "principal": "caller"
+                "sessionId": "stranger"
               }
             },
             {
@@ -235,17 +279,19 @@
                 "status": "approved"
               },
               "output": {},
-              "time": 2,
-              "principal": "caller",
+              "time": 6,
+              "principal": "stranger",
               "resource": "caller",
-              "session": "caller",
+              "session": "stranger",
               "pins": {
-                "principal": "caller"
+                "sessionId": "stranger"
               }
             }
           ],
           "narrative": [
-            "1. execute_trade(cost = 24999, status = \"approved\")  allowed"
+            "1. execute_trade(cost = 25001, status = \"\u0000none\")  denied",
+            "2. execute_trade(cost = 25001, status = \"approved\")  denied",
+            "3. execute_trade(cost = 24999, status = \"approved\")  allowed"
           ],
           "blame": null
         }
@@ -257,53 +303,81 @@
     "07-trust-decay.dw": {
       "kind": "derived",
       "policy": "07-trust-decay.dw",
-      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
+      "reading": "the policy binds eventResource/eventPrincipal, so every answer below uses AgentCore's event schema: history partitioned by session, and one gateway in the model -- a rule scoped to it applies to every request. Not modelled: a response is assumed recorded before the next request, where AgentCore records it \"shortly after\" (docs/agentcore.md, question 4).",
       "bound": {
-        "attempts": 3,
+        "attempts": 4,
         "amount": 2,
-        "exhaustive": true,
-        "randomSessions": null
+        "exhaustive": false,
+        "randomSessions": 1000
       },
       "rules": [
         {
           "index": 1,
           "effect": "permit",
           "actions": [
-            "execute_trade"
+            "execute_trade",
+            "rebalance_portfolio"
           ],
           "verdict": "live",
-          "note": "witness: execute_trade",
-          "witness": "execute_trade",
+          "note": "witness: interact_advisor -> rebalance_portfolio",
+          "witness": "interact_advisor -> rebalance_portfolio",
           "session": [
             {
-              "action": "execute_trade",
+              "action": "interact_advisor",
               "kind": "request",
               "input": {},
               "output": {},
               "time": 1,
-              "principal": "caller",
+              "principal": "stranger",
               "resource": "caller",
-              "session": "caller",
+              "session": "stranger",
               "pins": {
-                "principal": "caller"
+                "sessionId": "stranger"
               }
             },
             {
-              "action": "execute_trade",
-              "kind": "response",
+              "action": "interact_advisor",
+              "kind": "error",
               "input": {},
               "output": {},
               "time": 2,
+              "principal": "stranger",
+              "resource": "caller",
+              "session": "stranger",
+              "pins": {
+                "sessionId": "stranger"
+              }
+            },
+            {
+              "action": "rebalance_portfolio",
+              "kind": "request",
+              "input": {},
+              "output": {},
+              "time": 3,
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
               "pins": {
-                "principal": "caller"
+                "sessionId": "caller"
+              }
+            },
+            {
+              "action": "rebalance_portfolio",
+              "kind": "response",
+              "input": {},
+              "output": {},
+              "time": 4,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "sessionId": "caller"
               }
             }
           ],
           "narrative": [
-            "1. execute_trade()  allowed"
+            "1. interact_advisor   ()  denied",
+            "2. rebalance_portfolio()  allowed"
           ],
           "blame": null
         }
@@ -315,16 +389,66 @@
     "agent-policy.dw": {
       "kind": "derived",
       "policy": "agent-policy.dw",
-      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
+      "reading": "the policy binds eventResource/eventPrincipal, so every answer below uses AgentCore's event schema: history partitioned by session, and one gateway in the model -- a rule scoped to it applies to every request. Not modelled: a response is assumed recorded before the next request, where AgentCore records it \"shortly after\" (docs/agentcore.md, question 4).",
       "bound": {
-        "attempts": 3,
+        "attempts": 4,
         "amount": 2,
-        "exhaustive": true,
-        "randomSessions": null
+        "exhaustive": false,
+        "randomSessions": 1000
       },
       "rules": [
         {
           "index": 1,
+          "effect": "permit",
+          "actions": [
+            "FinTarget___get_client_profile"
+          ],
+          "verdict": "live",
+          "note": "witness: FinTarget___get_client_profile",
+          "witness": "FinTarget___get_client_profile",
+          "session": [
+            {
+              "action": "FinTarget___get_client_profile",
+              "kind": "request",
+              "input": {
+                "cost": 25000,
+                "profile_id": 2,
+                "status": "\u0000none"
+              },
+              "output": {},
+              "time": 1,
+              "principal": "stranger",
+              "resource": "caller",
+              "session": "stranger",
+              "pins": {
+                "sessionId": "stranger"
+              }
+            },
+            {
+              "action": "FinTarget___get_client_profile",
+              "kind": "response",
+              "input": {
+                "cost": 25000,
+                "profile_id": 2,
+                "status": "\u0000none"
+              },
+              "output": {},
+              "time": 2,
+              "principal": "stranger",
+              "resource": "caller",
+              "session": "stranger",
+              "pins": {
+                "sessionId": "stranger"
+              }
+            }
+          ],
+          "narrative": [
+            "1. FinTarget___get_client_profile(cost = 25000, profile_id = 2, status = \"\u0000none\")  allowed"
+          ],
+          "blame": null
+        },
+        {
+          "index": 2,
           "effect": "permit",
           "actions": [
             "get_client_profile"
@@ -337,7 +461,9 @@
               "action": "get_client_profile",
               "kind": "request",
               "input": {
-                "profile_id": 1
+                "cost": 25000,
+                "profile_id": 1,
+                "status": "approved"
               },
               "output": {},
               "time": 1,
@@ -345,14 +471,16 @@
               "resource": "caller",
               "session": "caller",
               "pins": {
-                "principal": "caller"
+                "sessionId": "caller"
               }
             },
             {
               "action": "get_client_profile",
               "kind": "response",
               "input": {
-                "profile_id": 1
+                "cost": 25000,
+                "profile_id": 1,
+                "status": "approved"
               },
               "output": {},
               "time": 2,
@@ -360,58 +488,12 @@
               "resource": "caller",
               "session": "caller",
               "pins": {
-                "principal": "caller"
+                "sessionId": "caller"
               }
             }
           ],
           "narrative": [
-            "1. get_client_profile(profile_id = 1)  allowed"
-          ],
-          "blame": null
-        },
-        {
-          "index": 2,
-          "effect": "permit",
-          "actions": [
-            "get_market_price"
-          ],
-          "verdict": "live",
-          "note": "witness: get_market_price",
-          "witness": "get_market_price",
-          "session": [
-            {
-              "action": "get_market_price",
-              "kind": "request",
-              "input": {
-                "profile_id": 1
-              },
-              "output": {},
-              "time": 1,
-              "principal": "caller",
-              "resource": "caller",
-              "session": "caller",
-              "pins": {
-                "principal": "caller"
-              }
-            },
-            {
-              "action": "get_market_price",
-              "kind": "response",
-              "input": {
-                "profile_id": 1
-              },
-              "output": {},
-              "time": 2,
-              "principal": "caller",
-              "resource": "caller",
-              "session": "caller",
-              "pins": {
-                "principal": "caller"
-              }
-            }
-          ],
-          "narrative": [
-            "1. get_market_price(profile_id = 1)  allowed"
+            "1. get_client_profile(cost = 25000, profile_id = 1, status = \"approved\")  allowed"
           ],
           "blame": null
         },
@@ -419,17 +501,19 @@
           "index": 3,
           "effect": "permit",
           "actions": [
-            "interact_advisor"
+            "get_market_price"
           ],
           "verdict": "live",
-          "note": "witness: interact_advisor",
-          "witness": "interact_advisor",
+          "note": "witness: FinTarget___rebalance_portfolio -> get_market_price",
+          "witness": "FinTarget___rebalance_portfolio -> get_market_price",
           "session": [
             {
-              "action": "interact_advisor",
+              "action": "FinTarget___rebalance_portfolio",
               "kind": "request",
               "input": {
-                "profile_id": 1
+                "cost": 25001,
+                "profile_id": 2,
+                "status": "\u0000none"
               },
               "output": {},
               "time": 1,
@@ -437,14 +521,16 @@
               "resource": "caller",
               "session": "caller",
               "pins": {
-                "principal": "caller"
+                "sessionId": "caller"
               }
             },
             {
-              "action": "interact_advisor",
-              "kind": "response",
+              "action": "FinTarget___rebalance_portfolio",
+              "kind": "error",
               "input": {
-                "profile_id": 1
+                "cost": 25001,
+                "profile_id": 2,
+                "status": "\u0000none"
               },
               "output": {},
               "time": 2,
@@ -452,12 +538,47 @@
               "resource": "caller",
               "session": "caller",
               "pins": {
-                "principal": "caller"
+                "sessionId": "caller"
+              }
+            },
+            {
+              "action": "get_market_price",
+              "kind": "request",
+              "input": {
+                "cost": 25001,
+                "profile_id": 1,
+                "status": "\u0000none"
+              },
+              "output": {},
+              "time": 3,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "sessionId": "caller"
+              }
+            },
+            {
+              "action": "get_market_price",
+              "kind": "response",
+              "input": {
+                "cost": 25001,
+                "profile_id": 1,
+                "status": "\u0000none"
+              },
+              "output": {},
+              "time": 4,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "sessionId": "caller"
               }
             }
           ],
           "narrative": [
-            "1. interact_advisor(profile_id = 1)  allowed"
+            "1. FinTarget___rebalance_portfolio(cost = 25001, profile_id = 2, status = \"\u0000none\")  denied",
+            "2. get_market_price               (cost = 25001, profile_id = 1, status = \"\u0000none\")  allowed"
           ],
           "blame": null
         },
@@ -465,17 +586,19 @@
           "index": 4,
           "effect": "permit",
           "actions": [
-            "load_portfolio"
+            "interact_advisor"
           ],
           "verdict": "live",
-          "note": "witness: get_client_profile -> load_portfolio",
-          "witness": "get_client_profile -> load_portfolio",
+          "note": "witness: get_client_profile -> execute_trade -> interact_advisor",
+          "witness": "get_client_profile -> execute_trade -> interact_advisor",
           "session": [
             {
               "action": "get_client_profile",
               "kind": "request",
               "input": {
-                "profile_id": 1
+                "cost": 25000,
+                "profile_id": 1,
+                "status": "approved"
               },
               "output": {},
               "time": 1,
@@ -483,14 +606,16 @@
               "resource": "caller",
               "session": "caller",
               "pins": {
-                "principal": "caller"
+                "sessionId": "caller"
               }
             },
             {
               "action": "get_client_profile",
               "kind": "response",
               "input": {
-                "profile_id": 1
+                "cost": 25000,
+                "profile_id": 1,
+                "status": "approved"
               },
               "output": {},
               "time": 2,
@@ -498,14 +623,16 @@
               "resource": "caller",
               "session": "caller",
               "pins": {
-                "principal": "caller"
+                "sessionId": "caller"
               }
             },
             {
-              "action": "load_portfolio",
+              "action": "execute_trade",
               "kind": "request",
               "input": {
-                "profile_id": 1
+                "cost": 24999,
+                "profile_id": 1,
+                "status": "approved"
               },
               "output": {},
               "time": 3,
@@ -513,14 +640,16 @@
               "resource": "caller",
               "session": "caller",
               "pins": {
-                "principal": "caller"
+                "sessionId": "caller"
               }
             },
             {
-              "action": "load_portfolio",
+              "action": "execute_trade",
               "kind": "response",
               "input": {
-                "profile_id": 1
+                "cost": 24999,
+                "profile_id": 1,
+                "status": "approved"
               },
               "output": {},
               "time": 4,
@@ -528,13 +657,48 @@
               "resource": "caller",
               "session": "caller",
               "pins": {
-                "principal": "caller"
+                "sessionId": "caller"
+              }
+            },
+            {
+              "action": "interact_advisor",
+              "kind": "request",
+              "input": {
+                "cost": 25000,
+                "profile_id": 2,
+                "status": "approved"
+              },
+              "output": {},
+              "time": 5,
+              "principal": "stranger",
+              "resource": "caller",
+              "session": "stranger",
+              "pins": {
+                "sessionId": "stranger"
+              }
+            },
+            {
+              "action": "interact_advisor",
+              "kind": "response",
+              "input": {
+                "cost": 25000,
+                "profile_id": 2,
+                "status": "approved"
+              },
+              "output": {},
+              "time": 6,
+              "principal": "stranger",
+              "resource": "caller",
+              "session": "stranger",
+              "pins": {
+                "sessionId": "stranger"
               }
             }
           ],
           "narrative": [
-            "1. get_client_profile(profile_id = 1)  allowed",
-            "2. load_portfolio    (profile_id = 1)  allowed"
+            "1. get_client_profile(cost = 25000, profile_id = 1, status = \"approved\")  allowed",
+            "2. execute_trade     (cost = 24999, profile_id = 1, status = \"approved\")  allowed",
+            "3. interact_advisor  (cost = 25000, profile_id = 2, status = \"approved\")  allowed"
           ],
           "blame": null
         },
@@ -542,107 +706,84 @@
           "index": 5,
           "effect": "permit",
           "actions": [
-            "rebalance_portfolio"
+            "approve_trade"
           ],
           "verdict": "live",
-          "note": "witness: get_client_profile -> load_portfolio -> rebalance_portfolio",
-          "witness": "get_client_profile -> load_portfolio -> rebalance_portfolio",
+          "note": "witness: FinTarget___rebalance_portfolio -> approve_trade",
+          "witness": "FinTarget___rebalance_portfolio -> approve_trade",
           "session": [
             {
-              "action": "get_client_profile",
+              "action": "FinTarget___rebalance_portfolio",
               "kind": "request",
               "input": {
-                "profile_id": 1
+                "cost": 24999,
+                "profile_id": 2,
+                "status": "\u0000none"
               },
               "output": {},
               "time": 1,
-              "principal": "caller",
+              "principal": "stranger",
               "resource": "caller",
-              "session": "caller",
+              "session": "stranger",
               "pins": {
-                "principal": "caller"
+                "sessionId": "stranger"
               }
             },
             {
-              "action": "get_client_profile",
-              "kind": "response",
+              "action": "FinTarget___rebalance_portfolio",
+              "kind": "error",
               "input": {
-                "profile_id": 1
+                "cost": 24999,
+                "profile_id": 2,
+                "status": "\u0000none"
               },
               "output": {},
               "time": 2,
-              "principal": "caller",
+              "principal": "stranger",
               "resource": "caller",
-              "session": "caller",
+              "session": "stranger",
               "pins": {
-                "principal": "caller"
+                "sessionId": "stranger"
               }
             },
             {
-              "action": "load_portfolio",
+              "action": "approve_trade",
               "kind": "request",
               "input": {
-                "profile_id": 1
+                "cost": 25001,
+                "profile_id": 2,
+                "status": "\u0000none"
               },
               "output": {},
               "time": 3,
-              "principal": "caller",
+              "principal": "stranger",
               "resource": "caller",
-              "session": "caller",
+              "session": "stranger",
               "pins": {
-                "principal": "caller"
+                "sessionId": "stranger"
               }
             },
             {
-              "action": "load_portfolio",
+              "action": "approve_trade",
               "kind": "response",
               "input": {
-                "profile_id": 1
+                "cost": 25001,
+                "profile_id": 2,
+                "status": "\u0000none"
               },
               "output": {},
               "time": 4,
-              "principal": "caller",
+              "principal": "stranger",
               "resource": "caller",
-              "session": "caller",
+              "session": "stranger",
               "pins": {
-                "principal": "caller"
-              }
-            },
-            {
-              "action": "rebalance_portfolio",
-              "kind": "request",
-              "input": {
-                "profile_id": 1
-              },
-              "output": {},
-              "time": 5,
-              "principal": "caller",
-              "resource": "caller",
-              "session": "caller",
-              "pins": {
-                "principal": "caller"
-              }
-            },
-            {
-              "action": "rebalance_portfolio",
-              "kind": "response",
-              "input": {
-                "profile_id": 1
-              },
-              "output": {},
-              "time": 6,
-              "principal": "caller",
-              "resource": "caller",
-              "session": "caller",
-              "pins": {
-                "principal": "caller"
+                "sessionId": "stranger"
               }
             }
           ],
           "narrative": [
-            "1. get_client_profile (profile_id = 1)  allowed",
-            "2. load_portfolio     (profile_id = 1)  allowed",
-            "3. rebalance_portfolio(profile_id = 1)  allowed"
+            "1. FinTarget___rebalance_portfolio(cost = 24999, profile_id = 2, status = \"\u0000none\")  denied",
+            "2. approve_trade                  (cost = 25001, profile_id = 2, status = \"\u0000none\")  allowed"
           ],
           "blame": null
         },
@@ -650,47 +791,53 @@
           "index": 6,
           "effect": "permit",
           "actions": [
-            "execute_trade"
+            "FinTarget___load_portfolio"
           ],
           "verdict": "live",
-          "note": "witness: get_client_profile -> execute_trade",
-          "witness": "get_client_profile -> execute_trade",
+          "note": "witness: FinTarget___get_client_profile -> FinTarget___load_portfolio -> get_market_price -> FinTarget___load_portfolio",
+          "witness": "FinTarget___get_client_profile -> FinTarget___load_portfolio -> get_market_price -> FinTarget___load_portfolio",
           "session": [
             {
-              "action": "get_client_profile",
+              "action": "FinTarget___get_client_profile",
               "kind": "request",
               "input": {
-                "profile_id": 1
+                "cost": 24999,
+                "profile_id": 2,
+                "status": "approved"
               },
               "output": {},
               "time": 1,
-              "principal": "caller",
+              "principal": "stranger",
               "resource": "caller",
-              "session": "caller",
+              "session": "stranger",
               "pins": {
-                "principal": "caller"
+                "sessionId": "stranger"
               }
             },
             {
-              "action": "get_client_profile",
+              "action": "FinTarget___get_client_profile",
               "kind": "response",
               "input": {
-                "profile_id": 1
+                "cost": 24999,
+                "profile_id": 2,
+                "status": "approved"
               },
               "output": {},
               "time": 2,
-              "principal": "caller",
+              "principal": "stranger",
               "resource": "caller",
-              "session": "caller",
+              "session": "stranger",
               "pins": {
-                "principal": "caller"
+                "sessionId": "stranger"
               }
             },
             {
-              "action": "execute_trade",
+              "action": "FinTarget___load_portfolio",
               "kind": "request",
               "input": {
-                "profile_id": 1
+                "cost": 24999,
+                "profile_id": 2,
+                "status": "approved"
               },
               "output": {},
               "time": 3,
@@ -698,14 +845,16 @@
               "resource": "caller",
               "session": "caller",
               "pins": {
-                "principal": "caller"
+                "sessionId": "caller"
               }
             },
             {
-              "action": "execute_trade",
-              "kind": "response",
+              "action": "FinTarget___load_portfolio",
+              "kind": "error",
               "input": {
-                "profile_id": 1
+                "cost": 24999,
+                "profile_id": 2,
+                "status": "approved"
               },
               "output": {},
               "time": 4,
@@ -713,13 +862,83 @@
               "resource": "caller",
               "session": "caller",
               "pins": {
-                "principal": "caller"
+                "sessionId": "caller"
+              }
+            },
+            {
+              "action": "get_market_price",
+              "kind": "request",
+              "input": {
+                "cost": 25001,
+                "profile_id": 2,
+                "status": "approved"
+              },
+              "output": {},
+              "time": 5,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "sessionId": "caller"
+              }
+            },
+            {
+              "action": "get_market_price",
+              "kind": "response",
+              "input": {
+                "cost": 25001,
+                "profile_id": 2,
+                "status": "approved"
+              },
+              "output": {},
+              "time": 6,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "sessionId": "caller"
+              }
+            },
+            {
+              "action": "FinTarget___load_portfolio",
+              "kind": "request",
+              "input": {
+                "cost": 24999,
+                "profile_id": 2,
+                "status": "\u0000none"
+              },
+              "output": {},
+              "time": 7,
+              "principal": "stranger",
+              "resource": "caller",
+              "session": "stranger",
+              "pins": {
+                "sessionId": "stranger"
+              }
+            },
+            {
+              "action": "FinTarget___load_portfolio",
+              "kind": "response",
+              "input": {
+                "cost": 24999,
+                "profile_id": 2,
+                "status": "\u0000none"
+              },
+              "output": {},
+              "time": 8,
+              "principal": "stranger",
+              "resource": "caller",
+              "session": "stranger",
+              "pins": {
+                "sessionId": "stranger"
               }
             }
           ],
           "narrative": [
-            "1. get_client_profile(profile_id = 1)  allowed",
-            "2. execute_trade     (profile_id = 1)  allowed"
+            "1. FinTarget___get_client_profile(cost = 24999, profile_id = 2, status = \"approved\")  allowed",
+            "2. FinTarget___load_portfolio    (cost = 24999, profile_id = 2, status = \"approved\")  denied",
+            "3. get_market_price              (cost = 25001, profile_id = 2, status = \"approved\")  allowed",
+            "4. FinTarget___load_portfolio    (cost = 24999, profile_id = 2, status = \"\u0000none\")  allowed"
           ],
           "blame": null
         },
@@ -727,47 +946,92 @@
           "index": 7,
           "effect": "permit",
           "actions": [
+            "FinTarget___rebalance_portfolio"
+          ],
+          "verdict": "unknown",
+          "note": "no witness in 1000 random sessions -- not a verdict",
+          "witness": null,
+          "session": [],
+          "narrative": [],
+          "blame": null
+        },
+        {
+          "index": 8,
+          "effect": "permit",
+          "actions": [
+            "execute_trade"
+          ],
+          "verdict": "unknown",
+          "note": "no witness in 1000 random sessions -- not a verdict",
+          "witness": null,
+          "session": [],
+          "narrative": [],
+          "blame": null
+        },
+        {
+          "index": 9,
+          "effect": "permit",
+          "actions": [
+            "execute_trade"
+          ],
+          "verdict": "unknown",
+          "note": "no witness in 1000 random sessions -- not a verdict",
+          "witness": null,
+          "session": [],
+          "narrative": [],
+          "blame": null
+        },
+        {
+          "index": 10,
+          "effect": "permit",
+          "actions": [
             "execute_trade"
           ],
           "verdict": "live",
-          "note": "witness: get_market_price -> execute_trade",
-          "witness": "get_market_price -> execute_trade",
+          "note": "witness: FinTarget___get_client_profile -> FinTarget___load_portfolio -> execute_trade",
+          "witness": "FinTarget___get_client_profile -> FinTarget___load_portfolio -> execute_trade",
           "session": [
             {
-              "action": "get_market_price",
+              "action": "FinTarget___get_client_profile",
               "kind": "request",
               "input": {
-                "profile_id": 1
+                "cost": 25000,
+                "profile_id": 2,
+                "status": "\u0000none"
               },
               "output": {},
               "time": 1,
-              "principal": "caller",
+              "principal": "stranger",
               "resource": "caller",
-              "session": "caller",
+              "session": "stranger",
               "pins": {
-                "principal": "caller"
+                "sessionId": "stranger"
               }
             },
             {
-              "action": "get_market_price",
+              "action": "FinTarget___get_client_profile",
               "kind": "response",
               "input": {
-                "profile_id": 1
+                "cost": 25000,
+                "profile_id": 2,
+                "status": "\u0000none"
               },
               "output": {},
               "time": 2,
-              "principal": "caller",
+              "principal": "stranger",
               "resource": "caller",
-              "session": "caller",
+              "session": "stranger",
               "pins": {
-                "principal": "caller"
+                "sessionId": "stranger"
               }
             },
             {
-              "action": "execute_trade",
+              "action": "FinTarget___load_portfolio",
               "kind": "request",
               "input": {
-                "profile_id": 1
+                "cost": 25001,
+                "profile_id": 1,
+                "status": "approved"
               },
               "output": {},
               "time": 3,
@@ -775,14 +1039,16 @@
               "resource": "caller",
               "session": "caller",
               "pins": {
-                "principal": "caller"
+                "sessionId": "caller"
               }
             },
             {
-              "action": "execute_trade",
-              "kind": "response",
+              "action": "FinTarget___load_portfolio",
+              "kind": "error",
               "input": {
-                "profile_id": 1
+                "cost": 25001,
+                "profile_id": 1,
+                "status": "approved"
               },
               "output": {},
               "time": 4,
@@ -790,25 +1056,264 @@
               "resource": "caller",
               "session": "caller",
               "pins": {
-                "principal": "caller"
+                "sessionId": "caller"
+              }
+            },
+            {
+              "action": "execute_trade",
+              "kind": "request",
+              "input": {
+                "cost": 25001,
+                "profile_id": 2,
+                "status": "approved"
+              },
+              "output": {},
+              "time": 5,
+              "principal": "stranger",
+              "resource": "caller",
+              "session": "stranger",
+              "pins": {
+                "sessionId": "stranger"
+              }
+            },
+            {
+              "action": "execute_trade",
+              "kind": "response",
+              "input": {
+                "cost": 25001,
+                "profile_id": 2,
+                "status": "approved"
+              },
+              "output": {},
+              "time": 6,
+              "principal": "stranger",
+              "resource": "caller",
+              "session": "stranger",
+              "pins": {
+                "sessionId": "stranger"
               }
             }
           ],
           "narrative": [
-            "1. get_market_price(profile_id = 1)  allowed",
-            "2. execute_trade   (profile_id = 1)  allowed"
+            "1. FinTarget___get_client_profile(cost = 25000, profile_id = 2, status = \"\u0000none\")  allowed",
+            "2. FinTarget___load_portfolio    (cost = 25001, profile_id = 1, status = \"approved\")  denied",
+            "3. execute_trade                 (cost = 25001, profile_id = 2, status = \"approved\")  allowed"
+          ],
+          "blame": null
+        },
+        {
+          "index": 11,
+          "effect": "permit",
+          "actions": [
+            "execute_trade"
+          ],
+          "verdict": "unknown",
+          "note": "no witness in 1000 random sessions -- not a verdict",
+          "witness": null,
+          "session": [],
+          "narrative": [],
+          "blame": null
+        },
+        {
+          "index": 12,
+          "effect": "permit",
+          "actions": [
+            "execute_trade",
+            "rebalance_portfolio"
+          ],
+          "verdict": "live",
+          "note": "witness: FinTarget___get_client_profile -> FinTarget___load_portfolio -> execute_trade",
+          "witness": "FinTarget___get_client_profile -> FinTarget___load_portfolio -> execute_trade",
+          "session": [
+            {
+              "action": "FinTarget___get_client_profile",
+              "kind": "request",
+              "input": {
+                "cost": 25000,
+                "profile_id": 2,
+                "status": "\u0000none"
+              },
+              "output": {},
+              "time": 1,
+              "principal": "stranger",
+              "resource": "caller",
+              "session": "stranger",
+              "pins": {
+                "sessionId": "stranger"
+              }
+            },
+            {
+              "action": "FinTarget___get_client_profile",
+              "kind": "response",
+              "input": {
+                "cost": 25000,
+                "profile_id": 2,
+                "status": "\u0000none"
+              },
+              "output": {},
+              "time": 2,
+              "principal": "stranger",
+              "resource": "caller",
+              "session": "stranger",
+              "pins": {
+                "sessionId": "stranger"
+              }
+            },
+            {
+              "action": "FinTarget___load_portfolio",
+              "kind": "request",
+              "input": {
+                "cost": 25001,
+                "profile_id": 1,
+                "status": "approved"
+              },
+              "output": {},
+              "time": 3,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "sessionId": "caller"
+              }
+            },
+            {
+              "action": "FinTarget___load_portfolio",
+              "kind": "error",
+              "input": {
+                "cost": 25001,
+                "profile_id": 1,
+                "status": "approved"
+              },
+              "output": {},
+              "time": 4,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "sessionId": "caller"
+              }
+            },
+            {
+              "action": "execute_trade",
+              "kind": "request",
+              "input": {
+                "cost": 25001,
+                "profile_id": 2,
+                "status": "approved"
+              },
+              "output": {},
+              "time": 5,
+              "principal": "stranger",
+              "resource": "caller",
+              "session": "stranger",
+              "pins": {
+                "sessionId": "stranger"
+              }
+            },
+            {
+              "action": "execute_trade",
+              "kind": "response",
+              "input": {
+                "cost": 25001,
+                "profile_id": 2,
+                "status": "approved"
+              },
+              "output": {},
+              "time": 6,
+              "principal": "stranger",
+              "resource": "caller",
+              "session": "stranger",
+              "pins": {
+                "sessionId": "stranger"
+              }
+            }
+          ],
+          "narrative": [
+            "1. FinTarget___get_client_profile(cost = 25000, profile_id = 2, status = \"\u0000none\")  allowed",
+            "2. FinTarget___load_portfolio    (cost = 25001, profile_id = 1, status = \"approved\")  denied",
+            "3. execute_trade                 (cost = 25001, profile_id = 2, status = \"approved\")  allowed"
           ],
           "blame": null
         }
       ],
       "defects": [],
-      "unknown": [],
+      "unknown": [
+        7,
+        8,
+        9,
+        11
+      ],
       "artifacts": "examples\\aws1\\traces\\agent-policy"
     }
   },
   "properties": {
+    "EmptyTrajectory.tla": {
+      "policy": "agent-policy.dw",
+      "given": false,
+      "claims": {
+        "module": "EmptyTrajectory.tla",
+        "states": [
+          "amount = 1000",
+          "amount = 30000"
+        ],
+        "scope": "read from Init",
+        "claims": [
+          {
+            "name": "NoTradeFromAnEmptyTrajectory",
+            "defined": true,
+            "says": "always: the policy REFUSES it (Allowed(amount))",
+            "forbids": "the policy GRANTS it (Allowed(amount))",
+            "condition": "",
+            "appliesTo": [
+              "amount = 1000",
+              "amount = 30000"
+            ],
+            "states": 2,
+            "unknownIn": 0,
+            "settledWithoutThePolicy": 0,
+            "falseWithoutThePolicy": [],
+            "vacuous": false,
+            "notes": []
+          }
+        ],
+        "definedButNotChecked": [],
+        "vacuous": []
+      },
+      "witness": [
+        {
+          "invariant": "NoTradeFromAnEmptyTrajectory",
+          "state": {
+            "amount": "1000"
+          },
+          "demanded": false,
+          "engine": "allow",
+          "confirms": true,
+          "at": 1,
+          "events": [
+            {
+              "time": 1,
+              "action": "execute_trade",
+              "kind": "request",
+              "input": "[profile_id |-> \"client-1\", cost |-> 1000]",
+              "output": "[]"
+            }
+          ],
+          "why": "",
+          "sentence": "with amount = 1000, the Dogwood engine ALLOWS this session at t=1, where `NoTradeFromAnEmptyTrajectory` says your policy set must REFUSE it",
+          "trace": "@1 scope(principal: AgentCore::OAuthUser::\"agent\", resource: AgentCore::Gateway::\"<GATEWAY_ARN>\") request_context(input: { profile_id: \"client-1\", cost: 1000 }, sessionId: \"s1\") AgentCore::Action::\"execute_trade\"::request(input: { profile_id: \"client-1\", cost: 1000 }, eventPrincipal: AgentCore::OAuthUser::\"agent\", eventResource: AgentCore::Gateway::\"<GATEWAY_ARN>\", requestId: \"e1\", sessionId: \"s1\")\n",
+          "directory": "examples\\aws1\\traces\\agent-policy-EmptyTrajectory\\witness",
+          "command": "dogwood replay --policy-schema generated.cedarschema --event-schema agentcore.dwschema --trace NoTradeFromAnEmptyTrajectory.log agent-policy.dw"
+        }
+      ],
+      "kind": "property",
+      "held": false,
+      "exitCode": 1,
+      "output": "the policy binds eventResource/eventPrincipal, so every answer below uses\n  AgentCore's event schema: history partitioned by session, and one gateway\n  in the model -- a rule scoped to it applies to every request. Not modelled:\n  a response is assumed recorded before the next request, where AgentCore\n  records it \"shortly after\" (docs/agentcore.md, question 4).\n\nagent-policy.dw against EmptyTrajectory.tla: 12 rule(s)\n\n  BROKEN  Invariant NoTradeFromAnEmptyTrajectory is violated by the initial state:\n      amount = 1000\n        NoTradeFromAnEmptyTrajectory == ~Allowed(amount)\n\nThe policy set does not mean what the property module says it means. The state above\nis the request that breaks the claim, and the claim is quoted beneath it -- read the two\ntogether, because a violated invariant says which direction failed only when you can\nsee what it asserted.",
+      "error": ""
+    },
     "TradeGate.tla": {
       "policy": "agent-policy.dw",
+      "given": false,
       "claims": {
         "module": "TradeGate.tla",
         "states": [
@@ -873,19 +1378,20 @@
           ],
           "why": "",
           "sentence": "with prereq = \"freshPriceOnly\", the Dogwood engine ALLOWS this session at t=40, where `FreshPriceAloneIsNotEnough` says your policy set must REFUSE it",
-          "trace": "@11 scope(principal: AgentCore::OAuthUser::\"agent\", resource: AgentCore::Gateway::\"gw\") AgentCore::Action::\"get_market_price\"::response(input: { }, output: { }, callerPrincipal: AgentCore::OAuthUser::\"agent\", callerResource: AgentCore::Gateway::\"gw\", requestId: \"e1\")\n@40 scope(principal: AgentCore::OAuthUser::\"agent\", resource: AgentCore::Gateway::\"gw\") request_context(input: { profile_id: 1 }) AgentCore::Action::\"execute_trade\"::request(input: { profile_id: 1 }, callerPrincipal: AgentCore::OAuthUser::\"agent\", callerResource: AgentCore::Gateway::\"gw\", requestId: \"e2\")\n",
+          "trace": "@11 scope(principal: AgentCore::OAuthUser::\"agent\", resource: AgentCore::Gateway::\"<GATEWAY_ARN>\") AgentCore::Action::\"get_market_price\"::response(input: { }, output: { }, eventPrincipal: AgentCore::OAuthUser::\"agent\", eventResource: AgentCore::Gateway::\"<GATEWAY_ARN>\", requestId: \"e1\", sessionId: \"s1\")\n@40 scope(principal: AgentCore::OAuthUser::\"agent\", resource: AgentCore::Gateway::\"<GATEWAY_ARN>\") request_context(input: { profile_id: 1 }, sessionId: \"s1\") AgentCore::Action::\"execute_trade\"::request(input: { profile_id: 1 }, eventPrincipal: AgentCore::OAuthUser::\"agent\", eventResource: AgentCore::Gateway::\"<GATEWAY_ARN>\", requestId: \"e2\", sessionId: \"s1\")\n",
           "directory": "examples\\aws1\\traces\\agent-policy-TradeGate\\witness",
-          "command": "dogwood replay --policy-schema generated.cedarschema --event-schema pinned.dwschema --trace FreshPriceAloneIsNotEnough.log agent-policy.dw"
+          "command": "dogwood replay --policy-schema generated.cedarschema --event-schema agentcore.dwschema --trace FreshPriceAloneIsNotEnough.log agent-policy.dw"
         }
       ],
       "kind": "property",
       "held": false,
       "exitCode": 1,
-      "output": "no --event-schema given, so every answer below uses Dogwood's own default\n  reading: callerPrincipal pinned on every kind, so a temporal condition sees\n  only the requesting principal's events. Pass --event-schema for your\n  deployment's real one, or --unpinned if it has no universal pin.\n\nagent-policy.dw against TradeGate.tla: 7 rule(s)\n\n  BROKEN  Invariant FreshPriceAloneIsNotEnough is violated by the initial state:\n      prereq = \"freshPriceOnly\"\n        FreshPriceAloneIsNotEnough ==\n            (prereq = \"freshPriceOnly\") => ~Allowed(prereq)\n\nThe policy does not mean what the property says it means. The state above is the\nrequest that breaks the claim, and the claim is quoted beneath it -- read the two\ntogether, because a violated invariant says which direction failed only when you can\nsee what it asserted.",
+      "output": "the policy binds eventResource/eventPrincipal, so every answer below uses\n  AgentCore's event schema: history partitioned by session, and one gateway\n  in the model -- a rule scoped to it applies to every request. Not modelled:\n  a response is assumed recorded before the next request, where AgentCore\n  records it \"shortly after\" (docs/agentcore.md, question 4).\n\nagent-policy.dw against TradeGate.tla: 12 rule(s)\n\n  BROKEN  Invariant FreshPriceAloneIsNotEnough is violated by the initial state:\n      prereq = \"freshPriceOnly\"\n        FreshPriceAloneIsNotEnough ==\n            (prereq = \"freshPriceOnly\") => ~Allowed(prereq)\n\nThe policy set does not mean what the property module says it means. The state above\nis the request that breaks the claim, and the claim is quoted beneath it -- read the two\ntogether, because a violated invariant says which direction failed only when you can\nsee what it asserted.",
       "error": ""
     },
     "TrustDecay.tla": {
       "policy": "07-trust-decay.dw",
+      "given": false,
       "claims": {
         "module": "TrustDecay.tla",
         "states": [
@@ -984,19 +1490,20 @@
           ],
           "why": "",
           "sentence": "with gap = 1, the Dogwood engine REFUSES this session at t=2, where `KeepsWriteWhileAdvisorEngaged` says your policy set must ALLOW it",
-          "trace": "@1 scope(principal: AgentCore::OAuthUser::\"agent\", resource: AgentCore::Gateway::\"gw\") AgentCore::Action::\"interact_advisor\"::response(input: { }, output: { }, callerPrincipal: AgentCore::OAuthUser::\"agent\", callerResource: AgentCore::Gateway::\"gw\", requestId: \"e1\")\n@2 scope(principal: AgentCore::OAuthUser::\"agent\", resource: AgentCore::Gateway::\"gw\") request_context(input: { }) AgentCore::Action::\"execute_trade\"::request(input: { }, callerPrincipal: AgentCore::OAuthUser::\"agent\", callerResource: AgentCore::Gateway::\"gw\", requestId: \"e2\")\n",
+          "trace": "@1 scope(principal: AgentCore::OAuthUser::\"agent\", resource: AgentCore::Gateway::\"<arn>\") AgentCore::Action::\"interact_advisor\"::response(input: { }, output: { }, eventPrincipal: AgentCore::OAuthUser::\"agent\", eventResource: AgentCore::Gateway::\"<arn>\", requestId: \"e1\", sessionId: \"s1\")\n@2 scope(principal: AgentCore::OAuthUser::\"agent\", resource: AgentCore::Gateway::\"<arn>\") request_context(input: { }, sessionId: \"s1\") AgentCore::Action::\"execute_trade\"::request(input: { }, eventPrincipal: AgentCore::OAuthUser::\"agent\", eventResource: AgentCore::Gateway::\"<arn>\", requestId: \"e2\", sessionId: \"s1\")\n",
           "directory": "examples\\aws1\\traces\\07-trust-decay-TrustDecay\\witness",
-          "command": "dogwood replay --policy-schema generated.cedarschema --event-schema pinned.dwschema --trace KeepsWriteWhileAdvisorEngaged.log 07-trust-decay.dw"
+          "command": "dogwood replay --policy-schema generated.cedarschema --event-schema agentcore.dwschema --trace KeepsWriteWhileAdvisorEngaged.log 07-trust-decay.dw"
         }
       ],
       "kind": "property",
       "held": false,
       "exitCode": 1,
-      "output": "no --event-schema given, so every answer below uses Dogwood's own default\n  reading: callerPrincipal pinned on every kind, so a temporal condition sees\n  only the requesting principal's events. Pass --event-schema for your\n  deployment's real one, or --unpinned if it has no universal pin.\n\n07-trust-decay.dw against TrustDecay.tla: 1 rule(s)\n\n  BROKEN  Invariant KeepsWriteWhileAdvisorEngaged is violated by the initial state:\n      gap = 1\n        \\* The other half, which the sentence implies and which is the part that makes the policy useful:\n        \\* while the advisor IS engaged, the agent can still work.\n        KeepsWriteWhileAdvisorEngaged ==\n            (gap <= 15 * Minute) => TradeAllowed(gap)\n\nThe policy does not mean what the property says it means. The state above is the\nrequest that breaks the claim, and the claim is quoted beneath it -- read the two\ntogether, because a violated invariant says which direction failed only when you can\nsee what it asserted.",
+      "output": "the policy binds eventResource/eventPrincipal, so every answer below uses\n  AgentCore's event schema: history partitioned by session, and one gateway\n  in the model -- a rule scoped to it applies to every request. Not modelled:\n  a response is assumed recorded before the next request, where AgentCore\n  records it \"shortly after\" (docs/agentcore.md, question 4).\n\n07-trust-decay.dw against TrustDecay.tla: 1 rule(s)\n\n  BROKEN  Invariant KeepsWriteWhileAdvisorEngaged is violated by the initial state:\n      gap = 1\n        \\* The other half, which the sentence implies and which is the part that makes the policy useful:\n        \\* while the advisor IS engaged, the agent can still work.\n        KeepsWriteWhileAdvisorEngaged ==\n            (gap <= 15 * Minute) => TradeAllowed(gap)\n\nThe policy set does not mean what the property module says it means. The state above\nis the request that breaks the claim, and the claim is quoted beneath it -- read the two\ntogether, because a violated invariant says which direction failed only when you can\nsee what it asserted.",
       "error": ""
     },
     "TrustDecay10.tla": {
       "policy": "07-trust-decay.dw",
+      "given": false,
       "claims": {
         "module": "TrustDecay10.tla",
         "states": [
@@ -1059,19 +1566,19 @@
           ],
           "why": "",
           "sentence": "with gap = 960, the Dogwood engine ALLOWS this session at t=961, where `LosesWriteAfter10m` says your policy set must REFUSE it",
-          "trace": "@1 scope(principal: AgentCore::OAuthUser::\"agent\", resource: AgentCore::Gateway::\"gw\") AgentCore::Action::\"interact_advisor\"::response(input: { }, output: { }, callerPrincipal: AgentCore::OAuthUser::\"agent\", callerResource: AgentCore::Gateway::\"gw\", requestId: \"e1\")\n@961 scope(principal: AgentCore::OAuthUser::\"agent\", resource: AgentCore::Gateway::\"gw\") request_context(input: { }) AgentCore::Action::\"execute_trade\"::request(input: { }, callerPrincipal: AgentCore::OAuthUser::\"agent\", callerResource: AgentCore::Gateway::\"gw\", requestId: \"e2\")\n",
+          "trace": "@1 scope(principal: AgentCore::OAuthUser::\"agent\", resource: AgentCore::Gateway::\"<arn>\") AgentCore::Action::\"interact_advisor\"::response(input: { }, output: { }, eventPrincipal: AgentCore::OAuthUser::\"agent\", eventResource: AgentCore::Gateway::\"<arn>\", requestId: \"e1\", sessionId: \"s1\")\n@961 scope(principal: AgentCore::OAuthUser::\"agent\", resource: AgentCore::Gateway::\"<arn>\") request_context(input: { }, sessionId: \"s1\") AgentCore::Action::\"execute_trade\"::request(input: { }, eventPrincipal: AgentCore::OAuthUser::\"agent\", eventResource: AgentCore::Gateway::\"<arn>\", requestId: \"e2\", sessionId: \"s1\")\n",
           "directory": "examples\\aws1\\traces\\07-trust-decay-TrustDecay10\\witness",
-          "command": "dogwood replay --policy-schema generated.cedarschema --event-schema pinned.dwschema --trace LosesWriteAfter10m.log 07-trust-decay.dw"
+          "command": "dogwood replay --policy-schema generated.cedarschema --event-schema agentcore.dwschema --trace LosesWriteAfter10m.log 07-trust-decay.dw"
         }
       ],
       "kind": "property",
       "held": false,
       "exitCode": 1,
-      "output": "no --event-schema given, so every answer below uses Dogwood's own default\n  reading: callerPrincipal pinned on every kind, so a temporal condition sees\n  only the requesting principal's events. Pass --event-schema for your\n  deployment's real one, or --unpinned if it has no universal pin.\n\n07-trust-decay.dw against TrustDecay10.tla: 1 rule(s)\n\n  BROKEN  Invariant LosesWriteAfter10m is violated by the initial state:\n      gap = 960\n        LosesWriteAfter10m ==\n            (gap > 10 * Minute) => ~TradeAllowed(gap)\n\nThe policy does not mean what the property says it means. The state above is the\nrequest that breaks the claim, and the claim is quoted beneath it -- read the two\ntogether, because a violated invariant says which direction failed only when you can\nsee what it asserted.",
+      "output": "the policy binds eventResource/eventPrincipal, so every answer below uses\n  AgentCore's event schema: history partitioned by session, and one gateway\n  in the model -- a rule scoped to it applies to every request. Not modelled:\n  a response is assumed recorded before the next request, where AgentCore\n  records it \"shortly after\" (docs/agentcore.md, question 4).\n\n07-trust-decay.dw against TrustDecay10.tla: 1 rule(s)\n\n  BROKEN  Invariant LosesWriteAfter10m is violated by the initial state:\n      gap = 960\n        LosesWriteAfter10m ==\n            (gap > 10 * Minute) => ~TradeAllowed(gap)\n\nThe policy set does not mean what the property module says it means. The state above\nis the request that breaks the claim, and the claim is quoted beneath it -- read the two\ntogether, because a violated invariant says which direction failed only when you can\nsee what it asserted.",
       "error": ""
     }
   },
-  "smoke": null,
+  "smoke": 1000,
   "reading": "pinned",
   "unpaired": [],
   "inputScan": {
@@ -1083,6 +1590,8 @@
       "05-human-approval.dw",
       "07-trust-decay.dw",
       "agent-policy.dw",
+      "EmptyTrajectory.cfg",
+      "EmptyTrajectory.tla",
       "intents.md",
       "questions.md",
       "TradeGate.cfg",
@@ -1093,7 +1602,7 @@
       "TrustDecay10.tla"
     ],
     "unreadable": [],
-    "summary": "15 input files scanned: clean",
+    "summary": "17 input files scanned: clean",
     "high": 0,
     "medium": 0,
     "hits": [],
@@ -1101,5 +1610,12 @@
       "U+2014": 4
     },
     "modelWithheld": false
+  },
+  "llm": {
+    "provider": null,
+    "model": null,
+    "answered": 0,
+    "skipped": "--no-llm",
+    "failed": []
   }
 }

@@ -34,6 +34,16 @@ states for them (163 decisions; `tests/strands/agentcore_conformance.py`).
   the policy's own gateway, under `agentcore.dwschema`. Written in Dogwood's default terms, the
   replay would have judged a different policy, with every gateway-scoped rule simply not applying.
 
+### Changed — `examples/aws1` checks the article as published
+
+**`examples/aws1` now holds the AgentCore blog post's policies verbatim** and checks them against the
+post's own decision tables (`examples/aws1/tables/`). Before, it held transcriptions that had dropped
+more than they said. Deployed together, the post's policies allow a trade from an empty trajectory:
+two of its four `execute_trade` permits match one. That is the headline among 16 findings, each
+reproduced by Anchor and confirmed by the Dogwood engine. `examples/aws1/fixed/` is the whole set
+corrected, and satisfies every row of every table. The conformance harnesses take `--suite DIR`, and
+a decision line may be marked `finding`.
+
 ### Changed
 
 The reading descriptions no longer imply Dogwood's default is what every deployment gets. It is

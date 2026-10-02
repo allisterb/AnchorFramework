@@ -1,0 +1,18 @@
+****** SANY2 Version 2.1 created 24 February 2014
+
+Parsing file C:\Projects\Anchor\examples\aws1\traces\agent-policy-TradeGate\TradeGate.tla
+Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-50ituwco\Integers.tla
+Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-50ituwco\Sequences.tla
+Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-50ituwco\FiniteSets.tla
+Parsing file C:\Projects\Anchor\examples\aws1\traces\agent-policy-TradeGate\PolicyUnderTest.tla
+Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-50ituwco\Naturals.tla
+Parsing file C:\Projects\Anchor\examples\aws1\traces\agent-policy-TradeGate\DogwoodSemantics.tla
+Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-50ituwco\TLC.tla
+Semantic processing of module Naturals
+Semantic processing of module Integers
+Semantic processing of module Sequences
+Semantic processing of module FiniteSets
+Semantic processing of module PolicyUnderTest
+Semantic processing of module TLC
+Semantic processing of module DogwoodSemantics
+Semantic processing of module TradeGate

@@ -43,7 +43,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from agentcore_conformance import SOURCES, SUITE, consistency, load, load_suite, trace  # noqa: E402
+from agentcore_conformance import SOURCES, SUITE, actual, consistency, load_suite, trace  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[2]
 EVENT_SCHEMA = REPO / "src" / "translator" / "agentcore.dwschema"
@@ -51,6 +51,7 @@ ACTION_SCHEMA = SUITE / "agentcore.cedarschema"
 DOGWOOD = (REPO / "ext" / "dogwood" / "target" / "release"
            / ("dogwood.exe" if sys.platform == "win32" else "dogwood"))
 
+# Set in main(), from --policy-schema.
 SCHEMAS = ["--policy-schema", str(ACTION_SCHEMA), "--event-schema", str(EVENT_SCHEMA)]
 
 
@@ -76,6 +77,20 @@ def replay(policy: Path, trace_path: Path) -> dict[int, bool]:
 
 
 def main() -> int:
+    import argparse                                                   # noqa: PLC0415
+
+    ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    ap.add_argument("--suite", type=Path, default=SUITE,
+                    help="a directory of cases in the conformance format (default: the guide's)")
+    ap.add_argument("--policy-schema", type=Path, default=None, metavar="FILE.cedarschema",
+                    help="the action schema the cases' tools are declared in (default: the "
+                         "suite's own .cedarschema)")
+    args = ap.parse_args()
+
+    action_schema = args.policy_schema or next(iter(sorted(args.suite.glob("*.cedarschema"))),
+                                               ACTION_SCHEMA)
+    SCHEMAS[1] = str(action_schema)
+
     if not DOGWOOD.exists():
         print(f"SKIPPED: no dogwood binary at {DOGWOOD.relative_to(REPO)}\n"
               "Build it with:\n"
@@ -83,20 +98,20 @@ def main() -> int:
               file=sys.stderr)
         return 2
 
-    cases = load_suite()
+    cases = load_suite(args.suite)
     malformed = [f"{c['name']}: {p}" for c in cases for p in consistency(c)]
     if malformed:
         print("THE GROUND TRUTH IS MALFORMED -- nothing was replayed:\n  " + "\n  ".join(malformed))
         return 1
 
-    failures = 0
+    failures, findings = 0, 0
     confirmed, contradicted = Counter(), Counter()
-    print("validate and replay, verbatim, under agentcore.dwschema + agentcore.cedarschema\n")
+    print(f"validate and replay, verbatim, under agentcore.dwschema + {action_schema.name}\n")
 
     with tempfile.TemporaryDirectory(prefix="anchor-agentcore-") as tmp:
         trc = Path(tmp) / "t.log"
         for c in cases:
-            path = SUITE / f"{c['name']}.dw"
+            path = c["path"]
             ok, text = validate(path)
             if c["refused"]:
                 # The guardrail examples call AWS's managed provider, which has no declaration we
@@ -119,22 +134,28 @@ def main() -> int:
                     if e["kind"] != "request":
                         continue
                     got = verdicts.get(e["time"])
-                    if got == (e["verdict"] == "ALLOW"):
+                    # At a `finding`, the engine must do the OPPOSITE of what the source says --
+                    # that is the finding, confirmed by the engine rather than by our model.
+                    if got == actual(e):
                         confirmed[e["source"]] += 1
+                        findings += e["finding"]
                     else:
                         contradicted[e["source"]] += 1
                         shown = "nothing" if got is None else ("ALLOW" if got else "DENY")
+                        said = (f"the source says {e['verdict']} and the policy was expected to "
+                                f"do the opposite" if e["finding"] else f"expected {e['verdict']}")
                         wrong.append(f"session {n} ({row['title'][:50]}), @{e['time']} "
-                                     f"{e['tool']}: expected {e['verdict']} [{e['source']}], "
-                                     f"engine {shown}")
+                                     f"{e['tool']}: {said} [{e['source']}], engine {shown}")
             failures += bool(wrong)
             n = sum(e["kind"] == "request" for row in c["rows"] for e in row["events"])
             print(f"  {c['name']:32} {'ENGINE DISAGREES' if wrong else 'agrees'} ({n} decisions)")
             for w in wrong:
                 print(f"  {'':32}   {w}")
 
-    print("\nnegative checks -- what AWS says the service rejects, and how:\n")
-    for path in sorted((SUITE / "rejected").glob("*.dw")):
+    rejected = sorted((args.suite / "rejected").glob("*.dw"))
+    if rejected:
+        print("\nnegative checks -- what AWS says the service rejects, and how:\n")
+    for path in rejected:
         expect = next((ln[3:].strip()[len("rejects"):].strip()
                        for ln in path.read_text(encoding="utf-8").splitlines()
                        if ln.startswith("//| rejects")), None)
@@ -147,11 +168,14 @@ def main() -> int:
 
     total = sum(confirmed.values()) + sum(contradicted.values())
     print(f"\n{sum(confirmed.values())} of {total} expected decisions confirmed by the engine: "
-          + ", ".join(f"{s} {confirmed[s]}/{confirmed[s] + contradicted[s]}" for s in SOURCES))
+          + ", ".join(f"{s} {confirmed[s]}/{confirmed[s] + contradicted[s]}" for s in SOURCES)
+          + (f"; {findings} of them FINDINGS, where the policy as published does the opposite of "
+             f"what its source says" if findings else ""))
     if failures:
         return 1
-    print("the engine agrees with every expected decision, AWS's and ours, and the schema checks\n"
-          "pass: AWS's examples validate verbatim under the transcribed AgentCore schema")
+    print("the engine agrees with every expected decision, AWS's and ours"
+          + (", findings included" if findings else "")
+          + (", and the schema checks pass" if rejected else ""))
     return 0
 
 

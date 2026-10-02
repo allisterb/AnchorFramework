@@ -1,0 +1,650 @@
+{
+  "directory": "examples\\aws1\\fixed",
+  "derived": {
+    "agent-policy.dw": {
+      "kind": "derived",
+      "policy": "agent-policy.dw",
+      "reading": "the policy binds eventResource/eventPrincipal, so every answer below uses AgentCore's event schema: history partitioned by session, and one gateway in the model -- a rule scoped to it applies to every request. Not modelled: a response is assumed recorded before the next request, where AgentCore records it \"shortly after\" (docs/agentcore.md, question 4).",
+      "bound": {
+        "attempts": 4,
+        "amount": 2,
+        "exhaustive": false,
+        "randomSessions": 1000
+      },
+      "rules": [
+        {
+          "index": 1,
+          "effect": "permit",
+          "actions": [
+            "get_client_profile"
+          ],
+          "verdict": "live",
+          "note": "witness: get_client_profile",
+          "witness": "get_client_profile",
+          "session": [
+            {
+              "action": "get_client_profile",
+              "kind": "request",
+              "input": {
+                "cost": 25001,
+                "status": "\u0000none"
+              },
+              "output": {},
+              "time": 1,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "sessionId": "caller"
+              }
+            },
+            {
+              "action": "get_client_profile",
+              "kind": "response",
+              "input": {
+                "cost": 25001,
+                "status": "\u0000none"
+              },
+              "output": {
+                "portfolio_id": 2
+              },
+              "time": 2,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "sessionId": "caller"
+              }
+            }
+          ],
+          "narrative": [
+            "1. get_client_profile(cost = 25001, status = \"\u0000none\")  allowed  (portfolio_id = 2)"
+          ],
+          "blame": null
+        },
+        {
+          "index": 2,
+          "effect": "permit",
+          "actions": [
+            "get_market_price"
+          ],
+          "verdict": "live",
+          "note": "witness: approve_trade -> approve_trade -> get_market_price",
+          "witness": "approve_trade -> approve_trade -> get_market_price",
+          "session": [
+            {
+              "action": "approve_trade",
+              "kind": "request",
+              "input": {
+                "cost": 24999,
+                "status": "\u0000none"
+              },
+              "output": {},
+              "time": 1,
+              "principal": "stranger",
+              "resource": "caller",
+              "session": "stranger",
+              "pins": {
+                "sessionId": "stranger"
+              }
+            },
+            {
+              "action": "approve_trade",
+              "kind": "response",
+              "input": {
+                "cost": 24999,
+                "status": "\u0000none"
+              },
+              "output": {
+                "portfolio_id": 2
+              },
+              "time": 2,
+              "principal": "stranger",
+              "resource": "caller",
+              "session": "stranger",
+              "pins": {
+                "sessionId": "stranger"
+              }
+            },
+            {
+              "action": "approve_trade",
+              "kind": "request",
+              "input": {
+                "cost": 25000,
+                "status": "approved"
+              },
+              "output": {},
+              "time": 3,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "sessionId": "caller"
+              }
+            },
+            {
+              "action": "approve_trade",
+              "kind": "response",
+              "input": {
+                "cost": 25000,
+                "status": "approved"
+              },
+              "output": {
+                "portfolio_id": 2
+              },
+              "time": 4,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "sessionId": "caller"
+              }
+            },
+            {
+              "action": "get_market_price",
+              "kind": "request",
+              "input": {
+                "cost": 25001,
+                "status": "approved"
+              },
+              "output": {},
+              "time": 5,
+              "principal": "stranger",
+              "resource": "caller",
+              "session": "stranger",
+              "pins": {
+                "sessionId": "stranger"
+              }
+            },
+            {
+              "action": "get_market_price",
+              "kind": "response",
+              "input": {
+                "cost": 25001,
+                "status": "approved"
+              },
+              "output": {
+                "portfolio_id": 2
+              },
+              "time": 6,
+              "principal": "stranger",
+              "resource": "caller",
+              "session": "stranger",
+              "pins": {
+                "sessionId": "stranger"
+              }
+            }
+          ],
+          "narrative": [
+            "1. approve_trade   (cost = 24999, status = \"\u0000none\")  allowed  (portfolio_id = 2)",
+            "2. approve_trade   (cost = 25000, status = \"approved\")  allowed  (portfolio_id = 2)",
+            "3. get_market_price(cost = 25001, status = \"approved\")  allowed  (portfolio_id = 2)"
+          ],
+          "blame": null
+        },
+        {
+          "index": 3,
+          "effect": "permit",
+          "actions": [
+            "interact_advisor"
+          ],
+          "verdict": "live",
+          "note": "witness: interact_advisor",
+          "witness": "interact_advisor",
+          "session": [
+            {
+              "action": "interact_advisor",
+              "kind": "request",
+              "input": {
+                "cost": 25001,
+                "status": "approved"
+              },
+              "output": {},
+              "time": 1,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "sessionId": "caller"
+              }
+            },
+            {
+              "action": "interact_advisor",
+              "kind": "response",
+              "input": {
+                "cost": 25001,
+                "status": "approved"
+              },
+              "output": {
+                "portfolio_id": 1
+              },
+              "time": 2,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "sessionId": "caller"
+              }
+            }
+          ],
+          "narrative": [
+            "1. interact_advisor(cost = 25001, status = \"approved\")  allowed  (portfolio_id = 1)"
+          ],
+          "blame": null
+        },
+        {
+          "index": 4,
+          "effect": "permit",
+          "actions": [
+            "approve_trade"
+          ],
+          "verdict": "live",
+          "note": "witness: approve_trade",
+          "witness": "approve_trade",
+          "session": [
+            {
+              "action": "approve_trade",
+              "kind": "request",
+              "input": {
+                "cost": 24999,
+                "status": "\u0000none"
+              },
+              "output": {},
+              "time": 1,
+              "principal": "stranger",
+              "resource": "caller",
+              "session": "stranger",
+              "pins": {
+                "sessionId": "stranger"
+              }
+            },
+            {
+              "action": "approve_trade",
+              "kind": "response",
+              "input": {
+                "cost": 24999,
+                "status": "\u0000none"
+              },
+              "output": {
+                "portfolio_id": 2
+              },
+              "time": 2,
+              "principal": "stranger",
+              "resource": "caller",
+              "session": "stranger",
+              "pins": {
+                "sessionId": "stranger"
+              }
+            }
+          ],
+          "narrative": [
+            "1. approve_trade(cost = 24999, status = \"\u0000none\")  allowed  (portfolio_id = 2)"
+          ],
+          "blame": null
+        },
+        {
+          "index": 5,
+          "effect": "permit",
+          "actions": [
+            "load_portfolio"
+          ],
+          "verdict": "live",
+          "note": "witness: get_client_profile -> load_portfolio",
+          "witness": "get_client_profile -> load_portfolio",
+          "session": [
+            {
+              "action": "get_client_profile",
+              "kind": "request",
+              "input": {
+                "cost": 25001,
+                "status": "\u0000none"
+              },
+              "output": {},
+              "time": 1,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "sessionId": "caller"
+              }
+            },
+            {
+              "action": "get_client_profile",
+              "kind": "response",
+              "input": {
+                "cost": 25001,
+                "status": "\u0000none"
+              },
+              "output": {
+                "portfolio_id": 2
+              },
+              "time": 2,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "sessionId": "caller"
+              }
+            },
+            {
+              "action": "load_portfolio",
+              "kind": "request",
+              "input": {
+                "cost": 25000,
+                "status": "\u0000none"
+              },
+              "output": {},
+              "time": 3,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "sessionId": "caller"
+              }
+            },
+            {
+              "action": "load_portfolio",
+              "kind": "response",
+              "input": {
+                "cost": 25000,
+                "status": "\u0000none"
+              },
+              "output": {
+                "portfolio_id": 2
+              },
+              "time": 4,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "sessionId": "caller"
+              }
+            }
+          ],
+          "narrative": [
+            "1. get_client_profile(cost = 25001, status = \"\u0000none\")  allowed  (portfolio_id = 2)",
+            "2. load_portfolio    (cost = 25000, status = \"\u0000none\")  allowed  (portfolio_id = 2)"
+          ],
+          "blame": null
+        },
+        {
+          "index": 6,
+          "effect": "permit",
+          "actions": [
+            "rebalance_portfolio"
+          ],
+          "verdict": "unknown",
+          "note": "no witness in 1000 random sessions -- not a verdict",
+          "witness": null,
+          "session": [],
+          "narrative": [],
+          "blame": null
+        },
+        {
+          "index": 7,
+          "effect": "permit",
+          "actions": [
+            "execute_trade"
+          ],
+          "verdict": "unknown",
+          "note": "no witness in 1000 random sessions -- not a verdict",
+          "witness": null,
+          "session": [],
+          "narrative": [],
+          "blame": null
+        },
+        {
+          "index": 8,
+          "effect": "forbid",
+          "actions": [
+            "execute_trade"
+          ],
+          "verdict": "unknown",
+          "note": "no witness in 1000 random sessions -- not a verdict",
+          "witness": null,
+          "session": [],
+          "narrative": [],
+          "blame": null
+        },
+        {
+          "index": 9,
+          "effect": "forbid",
+          "actions": [
+            "execute_trade"
+          ],
+          "verdict": "unknown",
+          "note": "no witness in 1000 random sessions -- not a verdict",
+          "witness": null,
+          "session": [],
+          "narrative": [],
+          "blame": null
+        },
+        {
+          "index": 10,
+          "effect": "forbid",
+          "actions": [
+            "execute_trade",
+            "rebalance_portfolio"
+          ],
+          "verdict": "live",
+          "note": "witness: get_client_profile -> load_portfolio -> execute_trade -> rebalance_portfolio",
+          "witness": "get_client_profile -> load_portfolio -> execute_trade -> rebalance_portfolio",
+          "session": [
+            {
+              "action": "get_client_profile",
+              "kind": "request",
+              "input": {
+                "cost": 25000,
+                "status": "approved"
+              },
+              "output": {},
+              "time": 1,
+              "principal": "stranger",
+              "resource": "caller",
+              "session": "stranger",
+              "pins": {
+                "sessionId": "stranger"
+              }
+            },
+            {
+              "action": "get_client_profile",
+              "kind": "response",
+              "input": {
+                "cost": 25000,
+                "status": "approved"
+              },
+              "output": {
+                "portfolio_id": 2
+              },
+              "time": 2,
+              "principal": "stranger",
+              "resource": "caller",
+              "session": "stranger",
+              "pins": {
+                "sessionId": "stranger"
+              }
+            },
+            {
+              "action": "load_portfolio",
+              "kind": "request",
+              "input": {
+                "cost": 25001,
+                "status": "\u0000none"
+              },
+              "output": {},
+              "time": 3,
+              "principal": "stranger",
+              "resource": "caller",
+              "session": "stranger",
+              "pins": {
+                "sessionId": "stranger"
+              }
+            },
+            {
+              "action": "load_portfolio",
+              "kind": "response",
+              "input": {
+                "cost": 25001,
+                "status": "\u0000none"
+              },
+              "output": {
+                "portfolio_id": 2
+              },
+              "time": 4,
+              "principal": "stranger",
+              "resource": "caller",
+              "session": "stranger",
+              "pins": {
+                "sessionId": "stranger"
+              }
+            },
+            {
+              "action": "execute_trade",
+              "kind": "request",
+              "input": {
+                "cost": 24999,
+                "status": "approved"
+              },
+              "output": {},
+              "time": 5,
+              "principal": "stranger",
+              "resource": "caller",
+              "session": "stranger",
+              "pins": {
+                "sessionId": "stranger"
+              }
+            },
+            {
+              "action": "execute_trade",
+              "kind": "error",
+              "input": {
+                "cost": 24999,
+                "status": "approved"
+              },
+              "output": {},
+              "time": 6,
+              "principal": "stranger",
+              "resource": "caller",
+              "session": "stranger",
+              "pins": {
+                "sessionId": "stranger"
+              }
+            },
+            {
+              "action": "rebalance_portfolio",
+              "kind": "request",
+              "input": {
+                "cost": 25001,
+                "status": "\u0000none"
+              },
+              "output": {},
+              "time": 7,
+              "principal": "stranger",
+              "resource": "caller",
+              "session": "stranger",
+              "pins": {
+                "sessionId": "stranger"
+              }
+            },
+            {
+              "action": "rebalance_portfolio",
+              "kind": "error",
+              "input": {
+                "cost": 25001,
+                "status": "\u0000none"
+              },
+              "output": {},
+              "time": 8,
+              "principal": "stranger",
+              "resource": "caller",
+              "session": "stranger",
+              "pins": {
+                "sessionId": "stranger"
+              }
+            }
+          ],
+          "narrative": [
+            "1. get_client_profile (cost = 25000, status = \"approved\")  allowed  (portfolio_id = 2)",
+            "2. load_portfolio     (cost = 25001, status = \"\u0000none\")  allowed  (portfolio_id = 2)",
+            "3. execute_trade      (cost = 24999, status = \"approved\")  denied",
+            "4. rebalance_portfolio(cost = 25001, status = \"\u0000none\")  denied"
+          ],
+          "blame": null
+        }
+      ],
+      "defects": [],
+      "unknown": [
+        6,
+        7,
+        8,
+        9
+      ],
+      "artifacts": "examples\\aws1\\fixed\\traces\\agent-policy"
+    }
+  },
+  "properties": {
+    "EmptyTrajectory.tla": {
+      "policy": "agent-policy.dw",
+      "given": false,
+      "claims": {
+        "module": "EmptyTrajectory.tla",
+        "states": [
+          "amount = 1000",
+          "amount = 30000"
+        ],
+        "scope": "read from Init",
+        "claims": [
+          {
+            "name": "NoTradeFromAnEmptyTrajectory",
+            "defined": true,
+            "says": "always: the policy REFUSES it (Allowed(amount))",
+            "forbids": "the policy GRANTS it (Allowed(amount))",
+            "condition": "",
+            "appliesTo": [
+              "amount = 1000",
+              "amount = 30000"
+            ],
+            "states": 2,
+            "unknownIn": 0,
+            "settledWithoutThePolicy": 0,
+            "falseWithoutThePolicy": [],
+            "vacuous": false,
+            "notes": []
+          }
+        ],
+        "definedButNotChecked": [],
+        "vacuous": []
+      },
+      "witness": [],
+      "kind": "property",
+      "held": true,
+      "exitCode": 0,
+      "output": "the policy binds eventResource/eventPrincipal, so every answer below uses\n  AgentCore's event schema: history partitioned by session, and one gateway\n  in the model -- a rule scoped to it applies to every request. Not modelled:\n  a response is assumed recorded before the next request, where AgentCore\n  records it \"shortly after\" (docs/agentcore.md, question 4).\n\nagent-policy.dw against EmptyTrajectory.tla: 10 rule(s)\n\n  every claim holds over every request the property module names.\n\nThat is not a proof about requests it does not name. A property module ranges over\nwhat it says it ranges over, and nothing warns you when that is less than you meant.",
+      "error": ""
+    }
+  },
+  "smoke": 1000,
+  "reading": "pinned",
+  "unpaired": [],
+  "inputScan": {
+    "files": [
+      "agent-policy.dw",
+      "EmptyTrajectory.cfg",
+      "EmptyTrajectory.tla"
+    ],
+    "unreadable": [],
+    "summary": "3 input files scanned: clean",
+    "high": 0,
+    "medium": 0,
+    "hits": [],
+    "census": {},
+    "modelWithheld": false
+  },
+  "llm": {
+    "provider": null,
+    "model": null,
+    "answered": 0,
+    "skipped": "--no-llm",
+    "failed": []
+  }
+}

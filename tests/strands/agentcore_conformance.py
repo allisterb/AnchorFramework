@@ -63,7 +63,19 @@ SOURCES = ("aws-table", "aws-prose", "ours")
 
 ROW = re.compile(r"row\s+(\S+):\s*(.+)")
 EVENT = re.compile(r"@(\d+)\s+(request|response|error)\s+(\w+)\s+(\{[^{}]*\})"
-                   r"(?:\s*->\s*(\{[^{}]*\}))?(?:\s+(ALLOW|DENY)(?:\s+(\S+))?)?\s*$")
+                   r"(?:\s*->\s*(\{[^{}]*\}))?"
+                   r"(?:\s+(ALLOW|DENY)(?:\s+(?!finding\b)(\S+))?(?:\s+(finding))?)?\s*$")
+
+
+def actual(e: dict) -> bool:
+    """Whether the policy as written ALLOWS this decision.
+
+    The verdict on a line is what the SOURCE says should happen. `finding` marks a decision where
+    the policy as published does the opposite -- a disagreement we have established and expect to
+    keep seeing, so it is checked rather than tolerated: should the model or the engine ever agree
+    with the source there, the finding is gone and the run says so.
+    """
+    return (e["verdict"] == "ALLOW") != e.get("finding", False)
 
 
 # The two guide pages. `rejected/` beside them holds negative checks on the schema, which have no
@@ -73,15 +85,21 @@ PAGES = ("authoring", "examples")
 
 # ------------------------------------------------------------------------------------------------
 def load_suite(suite: Path = SUITE) -> list[dict]:
-    return [load(p) for page in PAGES for p in sorted((suite / page).glob("*.dw"))]
+    """The guide's two pages under the suite; or, for any other directory, every `.dw` in it."""
+    if any((suite / page).is_dir() for page in PAGES):
+        return [load(p) for page in PAGES for p in sorted((suite / page).glob("*.dw"))]
+    return [load(p) for p in sorted(suite.glob("*.dw"))]
 
 
 def load(path: Path) -> dict:
     """One example: its policy text, and the ground truth read out of its `//|` lines."""
     text = path.read_text(encoding="utf-8")
     gateway = re.search(r'AgentCore::Gateway::"([^"]+)"', text)
-    case = {"name": f"{path.parent.name}/{path.stem}", "text": text, "rows": [], "problems": [],
-            "target": None, "refused": False, "gateway": gateway.group(1) if gateway else None}
+    # A policy set with no gateway in any scope -- the blog post's policies 2-6 -- applies at
+    # whichever gateway it is deployed on; the article's own placeholder names that one.
+    case = {"name": f"{path.parent.name}/{path.stem}", "path": path, "text": text, "rows": [],
+            "problems": [], "target": None, "refused": False,
+            "gateway": gateway.group(1) if gateway else "<GATEWAY_ARN>"}
 
     for n, line in enumerate(text.splitlines(), 1):
         if not line.startswith("//|"):
@@ -99,10 +117,11 @@ def load(path: Path) -> dict:
             if not case["rows"]:
                 case["problems"].append(f"line {n}: an event before any row")
                 continue
-            t, kind, tool, inp, out, verdict, source = m.groups()
+            t, kind, tool, inp, out, verdict, source, finding = m.groups()
             case["rows"][-1]["events"].append({
                 "time": int(t), "kind": kind, "tool": tool, "input": inp, "output": out,
-                "verdict": verdict, "source": source or case["rows"][-1]["source"], "line": n})
+                "verdict": verdict, "source": source or case["rows"][-1]["source"],
+                "finding": bool(finding), "line": n})
         else:
             case["problems"].append(f"line {n}: not a ground-truth line: {body[:60]}")
     return case
@@ -118,8 +137,6 @@ def consistency(case: dict) -> list[str]:
     problems = list(case["problems"])
     if not case["target"]:
         problems.append("no `//| target`")
-    if not case["gateway"]:
-        problems.append("no gateway named in any scope")
     if case["refused"] and case["rows"]:
         problems.append("`expect refused` with rows to check")
     if not case["refused"] and not case["rows"]:
@@ -160,8 +177,10 @@ def consistency(case: dict) -> list[str]:
             open_requests.remove(match)
             # A response only for a permitted request that completed. An error answers either a
             # denial or a permitted call whose tool failed, so it constrains nothing here.
-            if e["kind"] == "response" and match["verdict"] != "ALLOW":
-                problems.append(f"{at}: a response for a request expected to be DENIED")
+            # Against what the policy actually DOES, which is what was recorded: at a `finding`
+            # that is the opposite of what the source says.
+            if e["kind"] == "response" and not actual(match):
+                problems.append(f"{at}: a response for a request the policy DENIES")
             e["requestId"] = f"r{match['time']}"
     return problems
 
@@ -192,7 +211,12 @@ def trace(case: dict, row: dict, stripped: bool) -> list[str]:
     scope = f"scope(principal: {PRINCIPAL}, resource: {gateway})"
     lines = []
     for e in row["events"]:
-        action = f'AgentCore::Action::"{case["target"]}___{e["tool"]}"::{e["kind"]}'
+        # `target -` writes tool names as they stand, for a source that names actions without a
+        # gateway target -- the AgentCore blog post does, for six of its seven policies. A name
+        # already carrying a target is written as it stands too.
+        name = (e["tool"] if case["target"] == "-" or "___" in e["tool"]
+                else f'{case["target"]}___{e["tool"]}')
+        action = f'AgentCore::Action::"{name}"::{e["kind"]}'
         request_id = f"r{e['time']}" if e["kind"] == "request" else e.get("requestId", "")
         payload = (f"input: {e['input']}" + (f", output: {e['output']}" if e["output"] else "")
                    + f', {p}: {PRINCIPAL}, {r}: {gateway}, requestId: "{request_id}", '
@@ -223,7 +247,7 @@ def translate(case: dict, stripped: bool) -> tuple[list[str], str | None]:
         records = []
         for n, row in enumerate(case["rows"], 1):
             events = parse_trace("\n".join(trace(case, row, stripped)), schema.get("paths"))
-            oracle = {i + 1: e["verdict"] == "ALLOW"
+            oracle = {i + 1: actual(e)
                       for i, e in enumerate(row["events"]) if e["kind"] == "request"}
             if len(events) != len(row["events"]):
                 raise Unsupported("the trace did not round-trip through the trace parser")
@@ -260,9 +284,12 @@ def main() -> int:
 
     decisions = [e for c in cases for row in c["rows"] for e in row["events"] if e["kind"] == "request"]
     by_source = {s: sum(e["source"] == s for e in decisions) for s in SOURCES}
+    findings = sum(e["finding"] for e in decisions)
     print(f"{len(cases)} examples, {sum(len(c['rows']) for c in cases)} sessions, "
           f"{len(decisions)} expected decisions "
-          f"({', '.join(f'{n} {s}' for s, n in by_source.items())})")
+          f"({', '.join(f'{n} {s}' for s, n in by_source.items())})"
+          + (f", {findings} of them FINDINGS -- the policy does the opposite of what its source "
+             f"says, and is held to that" if findings else ""))
     print(f"mode: {'STRIPPED -- gateway scope and eventResource joins removed' if args.stripped else 'VERBATIM -- as AWS publishes them'}\n")
 
     records, refused, wrongly_checked = [], {}, []
@@ -307,7 +334,9 @@ def main() -> int:
         return 1
     if unexpected:
         return 2
-    print("every example conforms: Anchor reproduces every decision AWS states")
+    print("every example conforms: Anchor reproduces every decision AWS states"
+          + (f", and every one of the {findings} findings where the policy does otherwise"
+             if findings else ""))
     return 0
 
 

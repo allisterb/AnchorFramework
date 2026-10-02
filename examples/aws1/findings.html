@@ -114,15 +114,19 @@ table.findings tr:last-child td { border-bottom:none; }
 <body>
 <div class="wrap">
   <h1>Findings &mdash; <code>aws1</code></h1>
-  <p class="sub">3 broken claims drawn below, each with
+  <p class="sub">4 broken claims drawn below, each with
     the session that breaks it and the reference engine&rsquo;s verdict on that session. The
     written report is <code>findings.md</code>, beside this file.</p>
 <div class="panel">
   <h3>Input scan</h3>
-  <p>15 input files scanned: clean.</p>
+  <p>17 input files scanned: clean.</p>
   <p class="footnote">What this looks for &mdash; hidden and reordering characters, look-alike letters in names, instructions aimed at a model, markup, terminal escapes and encoded payloads &mdash; is in <code>src/checker/scan.py</code>; <code>anchor scan</code> prints it.</p>
 </div>
-
+<div class="panel">
+  <h3>What the checks found</h3>
+  <ol class="checked"><li>**agent-policy.dw does not satisfy EmptyTrajectory.tla** — with amount = 1000, the Dogwood engine ALLOWS this session at t=1, where `NoTradeFromAnEmptyTrajectory` says your policy set must REFUSE it</li><li>**agent-policy.dw does not satisfy TradeGate.tla** — with prereq = &quot;freshPriceOnly&quot;, the Dogwood engine ALLOWS this session at t=40, where `FreshPriceAloneIsNotEnough` says your policy set must REFUSE it</li><li>**07-trust-decay.dw does not satisfy TrustDecay.tla** — with gap = 1, the Dogwood engine REFUSES this session at t=2, where `KeepsWriteWhileAdvisorEngaged` says your policy set must ALLOW it</li><li>**07-trust-decay.dw does not satisfy TrustDecay10.tla** — with gap = 960, the Dogwood engine ALLOWS this session at t=961, where `LosesWriteAfter10m` says your policy set must REFUSE it</li></ol>
+  <p class="footnote">The reasoning behind each is in findings.md.</p>
+</div>
 
 <section class="finding" data-finding>
   <h2 class="claim">KeepsWriteWhileAdvisorEngaged</h2>
@@ -158,7 +162,7 @@ table.findings tr:last-child td { border-bottom:none; }
   </div>
   <div class="panel missing" data-part="missing">This finding could not be drawn: its script did
     not run. Open the page in a browser with JavaScript enabled.</div>
-  <script type="application/json">{"generatedBy":"src/checker/timeline.py","chart":null,"policy":"07-trust-decay.dw","claim":"KeepsWriteWhileAdvisorEngaged","source":{"witness":"examples/aws1/traces/07-trust-decay-TrustDecay/witness","set":"examples/aws1","trace":"KeepsWriteWhileAdvisorEngaged.log","replay":"dogwood replay --policy-schema generated.cedarschema --event-schema pinned.dwschema --trace KeepsWriteWhileAdvisorEngaged.log 07-trust-decay.dw","verdictsMissing":null,"shapesMissing":null},"rules":[{"index":0,"effect":"permit","action":"execute_trade","label":"\"After 15 minutes without advisor interaction, the agent loses access to write operations.\"","line":10,"shape":{"effect":"permit","actions":["execute_trade"],"kind":"predicate","negated":true,"requires":{"action":"interact_advisor","eventKind":"response","where":[],"window":900,"windowText":"15m"}}}],"events":[{"at":1,"action":"interact_advisor","kind":"response","input":{},"output":{},"isDecision":false},{"at":2,"action":"execute_trade","kind":"request","input":{},"output":{},"isDecision":true,"verdict":"DENY","rules":[]}]}</script>
+  <script type="application/json">{"generatedBy":"src/checker/timeline.py","chart":null,"policy":"07-trust-decay.dw","claim":"KeepsWriteWhileAdvisorEngaged","source":{"witness":"examples/aws1/traces/07-trust-decay-TrustDecay/witness","set":"examples/aws1","trace":"KeepsWriteWhileAdvisorEngaged.log","replay":"dogwood replay --policy-schema generated.cedarschema --event-schema agentcore.dwschema --trace KeepsWriteWhileAdvisorEngaged.log 07-trust-decay.dw","verdictsMissing":null,"shapesMissing":"outside the parser's subset: bind target 'eventResource' is not a field of this event schema, which names its scope fields callerPrincipal, callerResource"},"rules":[{"index":0,"effect":"permit","action":null,"label":"(execute_trade, rebalance_portfolio).","line":10}],"events":[{"at":1,"action":"interact_advisor","kind":"response","input":{},"output":{},"isDecision":false},{"at":2,"action":"execute_trade","kind":"request","input":{},"output":{},"isDecision":true,"verdict":"DENY","rules":[]}]}</script>
 </section>
 <section class="finding" data-finding>
   <h2 class="claim">LosesWriteAfter10m</h2>
@@ -194,7 +198,43 @@ table.findings tr:last-child td { border-bottom:none; }
   </div>
   <div class="panel missing" data-part="missing">This finding could not be drawn: its script did
     not run. Open the page in a browser with JavaScript enabled.</div>
-  <script type="application/json">{"generatedBy":"src/checker/timeline.py","chart":{"rule":0,"effect":"permit","actions":["execute_trade"],"kind":"predicate","negated":true,"requires":{"action":"interact_advisor","eventKind":"response","where":[],"window":900,"windowText":"15m"}},"policy":"07-trust-decay.dw","claim":"LosesWriteAfter10m","source":{"witness":"examples/aws1/traces/07-trust-decay-TrustDecay10/witness","set":"examples/aws1","trace":"LosesWriteAfter10m.log","replay":"dogwood replay --policy-schema generated.cedarschema --event-schema pinned.dwschema --trace LosesWriteAfter10m.log 07-trust-decay.dw","verdictsMissing":null,"shapesMissing":null},"rules":[{"index":0,"effect":"permit","action":"execute_trade","label":"\"After 15 minutes without advisor interaction, the agent loses access to write operations.\"","line":10,"shape":{"effect":"permit","actions":["execute_trade"],"kind":"predicate","negated":true,"requires":{"action":"interact_advisor","eventKind":"response","where":[],"window":900,"windowText":"15m"}}}],"events":[{"at":1,"action":"interact_advisor","kind":"response","input":{},"output":{},"isDecision":false},{"at":961,"action":"execute_trade","kind":"request","input":{},"output":{},"isDecision":true,"verdict":"ALLOW","rules":[0]}]}</script>
+  <script type="application/json">{"generatedBy":"src/checker/timeline.py","chart":null,"policy":"07-trust-decay.dw","claim":"LosesWriteAfter10m","source":{"witness":"examples/aws1/traces/07-trust-decay-TrustDecay10/witness","set":"examples/aws1","trace":"LosesWriteAfter10m.log","replay":"dogwood replay --policy-schema generated.cedarschema --event-schema agentcore.dwschema --trace LosesWriteAfter10m.log 07-trust-decay.dw","verdictsMissing":null,"shapesMissing":"outside the parser's subset: bind target 'eventResource' is not a field of this event schema, which names its scope fields callerPrincipal, callerResource"},"rules":[{"index":0,"effect":"permit","action":null,"label":"(execute_trade, rebalance_portfolio).","line":10}],"events":[{"at":1,"action":"interact_advisor","kind":"response","input":{},"output":{},"isDecision":false},{"at":961,"action":"execute_trade","kind":"request","input":{},"output":{},"isDecision":true,"verdict":"ALLOW","rules":[0]}]}</script>
+</section>
+<section class="finding" data-finding>
+  <h2 class="claim">NoTradeFromAnEmptyTrajectory</h2>
+  <p class="sub" data-part="subtitle"></p>
+  <div data-part="content" hidden>
+    <div class="panel">
+      <h3>The session</h3>
+      <svg data-part="timeline" viewBox="0 0 860 280" role="img"></svg>
+      <div class="legend">
+        <span><i class="dot request"></i>::request &mdash; an attempt</span>
+        <span><i class="dot response"></i>::response &mdash; it completed</span>
+        <span><i class="dot error"></i>::error &mdash; it was refused</span>
+        <span><i class="swatch"></i>the window a predicate rule looks back over</span>
+      </div>
+    </div>
+    <div class="panel" data-part="chart-panel">
+      <h3 data-part="chart-heading"></h3>
+      <svg data-part="chart" viewBox="0 0 860 240" role="img"></svg>
+    </div>
+    <div class="panel" data-part="rules-panel">
+      <h3 data-part="rules-heading"></h3>
+      <ul class="rules" data-part="rules"></ul>
+      <p class="footnote">Whether a rule matched is read off the verdict, not re-evaluated here:
+        the engine reports Cedar's determining set &mdash; the matching forbids when any forbid
+        matched, the matching permits otherwise, and nothing when a deny was by default.</p>
+    </div>
+    <div class="panel">
+      <h3>What decided it</h3>
+      <p data-part="why-rule"></p>
+      <p data-part="why-consequence"></p>
+    </div>
+    <footer data-part="provenance"></footer>
+  </div>
+  <div class="panel missing" data-part="missing">This finding could not be drawn: its script did
+    not run. Open the page in a browser with JavaScript enabled.</div>
+  <script type="application/json">{"generatedBy":"src/checker/timeline.py","chart":null,"policy":"agent-policy.dw","claim":"NoTradeFromAnEmptyTrajectory","source":{"witness":"examples/aws1/traces/agent-policy-EmptyTrajectory/witness","set":"examples/aws1","trace":"NoTradeFromAnEmptyTrajectory.log","replay":"dogwood replay --policy-schema generated.cedarschema --event-schema agentcore.dwschema --trace NoTradeFromAnEmptyTrajectory.log agent-policy.dw","verdictsMissing":null,"shapesMissing":"outside the parser's subset: bind target 'eventResource' is not a field of this event schema, which names its scope fields callerPrincipal, callerResource"},"rules":[{"index":0,"effect":"permit","action":"FinTarget___get_client_profile","label":"ours: the read-only tools","line":20},{"index":1,"effect":"permit","action":"get_client_profile","label":"","line":21},{"index":2,"effect":"permit","action":"get_market_price","label":"","line":22},{"index":3,"effect":"permit","action":"interact_advisor","label":"","line":23},{"index":4,"effect":"permit","action":"approve_trade","label":"","line":24},{"index":5,"effect":"permit","action":"FinTarget___load_portfolio","label":"policy 1, verbatim","line":27},{"index":6,"effect":"permit","action":"FinTarget___rebalance_portfolio","label":"","line":32},{"index":7,"effect":"permit","action":"execute_trade","label":"policy 2, verbatim","line":38},{"index":8,"effect":"permit","action":"execute_trade","label":"policy 3, verbatim","line":53},{"index":9,"effect":"permit","action":"execute_trade","label":"policy 4, verbatim","line":65},{"index":10,"effect":"permit","action":"execute_trade","label":"policy 5, verbatim","line":77},{"index":11,"effect":"permit","action":null,"label":"policy 7, verbatim","line":94}],"events":[{"at":1,"action":"execute_trade","kind":"request","input":{"profile_id":"client-1","cost":1000},"output":{},"isDecision":true,"verdict":"ALLOW","rules":[10,11,9]}]}</script>
 </section>
 <section class="finding" data-finding>
   <h2 class="claim">FreshPriceAloneIsNotEnough</h2>
@@ -230,7 +270,7 @@ table.findings tr:last-child td { border-bottom:none; }
   </div>
   <div class="panel missing" data-part="missing">This finding could not be drawn: its script did
     not run. Open the page in a browser with JavaScript enabled.</div>
-  <script type="application/json">{"generatedBy":"src/checker/timeline.py","chart":{"rule":6,"effect":"permit","actions":["execute_trade"],"kind":"predicate","negated":false,"requires":{"action":"get_market_price","eventKind":"response","where":[],"window":30,"windowText":"30s"}},"policy":"agent-policy.dw","claim":"FreshPriceAloneIsNotEnough","source":{"witness":"examples/aws1/traces/agent-policy-TradeGate/witness","set":"examples/aws1","trace":"FreshPriceAloneIsNotEnough.log","replay":"dogwood replay --policy-schema generated.cedarschema --event-schema pinned.dwschema --trace FreshPriceAloneIsNotEnough.log agent-policy.dw","verdictsMissing":null,"shapesMissing":null},"rules":[{"index":0,"effect":"permit","action":"get_client_profile","label":"the reads, which the article's snippets assume exist","line":22,"shape":{"effect":"permit","actions":["get_client_profile"],"kind":"unconditional"}},{"index":1,"effect":"permit","action":"get_market_price","label":"","line":28,"shape":{"effect":"permit","actions":["get_market_price"],"kind":"unconditional"}},{"index":2,"effect":"permit","action":"interact_advisor","label":"","line":34,"shape":{"effect":"permit","actions":["interact_advisor"],"kind":"unconditional"}},{"index":3,"effect":"permit","action":"load_portfolio","label":"policy 1: workflow sequencing","line":41,"shape":{"effect":"permit","actions":["load_portfolio"],"kind":"predicate","negated":false,"requires":{"action":"get_client_profile","eventKind":"response","where":[],"window":300,"windowText":"5m"}}},{"index":4,"effect":"permit","action":"rebalance_portfolio","label":"","line":50,"shape":{"effect":"permit","actions":["rebalance_portfolio"],"kind":"predicate","negated":false,"requires":{"action":"load_portfolio","eventKind":"response","where":[],"window":300,"windowText":"5m"}}},{"index":5,"effect":"permit","action":"execute_trade","label":"because read as a list of requirements they look like a conjunction.","line":63,"shape":{"effect":"permit","actions":["execute_trade"],"kind":"predicate","negated":false,"requires":{"action":"get_client_profile","eventKind":"response","where":[{"field":"input.profile_id","context":"profile_id"}],"window":86400,"windowText":"24h"}}},{"index":6,"effect":"permit","action":"execute_trade","label":"","line":74,"shape":{"effect":"permit","actions":["execute_trade"],"kind":"predicate","negated":false,"requires":{"action":"get_market_price","eventKind":"response","where":[],"window":30,"windowText":"30s"}}}],"events":[{"at":11,"action":"get_market_price","kind":"response","input":{},"output":{},"isDecision":false},{"at":40,"action":"execute_trade","kind":"request","input":{"profile_id":1},"output":{},"isDecision":true,"verdict":"ALLOW","rules":[6]}]}</script>
+  <script type="application/json">{"generatedBy":"src/checker/timeline.py","chart":null,"policy":"agent-policy.dw","claim":"FreshPriceAloneIsNotEnough","source":{"witness":"examples/aws1/traces/agent-policy-TradeGate/witness","set":"examples/aws1","trace":"FreshPriceAloneIsNotEnough.log","replay":"dogwood replay --policy-schema generated.cedarschema --event-schema agentcore.dwschema --trace FreshPriceAloneIsNotEnough.log agent-policy.dw","verdictsMissing":null,"shapesMissing":"outside the parser's subset: bind target 'eventResource' is not a field of this event schema, which names its scope fields callerPrincipal, callerResource"},"rules":[{"index":0,"effect":"permit","action":"FinTarget___get_client_profile","label":"ours: the read-only tools","line":20},{"index":1,"effect":"permit","action":"get_client_profile","label":"","line":21},{"index":2,"effect":"permit","action":"get_market_price","label":"","line":22},{"index":3,"effect":"permit","action":"interact_advisor","label":"","line":23},{"index":4,"effect":"permit","action":"approve_trade","label":"","line":24},{"index":5,"effect":"permit","action":"FinTarget___load_portfolio","label":"policy 1, verbatim","line":27},{"index":6,"effect":"permit","action":"FinTarget___rebalance_portfolio","label":"","line":32},{"index":7,"effect":"permit","action":"execute_trade","label":"policy 2, verbatim","line":38},{"index":8,"effect":"permit","action":"execute_trade","label":"policy 3, verbatim","line":53},{"index":9,"effect":"permit","action":"execute_trade","label":"policy 4, verbatim","line":65},{"index":10,"effect":"permit","action":"execute_trade","label":"policy 5, verbatim","line":77},{"index":11,"effect":"permit","action":null,"label":"policy 7, verbatim","line":94}],"events":[{"at":11,"action":"get_market_price","kind":"response","input":{},"output":{},"isDecision":false},{"at":40,"action":"execute_trade","kind":"request","input":{"profile_id":1},"output":{},"isDecision":true,"verdict":"ALLOW","rules":[11,8,9]}]}</script>
 </section>
 </div>
 <script>// Draw a witness session, from the data `src/checker/timeline.py` generates.

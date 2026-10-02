@@ -1,0 +1,164 @@
+// THE PUBLISHED SET against the article's own tables: agent-policy.dw, copied below unchanged, and
+// the DENY rows of each policy's table replayed against all six policies deployed together. Each
+// row's verdict is what the article's table says; `finding` marks where the set does the opposite.
+//
+// Why the set: Cedar permits by positive match, so in a set any one permit that matches grants.
+// Policy 4 (the budget cap) is written as a permit whose condition holds whenever the quotes so far
+// total under $60,000 -- including when there are none -- and policy 7 (trust decay) as a permit
+// that holds whenever no advisor has interacted in 15 minutes. Either grants execute_trade from an
+// empty trajectory, so the other protections deny nothing they were written to deny.
+
+// THE ARTICLE'S POLICIES AS ONE SET -- how they would be deployed, on one policy engine.
+//
+// Policies 1-5 and 7 of "Securing AI agents with temporal policies in Amazon Bedrock AgentCore"
+// (AWS Machine Learning Blog, 06 AUG 2026), each VERBATIM from the published page, in order.
+// Policy 6 is absent: as published it does not parse (README.md).
+//
+// OURS, and nothing else:
+//   - the plain permits first, for the read-only tools the article's policies depend on. Without
+//     them every prerequisite is denied, recorded as `::error`, and every gate stays shut -- the
+//     article's own tables assume these calls succeed;
+//   - the two gateway placeholders made one. Policy 1 writes `<GATEWAY_ARN>` (unquoted, which does
+//     not parse) and policy 7 `"<arn>"`; both stand for the one gateway the set is deployed on, so
+//     both are written `"<GATEWAY_ARN>"` here.
+//
+// The action names are as published, inconsistency included: policy 1 names `FinTarget___`-prefixed
+// actions, the rest bare ones, so policy 1's `FinTarget___rebalance_portfolio` and policy 7's
+// `rebalance_portfolio` are different actions in this set, exactly as they are in the text.
+
+// ---- ours: the read-only tools -------------------------------------------------------
+permit (principal, action == AgentCore::Action::"FinTarget___get_client_profile", resource == AgentCore::Gateway::"<GATEWAY_ARN>");
+permit (principal, action == AgentCore::Action::"get_client_profile", resource == AgentCore::Gateway::"<GATEWAY_ARN>");
+permit (principal, action == AgentCore::Action::"get_market_price", resource == AgentCore::Gateway::"<GATEWAY_ARN>");
+permit (principal, action == AgentCore::Action::"interact_advisor", resource == AgentCore::Gateway::"<GATEWAY_ARN>");
+permit (principal, action == AgentCore::Action::"approve_trade", resource == AgentCore::Gateway::"<GATEWAY_ARN>");
+
+// ---- policy 1, verbatim ----------------------------------------------------------------------
+permit (principal, action == AgentCore::Action::"FinTarget___load_portfolio", resource == AgentCore::Gateway::"<GATEWAY_ARN>")
+when temporal {
+    formerly within 5m (AgentCore::Action::"FinTarget___get_client_profile"::response{eventResource: resource})
+};
+
+permit (principal, action == AgentCore::Action::"FinTarget___rebalance_portfolio", resource == AgentCore::Gateway::"<GATEWAY_ARN>")
+when temporal {
+    formerly within 5m (AgentCore::Action::"FinTarget___load_portfolio"::response{eventResource: resource})
+};
+
+// ---- policy 2, verbatim ----------------------------------------------------------------------
+permit (
+    principal,
+    action == AgentCore::Action::"execute_trade",
+    resource
+)
+when temporal {
+    formerly within 24h (
+        AgentCore::Action::"get_client_profile"::response{
+            input.profile_id: context.input.profile_id,
+            eventResource: resource
+        }
+    )
+};
+
+// ---- policy 3, verbatim ----------------------------------------------------------------------
+permit (
+    principal,
+    action == AgentCore::Action::"execute_trade",
+    resource
+)
+when temporal {
+    formerly within 30s (
+        AgentCore::Action::"get_market_price"::response{eventResource: resource}
+    )
+};
+
+// ---- policy 4, verbatim ----------------------------------------------------------------------
+permit (
+    principal,
+    action == AgentCore::Action::"execute_trade",
+    resource
+)
+when temporal {
+    exists (total: Long). ((sum amount for (amount: Long), (t: Timepoint). where (formerly within 24h (
+        AgentCore::Action::"get_market_price"::request{input.cost: amount, eventResource: resource} && tp(t)))) == total && total < 60000
+    )
+};
+
+// ---- policy 5, verbatim ----------------------------------------------------------------------
+permit (
+    principal,
+    action == AgentCore::Action::"execute_trade",
+    resource
+)
+when {
+    context.input.cost < 25000 || temporal {
+        !(
+            AgentCore::Action::"execute_trade"::response{eventResource: resource}
+        )
+        since within 24h (
+            AgentCore::Action::"approve_trade"::response{ input.status: "approved", eventResource: resource}
+        )
+    }
+};
+
+// ---- policy 7, verbatim ----------------------------------------------------------------------
+permit (
+    principal,
+    action in [
+        AgentCore::Action::"execute_trade",
+        AgentCore::Action::"rebalance_portfolio"
+    ],
+    resource == AgentCore::Gateway::"<GATEWAY_ARN>"
+)
+unless temporal {
+    formerly within 15m AgentCore::Action::"interact_advisor"::response{eventResource: resource}
+};
+
+//| target -
+//|
+//| row aws-table: policy 3's table -- get_market_price never called, BUY Stock A -- DENY
+//| @0     request  execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 1000 }  DENY aws-table finding
+//|
+//| row aws-table: policy 3's table -- get_market_price 2 minutes ago, BUY Stock A -- DENY
+//| @0     request  get_market_price  { stock_symbol: "A", cost: 1000 }  ALLOW ours
+//| @1     response get_market_price  { stock_symbol: "A", cost: 1000 } -> { price: 10 }
+//| @121   request  execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 1000 }  DENY aws-table finding
+//|
+//| row aws-table: policy 5's table -- $30,000 approved, then a second $30,000 with only the prior approval (consumed) -- DENY
+//| @0     request  approve_trade  { status: "approved" }  ALLOW ours
+//| @1     response approve_trade  { status: "approved" } -> { }
+//| @10    request  execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 30000 }  ALLOW
+//| @11    response execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 30000 } -> { }
+//| @20    request  execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 30000 }  DENY aws-table finding
+//|
+//| row aws-table: policy 5's table -- $30,000 with no approval in the trajectory -- DENY
+//| @0     request  execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 30000 }  DENY aws-table finding
+//|
+//| row aws-table: policy 2's table -- get_client_profile returned port-8821, execute_trade portfolio_id port-3347 -- DENY
+//| @0     request  get_client_profile  { profile_id: "client-1" }  ALLOW ours
+//| @1     response get_client_profile  { profile_id: "client-1" } -> { portfolio_id: "port-8821" }
+//| @10    request  execute_trade  { profile_id: "client-1", portfolio_id: "port-3347", cost: 1000 }  DENY aws-table finding
+//|
+//| row aws-table: policy 4's table -- prior trades $37,000, current $30,000 -- DENY
+//| @0     request  execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 15000 }  ALLOW
+//| @1     response execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 15000 } -> { }
+//| @10    request  execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 22000 }  ALLOW
+//| @11    response execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 22000 } -> { }
+//| @20    request  execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 30000 }  DENY aws-table finding
+//|
+//| row aws-table: policy 7's table -- 20 minutes since the advisor, execute_trade -- DENY
+//| @0     request  interact_advisor  { }  ALLOW ours
+//| @1     response interact_advisor  { } -> { }
+//| @1201  request  execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 1000 }  DENY aws-table finding
+//|
+//| row aws-table: policy 1's table -- Empty trajectory, rebalance_portfolio -- DENY. Under policy 1's own name, FinTarget___rebalance_portfolio, the set denies it
+//| @0     request  FinTarget___rebalance_portfolio  { portfolio_id: "8821", amount: 15000 }  DENY
+//|
+//| row aws-table: policy 1's table -- Empty trajectory, rebalance_portfolio -- DENY. Under the name the table itself and policy 7 use, rebalance_portfolio, policy 7 grants it: the chain policy 1 enforces is on a different action
+//| @0     request  rebalance_portfolio  { portfolio_id: "8821", amount: 15000 }  DENY aws-table finding
+//|
+//| row ours: the intended path -- profile looked up, fresh quote, then the trade -- is allowed
+//| @0     request  get_client_profile  { profile_id: "client-1" }  ALLOW
+//| @1     response get_client_profile  { profile_id: "client-1" } -> { portfolio_id: "port-8821" }
+//| @10    request  get_market_price  { stock_symbol: "A", cost: 1000 }  ALLOW
+//| @11    response get_market_price  { stock_symbol: "A", cost: 1000 } -> { price: 10 }
+//| @15    request  execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 1000 }  ALLOW

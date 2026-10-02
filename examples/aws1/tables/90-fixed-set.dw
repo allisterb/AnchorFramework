@@ -1,0 +1,263 @@
+// THE FIXED SET against every row of the article's tables: fixed/agent-policy.dw, copied below
+// unchanged, with each table row replayed against the whole set. Each row supplies what the OTHER
+// protections need -- a recent advisor interaction, a profile lookup, a fresh quote -- so that it
+// tests exactly the protection its table is about. Verdicts are the article's; the one `finding`
+// left is the response-recording delay, which no policy can fix.
+
+// A PROPOSED CORRECTION of the article's policy set, in AgentCore's own form -- every rule scoped
+// to the gateway, `eventResource: resource` in every predicate -- checked against the article's
+// own decision tables (tables/00-fixed-set.dw in this directory) and against the property modules
+// beside it. ../agent-policy.dw is the set as published; ../README.md says what is wrong with it.
+//
+// The changes, each answering one finding:
+//
+//   1. ONE PERMIT ON execute_trade. The article publishes four (policies 2, 3, 4, 5), and in Cedar any
+//      one permit that matches grants, so each is an alternative to the others. What the article
+//      describes as requirements are now: the conditions every trade needs, joined in one permit
+//      (AgentCore's own idiom for "both prerequisites"); and the conditions that take access away,
+//      as FORBIDs, which deny whatever any permit allows.
+//   2. INTEGRITY ON WHAT WAS RETURNED. The article's text and table check the trade's portfolio_id
+//      against one get_client_profile RETURNED; its policy compared input.profile_id with the
+//      lookup's input. Here it is `output.portfolio_id` -- which needs get_client_profile to declare
+//      an output schema with that field, or AgentCore rejects the policy.
+//   3. THE BUDGET COUNTS TRADES. The article's policy summed the cost of get_market_price requests.
+//      Here it sums execute_trade requests, including the one being decided, which is AgentCore's
+//      own pattern for a running total -- and a forbid, so reaching the cap actually denies.
+//   4. APPROVAL AS A FORBID on trades over $25,000 with no unconsumed approval. The article's
+//      threshold was `cost < 25000` -- so a trade of exactly $25,000 needed approval, where the prose
+//      says "exceeding $25,000"; this is `> 25000`.
+//   5. TRUST DECAY THE RIGHT WAY ROUND, as a forbid: no write without an advisor interaction in the
+//      last 15 minutes. The article's `permit ... unless` granted exactly when the advisor was away.
+//   6. ONE SPELLING OF EACH ACTION. The article names policy 1's actions `FinTarget___...` and the
+//      rest bare, so its workflow chain and its trust decay were about different rebalance actions.
+//      Bare names throughout here, matching the article's other six policies and its tables. A real
+//      gateway names an MCP tool `<Target>___<tool>`, so deployed, every name below takes the target
+//      prefix -- consistently, which is the point.
+//
+// What this does NOT fix, because no policy can: AgentCore records a response "shortly after" the
+// call completes, so two trades sent back to back can both find one approval unconsumed. The
+// guide's advice is to wait for each response; tables/00-fixed-set.dw keeps that row as a finding.
+
+// ---- the read-only tools, and the advisor's own actions ----------------------------------------
+permit (principal, action == AgentCore::Action::"get_client_profile", resource == AgentCore::Gateway::"<GATEWAY_ARN>");
+permit (principal, action == AgentCore::Action::"get_market_price", resource == AgentCore::Gateway::"<GATEWAY_ARN>");
+permit (principal, action == AgentCore::Action::"interact_advisor", resource == AgentCore::Gateway::"<GATEWAY_ARN>");
+permit (principal, action == AgentCore::Action::"approve_trade", resource == AgentCore::Gateway::"<GATEWAY_ARN>");
+
+// ---- policy 1, workflow sequencing: unchanged but for the action names ---------------------------
+permit (principal, action == AgentCore::Action::"load_portfolio", resource == AgentCore::Gateway::"<GATEWAY_ARN>")
+when temporal {
+    formerly within 5m (AgentCore::Action::"get_client_profile"::response{eventResource: resource})
+};
+
+permit (principal, action == AgentCore::Action::"rebalance_portfolio", resource == AgentCore::Gateway::"<GATEWAY_ARN>")
+when temporal {
+    formerly within 5m (AgentCore::Action::"load_portfolio"::response{eventResource: resource})
+};
+
+// ---- policies 2 and 3, what every trade needs: one permit -----------------------------------------
+permit (
+    principal,
+    action == AgentCore::Action::"execute_trade",
+    resource == AgentCore::Gateway::"<GATEWAY_ARN>"
+)
+when temporal {
+    formerly within 24h AgentCore::Action::"get_client_profile"::response{
+        eventResource: resource,
+        output.portfolio_id: context.input.portfolio_id
+    }
+    && formerly within 30s AgentCore::Action::"get_market_price"::response{ eventResource: resource }
+};
+
+// ---- policy 4, the budget: a forbid, over trades ---------------------------------------------------
+forbid (
+    principal,
+    action == AgentCore::Action::"execute_trade",
+    resource == AgentCore::Gateway::"<GATEWAY_ARN>"
+)
+when temporal {
+    exists (total: Long). (sum amount for (amount: Long), (t: Timepoint). where (formerly within 24h (
+        AgentCore::Action::"execute_trade"::request{ eventResource: resource, input.cost: amount } && tp(t)))) == total
+        && total > 60000
+};
+
+// ---- policy 5, approval for large trades: a forbid unless an approval is unconsumed ---------------
+forbid (
+    principal,
+    action == AgentCore::Action::"execute_trade",
+    resource == AgentCore::Gateway::"<GATEWAY_ARN>"
+)
+when { context.input.cost > 25000 }
+unless temporal {
+    !(AgentCore::Action::"execute_trade"::response{ eventResource: resource })
+    since within 24h (AgentCore::Action::"approve_trade"::response{ input.status: "approved", eventResource: resource })
+};
+
+// ---- policy 7, trust decay: no write without a recent advisor interaction ------------------------
+forbid (
+    principal,
+    action in [
+        AgentCore::Action::"execute_trade",
+        AgentCore::Action::"rebalance_portfolio"
+    ],
+    resource == AgentCore::Gateway::"<GATEWAY_ARN>"
+)
+unless temporal {
+    formerly within 15m AgentCore::Action::"interact_advisor"::response{ eventResource: resource }
+};
+
+//| target -
+//|
+//| row aws-table: policy 3 -- price 4 seconds ago -- ALLOW (and policy 2 -- returned port-8821, traded port-8821 -- ALLOW)
+//| @0     request  interact_advisor  { }  ALLOW ours
+//| @1     response interact_advisor  { } -> { }
+//| @2     request  get_client_profile  { profile_id: "client-1" }  ALLOW ours
+//| @3     response get_client_profile  { profile_id: "client-1" } -> { portfolio_id: "port-8821" }
+//| @4     request  get_market_price  { stock_symbol: "A", cost: 1000 }  ALLOW ours
+//| @5     response get_market_price  { stock_symbol: "A", cost: 1000 } -> { price: 10 }
+//| @9     request  execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 1000 }  ALLOW
+//|
+//| row aws-table: policy 3 -- price 2 minutes ago -- DENY
+//| @0     request  interact_advisor  { }  ALLOW ours
+//| @1     response interact_advisor  { } -> { }
+//| @2     request  get_client_profile  { profile_id: "client-1" }  ALLOW ours
+//| @3     response get_client_profile  { profile_id: "client-1" } -> { portfolio_id: "port-8821" }
+//| @4     request  get_market_price  { stock_symbol: "A", cost: 1000 }  ALLOW ours
+//| @5     response get_market_price  { stock_symbol: "A", cost: 1000 } -> { price: 10 }
+//| @125   request  execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 1000 }  DENY
+//|
+//| row aws-table: policy 3 -- price never called -- DENY
+//| @0     request  interact_advisor  { }  ALLOW ours
+//| @1     response interact_advisor  { } -> { }
+//| @2     request  get_client_profile  { profile_id: "client-1" }  ALLOW ours
+//| @3     response get_client_profile  { profile_id: "client-1" } -> { portfolio_id: "port-8821" }
+//| @9     request  execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 1000 }  DENY
+//|
+//| row aws-table: policy 2 -- returned port-8821, traded port-3347 -- DENY
+//| @0     request  interact_advisor  { }  ALLOW ours
+//| @1     response interact_advisor  { } -> { }
+//| @2     request  get_client_profile  { profile_id: "client-1" }  ALLOW ours
+//| @3     response get_client_profile  { profile_id: "client-1" } -> { portfolio_id: "port-8821" }
+//| @4     request  get_market_price  { stock_symbol: "A", cost: 1000 }  ALLOW ours
+//| @5     response get_market_price  { stock_symbol: "A", cost: 1000 } -> { price: 10 }
+//| @9     request  execute_trade  { profile_id: "client-1", portfolio_id: "port-3347", cost: 1000 }  DENY
+//|
+//| row aws-table: policy 5 -- $15,000, no approval -- Allow (below threshold)
+//| @0     request  interact_advisor  { }  ALLOW ours
+//| @1     response interact_advisor  { } -> { }
+//| @2     request  get_client_profile  { profile_id: "client-1" }  ALLOW ours
+//| @3     response get_client_profile  { profile_id: "client-1" } -> { portfolio_id: "port-8821" }
+//| @4     request  get_market_price  { stock_symbol: "A", cost: 1000 }  ALLOW ours
+//| @5     response get_market_price  { stock_symbol: "A", cost: 1000 } -> { price: 10 }
+//| @9     request  execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 15000 }  ALLOW
+//|
+//| row aws-prose: policy 5 -- "exceeding $25,000" needs approval, so exactly $25,000 does not -- ALLOW
+//| @0     request  interact_advisor  { }  ALLOW ours
+//| @1     response interact_advisor  { } -> { }
+//| @2     request  get_client_profile  { profile_id: "client-1" }  ALLOW ours
+//| @3     response get_client_profile  { profile_id: "client-1" } -> { portfolio_id: "port-8821" }
+//| @4     request  get_market_price  { stock_symbol: "A", cost: 1000 }  ALLOW ours
+//| @5     response get_market_price  { stock_symbol: "A", cost: 1000 } -> { price: 10 }
+//| @9     request  execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 25000 }  ALLOW
+//|
+//| row aws-table: policy 5 -- $30,000, no approval -- DENY
+//| @0     request  interact_advisor  { }  ALLOW ours
+//| @1     response interact_advisor  { } -> { }
+//| @2     request  get_client_profile  { profile_id: "client-1" }  ALLOW ours
+//| @3     response get_client_profile  { profile_id: "client-1" } -> { portfolio_id: "port-8821" }
+//| @4     request  get_market_price  { stock_symbol: "A", cost: 1000 }  ALLOW ours
+//| @5     response get_market_price  { stock_symbol: "A", cost: 1000 } -> { price: 10 }
+//| @9     request  execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 30000 }  DENY
+//|
+//| row aws-table: policy 5 -- $30,000 with an unconsumed approval -- ALLOW; a second $30,000 with the approval consumed -- DENY
+//| @0     request  interact_advisor  { }  ALLOW ours
+//| @1     response interact_advisor  { } -> { }
+//| @2     request  get_client_profile  { profile_id: "client-1" }  ALLOW ours
+//| @3     response get_client_profile  { profile_id: "client-1" } -> { portfolio_id: "port-8821" }
+//| @4     request  get_market_price  { stock_symbol: "A", cost: 1000 }  ALLOW ours
+//| @5     response get_market_price  { stock_symbol: "A", cost: 1000 } -> { price: 10 }
+//| @6     request  approve_trade  { status: "approved" }  ALLOW ours
+//| @7     response approve_trade  { status: "approved" } -> { }
+//| @9     request  execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 30000 }  ALLOW
+//| @10    response execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 30000 } -> { }
+//| @11    request  get_market_price  { stock_symbol: "A", cost: 1000 }  ALLOW ours
+//| @12    response get_market_price  { stock_symbol: "A", cost: 1000 } -> { price: 10 }
+//| @15    request  execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 30000 }  DENY
+//|
+//| row aws-table: policy 4 -- $15,000 then $22,000 allowed; $30,000 on top, $67,000 in all -- DENY, approval or not
+//| @0     request  interact_advisor  { }  ALLOW ours
+//| @1     response interact_advisor  { } -> { }
+//| @2     request  get_client_profile  { profile_id: "client-1" }  ALLOW ours
+//| @3     response get_client_profile  { profile_id: "client-1" } -> { portfolio_id: "port-8821" }
+//| @4     request  get_market_price  { stock_symbol: "A", cost: 1000 }  ALLOW ours
+//| @5     response get_market_price  { stock_symbol: "A", cost: 1000 } -> { price: 10 }
+//| @9     request  execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 15000 }  ALLOW
+//| @10    response execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 15000 } -> { }
+//| @11    request  get_market_price  { stock_symbol: "A", cost: 1000 }  ALLOW ours
+//| @12    response get_market_price  { stock_symbol: "A", cost: 1000 } -> { price: 10 }
+//| @15    request  execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 22000 }  ALLOW
+//| @16    response execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 22000 } -> { }
+//| @17    request  get_market_price  { stock_symbol: "A", cost: 1000 }  ALLOW ours
+//| @18    response get_market_price  { stock_symbol: "A", cost: 1000 } -> { price: 10 }
+//| @19    request  approve_trade  { status: "approved" }  ALLOW ours
+//| @20    response approve_trade  { status: "approved" } -> { }
+//| @22    request  execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 30000 }  DENY
+//|
+//| row aws-table: policy 7 -- 3 minutes since the advisor -- execute_trade -- ALLOW
+//| @0     request  interact_advisor  { }  ALLOW ours
+//| @1     response interact_advisor  { } -> { }
+//| @170   request  get_client_profile  { profile_id: "client-1" }  ALLOW ours
+//| @171   response get_client_profile  { profile_id: "client-1" } -> { portfolio_id: "port-8821" }
+//| @172   request  get_market_price  { stock_symbol: "A", cost: 1000 }  ALLOW ours
+//| @173   response get_market_price  { stock_symbol: "A", cost: 1000 } -> { price: 10 }
+//| @181   request  execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 1000 }  ALLOW
+//|
+//| row aws-table: policy 7 -- 20 minutes since the advisor -- execute_trade -- DENY
+//| @0     request  interact_advisor  { }  ALLOW ours
+//| @1     response interact_advisor  { } -> { }
+//| @1190  request  get_client_profile  { profile_id: "client-1" }  ALLOW ours
+//| @1191  response get_client_profile  { profile_id: "client-1" } -> { portfolio_id: "port-8821" }
+//| @1192  request  get_market_price  { stock_symbol: "A", cost: 1000 }  ALLOW ours
+//| @1193  response get_market_price  { stock_symbol: "A", cost: 1000 } -> { price: 10 }
+//| @1201  request  execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 1000 }  DENY
+//|
+//| row aws-table: policy 7 -- 20 minutes since the advisor -- get_market_price -- ALLOW (read-only)
+//| @0     request  interact_advisor  { }  ALLOW ours
+//| @1     response interact_advisor  { } -> { }
+//| @1201  request  get_market_price  { stock_symbol: "A", cost: 1000 }  ALLOW
+//|
+//| row aws-table: policy 1 -- Empty -- rebalance_portfolio -- DENY
+//| @0     request  rebalance_portfolio  { portfolio_id: "8821", amount: 15000 }  DENY
+//|
+//| row aws-table: policy 1 -- get_client_profile completed -- rebalance_portfolio -- DENY
+//| @0     request  interact_advisor  { }  ALLOW ours
+//| @1     response interact_advisor  { } -> { }
+//| @2     request  get_client_profile  { profile_id: "client-1" }  ALLOW ours
+//| @3     response get_client_profile  { profile_id: "client-1" } -> { portfolio_id: "port-8821" }
+//| @10    request  rebalance_portfolio  { portfolio_id: "8821", amount: 15000 }  DENY
+//|
+//| row aws-table: policy 1 -- get_client_profile then load_portfolio completed -- rebalance_portfolio -- ALLOW
+//| @0     request  interact_advisor  { }  ALLOW ours
+//| @1     response interact_advisor  { } -> { }
+//| @2     request  get_client_profile  { profile_id: "client-1" }  ALLOW ours
+//| @3     response get_client_profile  { profile_id: "client-1" } -> { portfolio_id: "port-8821" }
+//| @10    request  load_portfolio  { portfolio_id: "8821" }  ALLOW
+//| @11    response load_portfolio  { portfolio_id: "8821" } -> { }
+//| @20    request  rebalance_portfolio  { portfolio_id: "8821", amount: 15000 }  ALLOW
+//|
+//| row aws-table: the published set's worst row, fixed: a $30,000 trade from an EMPTY trajectory -- DENY
+//| @0     request  execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 30000 }  DENY
+//|
+//| row aws-prose: "Each approval covers exactly one execution" -- STILL A FINDING: a second $30,000 trade sent before the first one's response is recorded finds the approval unconsumed. No policy can fix this; the client has to wait for each response
+//| @0     request  interact_advisor  { }  ALLOW ours
+//| @1     response interact_advisor  { } -> { }
+//| @2     request  get_client_profile  { profile_id: "client-1" }  ALLOW ours
+//| @3     response get_client_profile  { profile_id: "client-1" } -> { portfolio_id: "port-8821" }
+//| @4     request  get_market_price  { stock_symbol: "A", cost: 1000 }  ALLOW ours
+//| @5     response get_market_price  { stock_symbol: "A", cost: 1000 } -> { price: 10 }
+//| @6     request  approve_trade  { status: "approved" }  ALLOW ours
+//| @7     response approve_trade  { status: "approved" } -> { }
+//| @9     request  execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 30000 }  ALLOW
+//| @11    request  execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 30000 }  DENY aws-prose finding
+//| @12    response execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 30000 } -> { }
+//| @13    response execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 30000 } -> { }

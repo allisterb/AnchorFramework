@@ -1,0 +1,53 @@
+// The action schema for the blog post's tools, so `dogwood validate` and `dogwood replay` can read
+// its policies as published. OURS: the article declares no tool schemas, so each tool's fields are
+// the ones its policies and tables use, typed the way the AgentCore guide maps JSON Schema to Cedar.
+//
+// Two assumptions worth stating, because a policy's meaning depends on them:
+//   - execute_trade's inputs are REQUIRED. Policy 5 reads `context.input.cost` with no `has` guard,
+//     which AgentCore rejects at creation for an optional attribute -- so the article's own policy
+//     only validates if `cost` is required.
+//   - get_client_profile RETURNS a `portfolio_id`, one scalar. The article says it returns "the
+//     portfolio IDs", plural; Dogwood has no array membership in a field pattern, so a scalar is
+//     the most a temporal predicate could correlate on. Policy 2 reads none of it either way.
+//
+// Every context declares `sessionId`, which AgentCore's session pin reads (docs/agentcore.md).
+
+namespace AgentCore {
+  type SystemContext = { now: datetime };
+
+  entity Gateway;
+  entity OAuthUser = { id: String } tags String;
+
+  type ProfileIn = { profile_id: String };
+  type ProfileOut = { portfolio_id: String };
+  type PortfolioIn = { portfolio_id: String };
+  type RebalanceIn = { portfolio_id: String, amount: Long };
+  type PriceIn = { stock_symbol: String, cost: Long };
+  type PriceOut = { price: Long };
+  type TradeIn = { profile_id: String, portfolio_id: String, cost: Long };
+  type ApproveIn = { status: String };
+  type Nothing = { };
+
+  action "FinTarget___get_client_profile" appliesTo { principal: [OAuthUser], resource: [Gateway],
+    context: { input: ProfileIn, output?: ProfileOut, system: SystemContext, sessionId: String } };
+  action "FinTarget___load_portfolio" appliesTo { principal: [OAuthUser], resource: [Gateway],
+    context: { input: PortfolioIn, output?: Nothing, system: SystemContext, sessionId: String } };
+  action "FinTarget___rebalance_portfolio" appliesTo { principal: [OAuthUser], resource: [Gateway],
+    context: { input: RebalanceIn, output?: Nothing, system: SystemContext, sessionId: String } };
+
+  action "get_client_profile" appliesTo { principal: [OAuthUser], resource: [Gateway],
+    context: { input: ProfileIn, output?: ProfileOut, system: SystemContext, sessionId: String } };
+  action "get_market_price" appliesTo { principal: [OAuthUser], resource: [Gateway],
+    context: { input: PriceIn, output?: PriceOut, system: SystemContext, sessionId: String } };
+  action "execute_trade" appliesTo { principal: [OAuthUser], resource: [Gateway],
+    context: { input: TradeIn, output?: Nothing, system: SystemContext, sessionId: String } };
+  action "approve_trade" appliesTo { principal: [OAuthUser], resource: [Gateway],
+    context: { input: ApproveIn, output?: Nothing, system: SystemContext, sessionId: String } };
+  action "interact_advisor" appliesTo { principal: [OAuthUser], resource: [Gateway],
+    context: { input: Nothing, output?: Nothing, system: SystemContext, sessionId: String } };
+  // Bare, as the article's other policies name actions: what fixed/agent-policy.dw uses throughout.
+  action "load_portfolio" appliesTo { principal: [OAuthUser], resource: [Gateway],
+    context: { input: PortfolioIn, output?: Nothing, system: SystemContext, sessionId: String } };
+  action "rebalance_portfolio" appliesTo { principal: [OAuthUser], resource: [Gateway],
+    context: { input: RebalanceIn, output?: Nothing, system: SystemContext, sessionId: String } };
+}

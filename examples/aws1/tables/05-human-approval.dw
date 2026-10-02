@@ -1,0 +1,52 @@
+// The article's policy 5, VERBATIM from the published page (the policy text below the plain
+// permits), against the article's OWN decision table for it, as `//|` rows. The table is AWS's
+// statement of what the policy is for; a row marked `finding` is one where the policy as
+// published does the opposite, and both Anchor and the Dogwood engine are held to that.
+// Format and harness: tests/policies/agentcore/README.md. Timings are ours where the table's
+// are qualitative; input values are ours where the table names none.
+
+// ours: the plain permit the table assumes
+permit (principal, action == AgentCore::Action::"approve_trade", resource);
+
+// ---- policy 5, verbatim ----
+permit (
+    principal,
+    action == AgentCore::Action::"execute_trade",
+    resource
+)
+when {
+    context.input.cost < 25000 || temporal {
+        !(
+            AgentCore::Action::"execute_trade"::response{eventResource: resource}
+        )
+        since within 24h (
+            AgentCore::Action::"approve_trade"::response{ input.status: "approved", eventResource: resource}
+        )
+    }
+};
+
+//| target -
+//|
+//| row aws-table: $15,000, approval None -- Allow (below threshold)
+//| @0    request  execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 15000 }  ALLOW
+//|
+//| row aws-prose: "Any trade exceeding $25,000 requires the advisor's explicit approval" -- so a trade of exactly $25,000 does not. The policy's threshold is `cost < 25000`, which sends $25,000 to the approval branch
+//| @0   request  execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 25000 }  ALLOW aws-prose finding
+//|
+//| row aws-table: $30,000, approval None -- DENY
+//| @0    request  execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 30000 }  DENY
+//|
+//| row aws-table: $30,000 with an approval (unconsumed) -- ALLOW; then $30,000 (second trade), only the prior approval (consumed) -- DENY
+//| @0   request  approve_trade  { status: "approved" }  ALLOW ours
+//| @1   response approve_trade  { status: "approved" } -> { }
+//| @10   request  execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 30000 }  ALLOW
+//| @11  response execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 30000 } -> { }
+//| @20   request  execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 30000 }  DENY
+//|
+//| row aws-prose: "Each approval covers exactly one execution" -- but a second $30,000 trade sent before the first one's response is recorded finds the approval unconsumed. AgentCore records a response "shortly after" the call completes (docs/agentcore.md, question 4)
+//| @0   request  approve_trade  { status: "approved" }  ALLOW ours
+//| @1   response approve_trade  { status: "approved" } -> { }
+//| @10   request  execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 30000 }  ALLOW
+//| @12   request  execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 30000 }  DENY aws-prose finding
+//| @13  response execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 30000 } -> { }
+//| @14  response execute_trade  { profile_id: "client-1", portfolio_id: "port-8821", cost: 30000 } -> { }

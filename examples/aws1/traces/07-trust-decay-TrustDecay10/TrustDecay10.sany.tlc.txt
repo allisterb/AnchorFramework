@@ -1,0 +1,18 @@
+****** SANY2 Version 2.1 created 24 February 2014
+
+Parsing file C:\Projects\Anchor\examples\aws1\traces\07-trust-decay-TrustDecay10\TrustDecay10.tla
+Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-z4d3k7jk\Integers.tla
+Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-z4d3k7jk\Sequences.tla
+Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-z4d3k7jk\FiniteSets.tla
+Parsing file C:\Projects\Anchor\examples\aws1\traces\07-trust-decay-TrustDecay10\PolicyUnderTest.tla
+Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-z4d3k7jk\Naturals.tla
+Parsing file C:\Projects\Anchor\examples\aws1\traces\07-trust-decay-TrustDecay10\DogwoodSemantics.tla
+Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-z4d3k7jk\TLC.tla
+Semantic processing of module Naturals
+Semantic processing of module Integers
+Semantic processing of module Sequences
+Semantic processing of module FiniteSets
+Semantic processing of module PolicyUnderTest
+Semantic processing of module TLC
+Semantic processing of module DogwoodSemantics
+Semantic processing of module TrustDecay10
