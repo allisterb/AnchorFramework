@@ -1,5 +1,6 @@
+# The AgentCore temporal policies, checked
 
-The policies from the AWS blog poost [*Securing AI agents with temporal policies in Amazon Bedrock
+The policies from the AWS blog post [*Securing AI agents with temporal policies in Amazon Bedrock
 AgentCore*](https://aws.amazon.com/blogs/machine-learning/securing-ai-agents-with-temporal-policies-in-amazon-bedrock-agentcore/),
 transcribed here and run through Anchor.
 
@@ -7,15 +8,7 @@ transcribed here and run through Anchor.
 **Scope note before anything else.** These are code snippets from a blog post explaining ideas one
 at a time, not a deployed policy set. Nothing below is a vulnerability in a product.
 
-## What was found
 
-| | |
-|---|---|
-| **Policy 7 is inverted relative to its own description** | it permits writes *only while the advisor is absent*, which is the reverse of the sentence beside it. Machine-checked, with counterexamples |
-| **The two trade protections are alternatives, not requirements** | a trade goes through on a fresh price with **no profile check at all** — precisely the prompt-injection case one of them exists to prevent |
-
-Both findings have a proposed fix in [`fixed/`](fixed/README.md), checked against the same
-property modules with every claim listed: all of them hold, and every rule is live.
 
 ## The files
 
@@ -29,6 +22,7 @@ property modules with every claim listed: all of them hold, and every rule is li
 | [`questions.md`](questions.md) | the five questions in plain language, as somebody would actually ask them |
 | [`transcript.md`](transcript.md) | the agent answering all five, with **every tool call and its full reply** |
 | `TrustDecay10.tla` / `.cfg` | the ten-minute claim on its own, because TLC stops at the first violated invariant |
+| [`fixed/`](fixed/README.md) | a proposed fix for each finding, checked against the same property modules |
 
 Six of the seven policies in the article are here. Policy 6 is not here because it does not parse — in Dogwood, not in Anchor. As published it
 reads:
@@ -51,13 +45,41 @@ single-token omissions in the article's listing rather than anything about the l
 repairing a published policy and then reporting findings about it would be reporting findings
 about our repair. It stays out until the text can be checked against the article itself.
 
-**Also dropped**, in every file here: `resource == AgentCore::Gateway::<ARN>` scopes and the
-`eventResource: resource` joins that go with them. Anchor models actions, event kinds and
-input/output fields, not entity hierarchies. Recorded so the difference from the published text is
-not mistaken for a finding. See
-[`the-modelled-subset`](../../src/Anchor.MCPServer/knowledge/the-modelled-subset.md).
+**Also dropped**, in every file here: the `resource == AgentCore::Gateway::<ARN>` scopes, and the
+`eventResource: resource` joins that go with them. **Both are correct AgentCore, and required by
+it**: AgentCore's [temporal policy examples](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/example-policies-temporal.html)
+make `eventResource: resource` mandatory in every predicate, and scope every policy to its gateway.
+They are dropped because Anchor does not yet model AgentCore's event schema, and refuses both rather
+than guessing at them (see
+[`the-modelled-subset`](../../src/Anchor.MCPServer/knowledge/the-modelled-subset.md)). Every policy
+in the article scopes to the same single gateway, so with one gateway in play, dropping the scope
+and the join changes nothing the checks can see. Recorded so the difference from the published text
+is not mistaken for a finding.
 
-Note that every policy is vacuous when evaluated alone. This is expected and worth seeing: a permit gated on `X::response` cannot fire where nothing permits `X`
+AgentCore's events also name their scope fields differently from Dogwood's default event schema:
+`eventPrincipal` and `eventResource`, where Dogwood's default has `callerPrincipal` and
+`callerResource`. So the open-source `dogwood validate`, run with its default schema, rejects the
+article's joins (`mentions field eventResource, which is not declared on that event`) where
+AgentCore accepts them. That is a difference of event schema, not an error in the article.
+
+Note that most policies are vacuous when evaluated alone. This is expected and worth seeing: a
+permit gated on `X::response` cannot fire where nothing permits `X`. 
+
+```
+./anchor check examples/aws1/03-data-freshness.dw --attempts 4
+...
+
+03-data-freshness.dw: 1 permit(s), 0 forbid(s), bound 4 attempts
+
+  permit #1  action == execute_trade VACUOUS   no session of up to 4 attempts makes it grant
+      because: formerly within 30s get_market_price::response
+
+VACUOUS permit #1
+```
+
+A permit gated on `get_market_price::response` cannot fire in a file where nothing permits
+`get_market_price`: the call is denied, AgentCore records an `::error` rather than a `::response`,
+and the gate never opens. That is a composition effect, not a defect in the article. We need to evaluate the entire policy set:
 
 
 ```bash
@@ -75,21 +97,21 @@ Note that every policy is vacuous when evaluated alone. This is expected and wor
 every rule is load-bearing within 4 attempts.
 ```
 
-The three-hop chain is found without anyone describing it. And **that is the whole of what the
-derived questions can say**: every rule fires, none is redundant, nothing is dead. True, and true
-of a policy set whose rules each independently open the door — which, as the next section
-establishes, is what this one is.
+The three-hop chain is found without anyone describing it. And that is the whole of what the
+derived property questions can say: every rule fires, none is redundant, nothing is dead.
 
-Run any single fragment and it is VACUOUS instead, with the reason named:
+Not every fragment is vacuous on its own, though, and one of the exceptions matters: policy 7 is
+live alone only because its condition is inverted, which is finding 1 below.
 
-```
-  permit #1  action == execute_trade  VACUOUS  no session of up to 3 attempts makes it grant
-      because: formerly within 30s get_market_price::response
-```
+## What was found
 
-A permit gated on `get_market_price::response` cannot fire in a file where nothing permits
-`get_market_price`: the call is denied, AgentCore records an `::error` rather than a `::response`,
-and the gate never opens. That is a composition effect, not a defect in the article.
+| | |
+|---|---|
+| **Policy 7 is inverted relative to its own description** | it permits writes *only while the advisor is absent*, which is the reverse of the sentence beside it. Machine-checked, with counterexamples |
+| **The two trade protections are alternatives, not requirements** | a trade goes through on a fresh price with **no profile check at all** — precisely the prompt-injection case one of them exists to prevent |
+
+Both findings have a proposed fix in [`fixed/`](fixed/README.md), checked against the same
+property modules with every claim listed: all of them hold, and every rule is live.
 
 ## 1. Policy 7 says the opposite of what it does
 
@@ -172,7 +194,7 @@ itself.
 python src/checker/properties.py examples/aws1/agent-policy.dw --property examples/aws1/TradeGate.tla
 ```
 
-## 4. Asking the agent instead
+## 3. Asking the agent instead
 
 The same question, put to the agent rather than the CLI:
 
@@ -210,9 +232,9 @@ anchor check examples/aws1 --full
 Finds the policy sets by globbing, pairs each `.tla` with the policy set its header names, runs every
 check, then puts the questions in [`questions.md`](questions.md) to the agent. Without `--full` it
 runs only the rule-by-rule checks, prints them, writes nothing, and lists what `--full` would add. Writes
-[`findings.md`](findings.md), `results.json`, [`transcript.md`](transcript.md) and `traces/`.
-Exits **1** when there is something to look at, so it can gate a pipeline; **2** when the run could
-not happen at all.
+[`findings.md`](findings.md), `findings.html`, `results.json`, [`transcript.md`](transcript.md)
+and `traces/`. Exits **1** when there is something to look at, so it can gate a pipeline; **3** when
+the run could not happen at all.
 
 `--no-llm` does the checks and the report without asking an LLM anything — most of the value,
 none of the cost, and the part that belongs in CI. `--output-dir findings` writes elsewhere.
@@ -231,9 +253,11 @@ Nothing here has to be taken on trust.
 python src/checker/properties.py examples/aws1/agent-policy.dw --attempts 4 --keep /tmp/out
 ```
 
-**TLC stops at the first violated invariant**, so the `.cfg` files list every claim but a run
-reports one. Check them individually to see them all — comment out the others, or use a one-line
-config per claim.
+**TLC stops at the first violated invariant**, so a run reports one broken claim however many
+the `.cfg` names. `TradeGate.cfg` names only `FreshPriceAloneIsNotEnough`, the one that matters, and
+the report lists the other four as defined but not checked; the table in section 2 comes from
+checking each claim on its own, with a one-line `.cfg` per claim. `fixed/TradeGate.cfg` names all
+five, because against the fixed policy set none of them breaks.
 
 ## What this example is evidence for
 

@@ -569,83 +569,6 @@
             "3. execute_trade     (profile_id = 1)  allowed"
           ],
           "blame": null
-        },
-        {
-          "index": 7,
-          "effect": "forbid",
-          "actions": [
-            "execute_trade"
-          ],
-          "verdict": "live",
-          "note": "witness: get_market_price -> execute_trade",
-          "witness": "get_market_price -> execute_trade",
-          "session": [
-            {
-              "action": "get_market_price",
-              "kind": "request",
-              "input": {
-                "profile_id": 1
-              },
-              "output": {},
-              "time": 1,
-              "principal": "caller",
-              "resource": "caller",
-              "session": "caller",
-              "pins": {
-                "principal": "caller"
-              }
-            },
-            {
-              "action": "get_market_price",
-              "kind": "response",
-              "input": {
-                "profile_id": 1
-              },
-              "output": {},
-              "time": 2,
-              "principal": "caller",
-              "resource": "caller",
-              "session": "caller",
-              "pins": {
-                "principal": "caller"
-              }
-            },
-            {
-              "action": "execute_trade",
-              "kind": "request",
-              "input": {
-                "profile_id": 1
-              },
-              "output": {},
-              "time": 3,
-              "principal": "caller",
-              "resource": "caller",
-              "session": "caller",
-              "pins": {
-                "principal": "caller"
-              }
-            },
-            {
-              "action": "execute_trade",
-              "kind": "error",
-              "input": {
-                "profile_id": 1
-              },
-              "output": {},
-              "time": 4,
-              "principal": "caller",
-              "resource": "caller",
-              "session": "caller",
-              "pins": {
-                "principal": "caller"
-              }
-            }
-          ],
-          "narrative": [
-            "1. get_market_price(profile_id = 1)  allowed",
-            "2. execute_trade   (profile_id = 1)  denied"
-          ],
-          "blame": null
         }
       ],
       "defects": [],
@@ -754,7 +677,7 @@
       "kind": "property",
       "held": true,
       "exitCode": 0,
-      "output": "no --event-schema given, so every answer below uses Dogwood's own default\n  reading: callerPrincipal pinned on every kind, so a temporal condition sees\n  only the requesting principal's events. Pass --event-schema for your\n  deployment's real one, or --unpinned if it has no universal pin.\n\nagent-policy.dw against TradeGate.tla: 7 rule(s)\n\n  every claim holds over every request the property module names.\n\nThat is not a proof about requests it does not name. A property module ranges over\nwhat it says it ranges over, and nothing warns you when that is less than you meant.",
+      "output": "no --event-schema given, so every answer below uses Dogwood's own default\n  reading: callerPrincipal pinned on every kind, so a temporal condition sees\n  only the requesting principal's events. Pass --event-schema for your\n  deployment's real one, or --unpinned if it has no universal pin.\n\nagent-policy.dw against TradeGate.tla: 6 rule(s)\n\n  every claim holds over every request the property module names.\n\nThat is not a proof about requests it does not name. A property module ranges over\nwhat it says it ranges over, and nothing warns you when that is less than you meant.",
       "error": ""
     },
     "TrustDecay.tla": {

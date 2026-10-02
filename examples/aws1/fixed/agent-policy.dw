@@ -3,8 +3,9 @@
 // The article states its two trade protections as two `permit` rules on `execute_trade`, and two
 // permits on one action are alternatives: either matching is enough. So a fresh price alone opened
 // the trade with no profile check at all -- the prompt-injection case the integrity rule exists to
-// prevent. Here the freshness permit grants the trade, and a `forbid` refuses it UNLESS this
-// trajectory loaded the profile the trade names. A forbid overrides any permit, so both must hold.
+// prevent. Here they are ONE permit, the two conditions joined with `&&` -- AgentCore's own idiom
+// for "both prerequisites", from its temporal policy examples ("Require two prerequisites in any
+// order").
 //
 // Checked against TradeGate.tla beside it, all five claims: both prerequisites are now required,
 // and the intended path -- both present -- is still open.
@@ -51,24 +52,15 @@ when temporal {
 };
 
 // ---- policies 2 and 3: the trade gate, now BOTH required -----------------------------------
-// Data freshness grants the trade.
+// Output-to-input integrity AND data freshness, in one rule.
 permit (
     principal,
     action == AgentCore::Action::"execute_trade",
     resource
 )
 when temporal {
-    formerly within 30s AgentCore::Action::"get_market_price"::response{ }
-};
-
-// Output-to-input integrity refuses it unless the profile it names was loaded in this trajectory.
-forbid (
-    principal,
-    action == AgentCore::Action::"execute_trade",
-    resource
-)
-unless temporal {
     formerly within 24h AgentCore::Action::"get_client_profile"::response{
         input.profile_id: context.input.profile_id
     }
+    && formerly within 30s AgentCore::Action::"get_market_price"::response{ }
 };

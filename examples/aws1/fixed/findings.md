@@ -20,7 +20,7 @@ within the bounds each check reports.
 | policy set | rules | verdicts |
 |---|---|---|
 | `07-trust-decay.dw` | 2 | live |
-| `agent-policy.dw` | 7 | live |
+| `agent-policy.dw` | 6 | live |
 
 ## Stated intentions
 

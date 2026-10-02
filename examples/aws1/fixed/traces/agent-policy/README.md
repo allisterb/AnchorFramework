@@ -29,7 +29,6 @@ cp rule-5-NeverMatters.cfg Vacuity.cfg && java -cp C:\Projects\Anchor\lib\tla2to
 cp rule-5-NeverFires.cfg Vacuity.cfg && java -cp C:\Projects\Anchor\lib\tla2tools-1.7.4.jar tlc2.TLC -config Vacuity.cfg Vacuity
 cp rule-6-NeverMatters.cfg Vacuity.cfg && java -cp C:\Projects\Anchor\lib\tla2tools-1.7.4.jar tlc2.TLC -config Vacuity.cfg Vacuity
 cp rule-6-NeverFires.cfg Vacuity.cfg && java -cp C:\Projects\Anchor\lib\tla2tools-1.7.4.jar tlc2.TLC -config Vacuity.cfg Vacuity
-cp rule-7-NeverMatters.cfg Vacuity.cfg && java -cp C:\Projects\Anchor\lib\tla2tools-1.7.4.jar tlc2.TLC -config Vacuity.cfg Vacuity
 ```
 
 ## Reading the result BACKWARDS
