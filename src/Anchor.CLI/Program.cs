@@ -288,7 +288,8 @@ public static class Program
         var reading = !string.IsNullOrWhiteSpace(o.EventSchema) ? $"the event schema {Path.GetFileName(o.EventSchema)}"
             : o.Unpinned ? "unpinned: every principal's events"
             : o.Pinned ? "callerPrincipal pinned, Dogwood's default"
-            : "callerPrincipal pinned, Dogwood's default (--unpinned or --event-schema to change)";
+            : "callerPrincipal pinned, Dogwood's default -- or AgentCore's schema for a policy that " +
+              "binds eventResource (--unpinned or --event-schema to change)";
 
         List<string> lines = [$"Check of {o.Policy} ({what}):", task, pad + bound, pad + "reading: " + reading];
         if (o.Syntax) lines.Add(pad + "parsed by `dogwood check-parse` first (--syntax)");

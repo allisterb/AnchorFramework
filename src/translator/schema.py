@@ -40,7 +40,7 @@ from __future__ import annotations
 
 import re
 
-from .parse import DEFAULT_MAX_WINDOW, UNITS, Unsupported
+from .parse import DEFAULT_MAX_WINDOW, DEFAULT_SCOPE_FIELDS, UNITS, Unsupported
 
 # `pin <field>: <type> = <source>` at the top level of an event block.
 PIN = re.compile(r"^\s*pin\s+([A-Za-z_]\w*)\s*:\s*[^=]+=\s*([A-Za-z_][\w.]*)\s*,?\s*$", re.M)
@@ -65,15 +65,24 @@ CONVENTIONAL = {"request", "response", "error"}
 #
 # Read off the corpus rather than off the documentation: all nine schema-bearing cases with no pin
 # declare a field outside this set, and that is what each of them is in the corpus to test.
-CONVENTIONAL_FIELDS = {"...inputs", "...outputs", "callerPrincipal", "callerResource",
-                       "requestId", "sessionId"}
+#
+# The two SCOPE fields are not in it by name: a schema may call them anything (below).
+CONVENTIONAL_FIELDS = {"...inputs", "...outputs", "requestId", "sessionId"}
 
 # A top-level entry in an event block: `name: type`, `pin name: type = source`, or `...inputs(A)`.
 FIELD = re.compile(r"^\s*(?:pin\s+)?(\.\.\.[A-Za-z_]\w*|[A-Za-z_]\w*)\s*[:(]", re.M)
 
 # The two SCOPE fields. These partition on something the event carries in its `scope(...)`
-# envelope rather than in its payload, which is why they stay special everywhere below.
+# envelope rather than in its payload, which is why they stay special everywhere below. These are
+# the names the model uses for them INTERNALLY, which are Dogwood's default names.
 SCOPE_PINS = {"callerPrincipal": "principal", "callerResource": "resource"}
+
+# A schema says which fields ARE the scope fields by their type, not their name -- Dogwood's own
+# rule (guide 03-event-schema.md, "How request references resolve"): `actor: principalType(A)` is
+# the principal however it is spelled. AgentCore spells them `eventPrincipal` / `eventResource`.
+SCOPE_TYPED = re.compile(
+    r"^\s*(?:pin\s+)?([A-Za-z_]\w*)\s*:\s*(principalType|resourceType)\s*\(\s*A\s*\)", re.M)
+SCOPE_SELECTORS = {"principalType": "callerPrincipal", "resourceType": "callerResource"}
 
 
 def key_for(field: str) -> str:
@@ -116,13 +125,15 @@ def parse_schema(text: str) -> dict:
     else:
         max_window = DEFAULT_MAX_WINDOW
 
-    kinds, pins, blocks, pinned = [], {}, {}, {}
+    kinds, pins, blocks, pinned, scope_by_kind = [], {}, {}, {}, {}
     for m in EVENT.finditer(text):
         kind = m.group(2)
         kinds.append(kind)
         block = _block(text, m.end())
         blocks[kind] = block
-        declared = dict(PIN.findall(block))
+        # Surface name -> internal name, for the fields typed as the scope entities.
+        scope_by_kind[kind] = {name: SCOPE_SELECTORS[sel] for name, sel in SCOPE_TYPED.findall(block)}
+        declared = {scope_by_kind[kind].get(f, f): src for f, src in PIN.findall(block)}
         # The names a pin is attached to, whatever their shape. A field outside the default set
         # is the modelled feature when it carries one, and an unmodelled one when it does not.
         names = set(declared)
@@ -141,11 +152,21 @@ def parse_schema(text: str) -> dict:
     if unknown:
         raise Unsupported(f"schema declares custom event kinds: {', '.join(sorted(unknown))}")
 
+    # One spelling of the scope fields for the whole schema. A policy names a field once and means
+    # it on every kind, so a schema calling the principal `actor` on one kind and `caller` on
+    # another would make the same bind mean different things depending on the event.
+    spellings = {tuple(sorted(s.items())) for s in scope_by_kind.values()}
+    if len(spellings) > 1:
+        raise Unsupported("event schema names its scope fields differently on different kinds",
+                          "schema declares a field beyond the default shape")
+    scope_fields = dict(spellings.pop()) if spellings else {}
+
     # What the schema declares beyond the default shape. A pin on a conventional field is the
     # modelled feature; anything else is a different one, and is named rather than lumped in.
     for kind, block in blocks.items():
+        pinned_surface = pinned[kind] | set(scope_fields)
         extra = sorted({f for f in FIELD.findall(block)
-                        if f not in CONVENTIONAL_FIELDS and f not in pinned[kind]})
+                        if f not in CONVENTIONAL_FIELDS and f not in pinned_surface})
         if extra:
             raise Unsupported(
                 f"event schema declares {', '.join(extra)} on <A>::{kind}, which is an injected, "
@@ -172,6 +193,10 @@ def parse_schema(text: str) -> dict:
     partial = sorted(declared - set(universal))
 
     return {
+        # Which names a policy may use for the scope fields under this schema, and the internal
+        # name each stands for. Under AgentCore's, `eventResource: resource` is a bind on the
+        # resource; `callerResource` is not a declared field at all.
+        "scope_fields": scope_fields,
         "keys": [key_for(f) for f in universal],
         # The ceiling on how far back any `within` may look. 24h unless the schema says otherwise,
         # and a policy exceeding it is a validation error -- so it could not be deployed as written.

@@ -265,6 +265,34 @@ public class PolicyToolTests : TestsRuntime
             "****** SANY2 Version 2.1 created 24 February 2014\nSemantic processing of module firewall"));
     }
 
+    /// <summary>
+    /// The reading a verdict was reached under reaches the caller, for each way the checker words it.
+    /// </summary>
+    /// <remarks>
+    /// The AgentCore reading is chosen FOR the caller, from the policy text, so it is the one most
+    /// worth reporting and the one a parser written for the other two would drop. Fixtures are the
+    /// checker's real banners.
+    /// </remarks>
+    [Fact]
+    public void TheReadingIsReportedWhicheverWayItWasChosen()
+    {
+        const string agentcore = """
+            the policy binds eventResource/eventPrincipal, so every answer below uses
+              AgentCore's event schema: history partitioned by session, and one gateway
+              in the model -- a rule scoped to it applies to every request.
+            """;
+        Assert.Contains("AgentCore's event schema", PolicyTools.Reading(agentcore));
+
+        const string fallback = """
+            no --event-schema given, so every answer below uses Dogwood's own default
+              reading: callerPrincipal pinned on every kind.
+            """;
+        Assert.Contains("callerPrincipal", PolicyTools.Reading(fallback));
+
+        Assert.Equal("under prod.dwschema: partitioned by sessionId -- a temporal predicate sees only its own partition",
+                     PolicyTools.Reading("under prod.dwschema: partitioned by sessionId -- a temporal predicate sees only its own partition\n"));
+    }
+
     #endregion
 }
 

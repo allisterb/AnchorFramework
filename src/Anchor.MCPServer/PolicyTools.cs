@@ -65,11 +65,12 @@ public partial class PolicyTools : Runtime
         "THE BOUND IS REAL. VACUOUS means 'no session of up to `attempts` attempts makes it fire', not " +
         "'never'. Raise `attempts` to trade runtime for confidence, and report the bound alongside the " +
         "verdict rather than stating the verdict flatly.\n\n" +
-        "PASS `eventSchema` WHENEVER ONE EXISTS. Without it every answer uses Dogwood's own default " +
-        "reading -- callerPrincipal pinned, so a temporal condition sees only the requesting " +
-        "principal's events -- which is right only if the deployment keeps that default. If its " +
-        "schema has no universal pin, pass `pinned: false`. The tool echoes which reading it used; do " +
-        "not drop that from your summary.\n\n" +
+        "PASS `eventSchema` WHENEVER ONE EXISTS. Without it, a policy written for AgentCore -- binding " +
+        "`eventResource` -- is read under AgentCore's own schema (history per session), and any other " +
+        "under Dogwood's own default reading -- callerPrincipal pinned, so a temporal condition sees " +
+        "only the requesting principal's events -- which is right only if the deployment keeps that " +
+        "default. If its schema has no universal pin, pass `pinned: false`. The tool echoes which " +
+        "reading it used; do not drop that from your summary.\n\n" +
         "This runs TLC once per rule, so expect seconds to minutes, not milliseconds. It is not a " +
         "linter and it is not a retry-on-timeout call.\n\n" +
         "IF IT DOES NOT FINISH, use `smoke` rather than lowering `attempts`. See that argument.")]
@@ -544,6 +545,14 @@ public partial class PolicyTools : Runtime
         if (match.Success)
         {
             return match.Value.Trim();
+        }
+        // Chosen for the caller, because the policy binds AgentCore's scope fields.
+        if (text.Contains("uses\n  AgentCore's event schema"))
+        {
+            return "the policy binds eventResource/eventPrincipal, so every answer uses AgentCore's event " +
+                   "schema: history partitioned by session, one gateway in the model. Not modelled: AgentCore " +
+                   "records a response 'shortly after' completion, where the model has it recorded before " +
+                   "the next request";
         }
         // The default, which the checker words as a default so nobody mistakes it for a choice.
         return text.Contains("uses Dogwood's own default")

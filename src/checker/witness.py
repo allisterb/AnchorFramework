@@ -340,17 +340,26 @@ def fields(rec: Any) -> str:
     return " " + ", ".join(f"{k}: {scalar(v)}" for k, v in rec.fields) + " "
 
 
-def trace_text(events: list[Rec], namespace: str, decision_kind: str = "request") -> str:
+def trace_text(events: list[Rec], namespace: str, decision_kind: str = "request", *,
+               scope_fields: dict[str, str] | None = None, resource: str | None = None,
+               session: bool = False) -> str:
     """The session as a Dogwood `.log` trace.
 
     The principal and resource are constants: the property modules build sessions with the
     generated module's `Anon`, so a witness says nothing about who the caller was and inventing a
     difference between events would be inventing a fact. One caller, one gateway.
+
+    Under another event schema the trace has to be in ITS terms, or the engine judges a different
+    policy: `scope_fields` names the scope fields as that schema spells them; `resource` is the
+    gateway the policy set is scoped to, without which every scoped rule would simply not apply;
+    `session` writes the `sessionId` a session-pinned schema reads, on both sides of its pin.
     """
-    scope = (f'scope(principal: {namespace}::OAuthUser::"agent", '
-             f'resource: {namespace}::Gateway::"gw")')
-    caller = (f'callerPrincipal: {namespace}::OAuthUser::"agent", '
-              f'callerResource: {namespace}::Gateway::"gw"')
+    names = {internal: surface for surface, internal in (scope_fields or {}).items()}
+    gateway = resource or f'{namespace}::Gateway::"gw"'
+    scope = f'scope(principal: {namespace}::OAuthUser::"agent", resource: {gateway})'
+    caller = (f'{names.get("callerPrincipal", "callerPrincipal")}: {namespace}::OAuthUser::"agent", '
+              f'{names.get("callerResource", "callerResource")}: {gateway}')
+    sid = ', sessionId: "s1"' if session else ""
 
     lines = []
     for n, e in enumerate(events, 1):
@@ -360,15 +369,16 @@ def trace_text(events: list[Rec], namespace: str, decision_kind: str = "request"
 
         # `request_context` carries what the decision is being asked ABOUT, and only a decision
         # event has one. An output only exists on a response.
-        context = f"request_context(input: {{{fields(e.get('input'))}}}) " if kind == decision_kind else ""
+        context = (f"request_context(input: {{{fields(e.get('input'))}}}{sid}) "
+                   if kind == decision_kind else "")
         output = (f"output: {{{fields(e.get('output'))}}}, "
                   if kind == "response" else "")
         lines.append(f'@{e.get("time")} {scope} {context}{namespace}::Action::"{action}"::{kind}'
-                     f'(input: {{{fields(e.get("input"))}}}, {output}{caller}, requestId: "e{n}")')
+                     f'(input: {{{fields(e.get("input"))}}}, {output}{caller}, requestId: "e{n}"{sid})')
     return "\n".join(lines) + "\n"
 
 
-def cedar_schema(vocab: dict, namespace: str, events: list[Rec]) -> str:
+def cedar_schema(vocab: dict, namespace: str, events: list[Rec], *, session: bool = False) -> str:
     """A Cedar schema for this policy's actions, generated rather than written.
 
     `dogwood replay` requires one, and hand-writing it per example would be a second description
@@ -397,10 +407,13 @@ def cedar_schema(vocab: dict, namespace: str, events: list[Rec]) -> str:
         return f"  type {name} = {{\n" + ",\n".join(body) + "\n  };" if body else \
                f"  type {name} = {{}};"
 
+    # A session-pinned schema's pin reads `context.sessionId`, and does not resolve -- nothing
+    # validates -- unless every action's context declares it.
+    sid = ", sessionId: String" if session else ""
     actions = "\n".join(
         f'  action "{a}" in [Action::"CallTool"] appliesTo {{\n'
         f"    principal: [OAuthUser], resource: [Gateway],\n"
-        f"    context: {{ input: EventInput, output?: EventOutput, system: SystemContext }}\n"
+        f"    context: {{ input: EventInput, output?: EventOutput, system: SystemContext{sid} }}\n"
         f"  }};"
         for a in sorted(vocab.get("actions", ())))
 
@@ -578,13 +591,28 @@ def confirm(policy: Path, module: Path, tlc_output: str, *,
     attached to a ticket, or handed to somebody without this checkout and still answer for itself.
     """
     from translator import DEFAULT_MAX_WINDOW, parse_policies, vocabulary   # noqa: PLC0415
+    from translator.agentcore import AGENTCORE_SCHEMA, is_agentcore, uses_agentcore_fields  # noqa: PLC0415
 
     text = policy.read_text(encoding="utf-8")
     namespace = namespace_of(text)
-    cap = (DEFAULT_MAX_WINDOW if event_schema is None
-           else parse_schema(event_schema.read_text(encoding="utf-8"))["max_window"])
-    policies = parse_policies(text, "", cap)
+    schema = (parse_schema(event_schema.read_text(encoding="utf-8"))
+              if event_schema is not None else None)
+
+    # A policy written for AgentCore was checked under AgentCore's schema: it is the only reading
+    # in which its `eventResource` binds exist, and the checker chooses it whenever the caller did
+    # not choose one that spells them. Callers that default to Dogwood's pinned reading are
+    # corrected here rather than each taught separately, so the engine replays under the same
+    # reading the counterexample was found under.
+    if uses_agentcore_fields(text) and (schema is None or not is_agentcore(schema)):
+        event_schema = AGENTCORE_SCHEMA
+        schema = parse_schema(event_schema.read_text(encoding="utf-8"))
+
+    cap = DEFAULT_MAX_WINDOW if schema is None else schema["max_window"]
+    scope_fields = None if schema is None else schema["scope_fields"]
+    policies = parse_policies(text, "", cap, scope_fields)
     vocab = vocabulary(policies, 2, 8)
+    resource = next((p["resource"] for p in policies if p.get("resource")), None)
+    pins_session = schema is not None and "sessionId" in schema["keys"]
 
     spec = read(module)
     out: list[Confirmation] = []
@@ -609,8 +637,9 @@ def confirm(policy: Path, module: Path, tlc_output: str, *,
             continue
 
         try:
-            c.trace = trace_text(d.events, namespace)
-            c.schema = cedar_schema(vocab, namespace, d.events)
+            c.trace = trace_text(d.events, namespace, scope_fields=scope_fields,
+                                 resource=resource, session=pins_session)
+            c.schema = cedar_schema(vocab, namespace, d.events, session=pins_session)
         except Unsupported as e:
             c.why = f"this witness cannot be written as a Dogwood trace: {e}"
             continue

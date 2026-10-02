@@ -1400,7 +1400,8 @@ def announce(what: str, requirement: str, out: str, args: argparse.Namespace,
         *row("LLM", f"{ready.model} via {ready.provider}", f"model: {ready.model_source}",
              f"credentials: {ready.source}.", "Every draft and review is a live LLM call."),
         *row("reading", f"the event schema {args.event_schema.name}" if args.event_schema
-             else "callerPrincipal pinned, Dogwood's default (--event-schema to change)"),
+             else "callerPrincipal pinned, Dogwood's default -- AgentCore's schema for a policy "
+                  "set binding eventResource (--event-schema to change)"),
         *row("output", out),
         closing,
         ""])
@@ -1437,9 +1438,10 @@ VERBOSE_HELP = ("leave third-party logging as it is. By default google-genai's o
 def add_checking_arguments(p: argparse.ArgumentParser) -> None:
     """How each draft is checked."""
     p.add_argument("--event-schema", type=Path, default=None, metavar="FILE.dwschema",
-                   help="the .dwschema the policy set is deployed under. Without one, Dogwood's "
-                        "own default reading: callerPrincipal pinned, so a temporal condition "
-                        "sees only the requesting principal's earlier events")
+                   help="the .dwschema the policy set is deployed under. Without one, a policy set "
+                        "binding eventResource is read under AgentCore's own schema, and any other "
+                        "under Dogwood's default reading: callerPrincipal pinned, so a temporal "
+                        "condition sees only the requesting principal's earlier events")
     p.add_argument("--mutants", type=int, default=8, metavar="N",
                    help="how many broken versions of the policy set each draft is tested against "
                         "-- a rule deleted, a permit turned into a forbid, a condition dropped -- "

@@ -23,12 +23,14 @@ TWO MODES:
     python tests/strands/agentcore_conformance.py              # the policies as AWS publishes them
     python tests/strands/agentcore_conformance.py --stripped   # gateway scope and joins removed
 
-Verbatim is what "done" means, and until step 4 every case is refused there. `--stripped` removes
-the two AgentCore constructs Anchor does not model -- `resource == AgentCore::Gateway::"..."` and
-`eventResource: resource` -- and reads under Dogwood's shipped session-pinned preset, which is
-AgentCore's schema with the scope fields under Dogwood's names. With one gateway in play that
-removal changes no decision (docs/agentcore.md, question 3), so the stripped run measures Anchor's
-SEMANTICS against AWS's tables today, ahead of the parser work.
+Verbatim is what "done" means: AWS's text as published, under AgentCore's event schema
+(`src/translator/agentcore.dwschema`) and AgentCore's own rules (`translator.agentcore`). Every case
+was refused there until step 4 modelled that layer. `--stripped` removes the two AgentCore
+constructs -- `resource == AgentCore::Gateway::"..."` and `eventResource: resource` -- and reads
+under Dogwood's shipped session-pinned preset, which is AgentCore's schema with the scope fields
+under Dogwood's names. With one gateway in play that removal changes no decision
+(docs/agentcore.md, question 3), so the two runs reach the same semantics by two routes, and a
+failure in one and not the other says which half broke.
 
 Exit code: 0 every case conforms; 1 a disagreement, or the ground truth itself is malformed;
 2 a case that should have been checked was refused, so no verdict was produced for it.
@@ -45,7 +47,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 REPO = Path(__file__).resolve().parents[2]
 SUITE = REPO / "tests" / "policies" / "agentcore"
-AGENTCORE_SCHEMA = SUITE / "agentcore.dwschema"
+AGENTCORE_SCHEMA = REPO / "src" / "translator" / "agentcore.dwschema"
 SESSION_PINNED = (REPO / "ext" / "dogwood" / "dogwood-language" / "configuration"
                   / "event-schemas" / "session-pinned.dwschema")
 
@@ -53,6 +55,7 @@ sys.path.insert(0, str(REPO / "src"))
 
 from dogwood_differential import case_record, check, collect_disagreements, generate_module  # noqa: E402
 from translator import Unsupported, apply_pins, parse_policies, parse_schema, parse_trace, stamp_keys  # noqa: E402
+from translator.agentcore import refuse_unsound, rejections  # noqa: E402
 
 PRINCIPAL = 'AgentCore::OAuthUser::"alice"'
 SESSION = "s1"
@@ -205,7 +208,15 @@ def translate(case: dict, stripped: bool) -> tuple[list[str], str | None]:
     schema_text = (SESSION_PINNED if stripped else AGENTCORE_SCHEMA).read_text(encoding="utf-8")
     try:
         schema = parse_schema(schema_text)
-        policies = parse_policies(strip(case["text"]) if stripped else case["text"])
+        policies = parse_policies(strip(case["text"]) if stripped else case["text"],
+                                  scope_fields=schema["scope_fields"])
+        if not stripped:
+            # The AgentCore reading in full: its two refusals, and its creation-time rules -- an
+            # example AWS publishes must not be one AgentCore would refuse to create.
+            refuse_unsound(policies)
+            rejected, _ = rejections(policies)
+            if rejected:
+                raise Unsupported("AgentCore would reject it: " + "; ".join(rejected))
         apply_pins(policies, schema)
         if schema["keys"]:
             stamp_keys(policies, schema["keys"])

@@ -1,0 +1,14 @@
+// Written for AgentCore, and well-formed: every predicate binds eventResource. Refused all the same
+// under the AgentCore reading, because `previous` reads the session's immediately preceding event,
+// and an AgentCore session can span gateways -- the preceding event may be another gateway's, which
+// a one-gateway model cannot see. The guide documents `formerly`, `since`, `count` and `sum`, never
+// `previous`. See docs/agentcore.md, question 3.
+
+permit (
+    principal,
+    action == AgentCore::Action::"InsuranceAPI___disburse_payment",
+    resource == AgentCore::Gateway::"arn:aws:bedrock-agentcore:us-west-2:123456789012:gateway/insurance-gw-a1b2c3d4e5"
+)
+when temporal {
+    previous within 1h AgentCore::Action::"InsuranceAPI___approve_claim"::response{ eventResource: resource }
+};

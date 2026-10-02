@@ -46,6 +46,9 @@ sys.path.insert(0, str(REPO / "src"))
 from translator import (DECISION_KIND, DEFAULT_MAX_WINDOW, Unsupported, apply_pins,  # noqa: E402
                         find_jar, generate_policy_module, parse_policies, parse_schema, run_eval,
                         run_sany, run_tlc, narrate, stamp_keys, vocabulary, witness_events)
+from translator.agentcore import (AGENTCORE_SCHEMA, is_agentcore, refuse_unsound,  # noqa: E402
+                                  rejections, uses_agentcore_fields)
+from translator.parse import DEFAULT_SCOPE_FIELDS  # noqa: E402
 
 # Event kinds AgentCore records. `request` is the decision event -- the point authorization runs --
 # and the outcome is `response` when the action completed, `error` when it was denied.
@@ -1361,10 +1364,12 @@ def main() -> int:
                     help="a TLA+ module of your own, extending PolicyUnderTest, stating what the "
                          "policy is supposed to mean. Needs a companion .cfg naming its invariants")
     ap.add_argument("--event-schema", type=Path, metavar="FILE.dwschema",
-                    help="the .dwschema the policy set is deployed under. Without one, Anchor uses "
-                         "Dogwood's own default: callerPrincipal pinned, so a temporal condition "
-                         "sees only the requesting principal's earlier events. Pass the real schema "
-                         "if you have one, or --unpinned if yours has no universal pin")
+                    help="the .dwschema the policy set is deployed under. Without one, a policy "
+                         "binding eventResource or eventPrincipal is read under AgentCore's own "
+                         "schema (history per session), and any other under Dogwood's default: "
+                         "callerPrincipal pinned, so a temporal condition sees only the requesting "
+                         "principal's earlier events. Pass the real schema if you have one, or "
+                         "--unpinned if yours has no universal pin")
     ap.add_argument("--verbose", action="store_true", help="print the TLC output for each permit")
     ap.add_argument("--json", action="store_true",
                     help="emit the result as JSON, including the witness SESSION as structured "
@@ -1478,30 +1483,60 @@ def main() -> int:
                 return 2
             print(f"{f.name}: parses, per the reference implementation", file=sys.stderr)
 
-    try:
-        # Parsed twice over: once to read the schema's cap, then again under it. A policy
-        # looking back further than the deployment allows is a validation error, so answering
-        # questions about it would be answering about something undeployable.
-        cap = (DEFAULT_MAX_WINDOW if args.event_schema is None
-               else parse_schema(args.event_schema.read_text(encoding="utf-8"))["max_window"])
-        policies = parse_policies(args.policy.read_text(encoding="utf-8"), "", cap)
-        other = (parse_policies(args.against.read_text(encoding="utf-8"), "", cap)
-                 if args.against else None)
+    policy_text = args.policy.read_text(encoding="utf-8")
+    other_text = args.against.read_text(encoding="utf-8") if args.against else ""
 
+    # A policy written for AgentCore -- binding `eventResource` / `eventPrincipal` -- is read under
+    # AgentCore's event schema unless the caller chose a reading. Under Dogwood's default those
+    # fields do not exist, so the only alternative to this is refusing the policy.
+    agentcore_auto = (not chosen
+                      and (uses_agentcore_fields(policy_text) or uses_agentcore_fields(other_text)))
+    schema_file = AGENTCORE_SCHEMA if agentcore_auto else args.event_schema
+    # Recorded as the reading from here on, so everything handed the schema later -- the witness
+    # replay above all -- uses the one the verdicts were reached under.
+    args.event_schema = schema_file
+
+    try:
         # The event schema, which decides what the policy MEANS before anything is checked about
-        # what it says. Both halves, and they are different jobs: a partial pin becomes an
-        # ordinary conjunct, a universal one a partition key stamped onto every term.
-        # WITHOUT A SCHEMA, DOGWOOD'S OWN DEFAULT: callerPrincipal pinned. That is what a policy
-        # deployed with no schema of its own actually gets, so it is the reading an unconfigured
-        # check should answer about; `--unpinned` opts out. Both are built as the dict rather
-        # than read from Dogwood's shipped files, so neither needs a file or the submodule; the
-        # values are what `parse_schema` returns for `configuration/event-schemas/{pinned,
-        # unpinned}.dwschema`, which tests/strands/event_schema_readings.py checks.
-        if args.event_schema is not None:
-            schema = parse_schema(args.event_schema.read_text(encoding="utf-8"))
+        # what it says -- read first, because it also says what the policy's scope fields are
+        # called, and how far back a window may look. Both halves of a schema are different jobs:
+        # a partial pin becomes an ordinary conjunct, a universal one a partition key stamped onto
+        # every term.
+        # WITHOUT A SCHEMA, DOGWOOD'S OWN DEFAULT: callerPrincipal pinned. That is the reading of a
+        # policy set deployed on Dogwood with no schema of its own -- not on AgentCore, which has
+        # its own -- so it is what an unconfigured check answers about; `--unpinned` opts out.
+        # Both are built as the dict rather than read from Dogwood's shipped files, so neither
+        # needs a file or the submodule; the values are what `parse_schema` returns for
+        # `configuration/event-schemas/{pinned,unpinned}.dwschema`, which
+        # tests/strands/event_schema_readings.py checks.
+        if schema_file is not None:
+            schema = parse_schema(schema_file.read_text(encoding="utf-8"))
         else:
             schema = {"keys": [] if args.unpinned else ["principal"], "partial": {}, "paths": {},
-                      "max_window": DEFAULT_MAX_WINDOW}
+                      "max_window": DEFAULT_MAX_WINDOW, "scope_fields": dict(DEFAULT_SCOPE_FIELDS)}
+
+        # A policy looking back further than the deployment allows is a validation error, so
+        # answering questions about it would be answering about something undeployable.
+        cap = schema["max_window"]
+        policies = parse_policies(policy_text, "", cap, schema["scope_fields"])
+        other = (parse_policies(other_text, "", cap, schema["scope_fields"])
+                 if args.against else None)
+
+        agentcore_warnings = []
+        if is_agentcore(schema):
+            for rules, f in ((policies, args.policy), (other, args.against)):
+                if rules is None:
+                    continue
+                refuse_unsound(rules)
+                rejected, warned = rejections(rules)
+                agentcore_warnings += [f"{f.name}: {w}" for w in warned]
+                if rejected:
+                    # Not REFUSED: Anchor could model this. AgentCore would not create it, so there
+                    # is no deployed policy for a verdict to be about. Same exit as no verdict.
+                    print(f"REJECTED BY AGENTCORE: {f.name} could not be created as written, so "
+                          f"nothing was checked\n  " + "\n  ".join(rejected), file=sys.stderr)
+                    return 2
+
         for rules in (policies, other):
             if rules is not None:
                 apply_pins(rules, schema)
@@ -1528,9 +1563,15 @@ def main() -> int:
 
     # Say which reading produced the answers. Leaving it implicit is how a verdict computed under
     # one reading gets read as one about another deployment.
-    where = args.event_schema.name if args.event_schema is not None else (
+    where = schema_file.name if schema_file is not None else (
         "--unpinned" if args.unpinned else "--pinned")
-    if args.event_schema is None and not args.pinned and not args.unpinned:
+    if agentcore_auto:
+        reading = ("the policy binds eventResource/eventPrincipal, so every answer below uses\n"
+                   "  AgentCore's event schema: history partitioned by session, and one gateway\n"
+                   "  in the model -- a rule scoped to it applies to every request. Not modelled:\n"
+                   "  a response is assumed recorded before the next request, where AgentCore\n"
+                   "  records it \"shortly after\" (docs/agentcore.md, question 4).")
+    elif args.event_schema is None and not args.pinned and not args.unpinned:
         # The default, said as a default: the reader may not know one was chosen for them, or
         # that their deployment may use another.
         reading = ("no --event-schema given, so every answer below uses Dogwood's own default\n"
@@ -1550,6 +1591,8 @@ def main() -> int:
 
     if not args.json:
         print(reading + "\n")
+        for w in agentcore_warnings:
+            print(f"AgentCore may reject: {w}\n")
 
     if args.property_module is not None:
         return prove(args, policies, vocab, schema["keys"])

@@ -6,8 +6,8 @@ AWS's own statement of how AgentCore decides, as test cases. Step 2 of the Agent
 Run it with:
 
 ```
-python tests/strands/agentcore_conformance.py              # Anchor, verbatim: the target
-python tests/strands/agentcore_conformance.py --stripped   # Anchor, what it can check today
+python tests/strands/agentcore_conformance.py              # Anchor, verbatim
+python tests/strands/agentcore_conformance.py --stripped   # Anchor, without the AgentCore layer
 python tests/strands/agentcore_replay.py                   # the Dogwood engine, verbatim
 ```
 
@@ -17,7 +17,7 @@ python tests/strands/agentcore_replay.py                   # the Dogwood engine,
 |---|---|
 | `authoring/` | the 14 examples of `policy-temporal-authoring.md`, *Use cases* (the `FundsTarget` tools) |
 | `examples/` | the 14 examples of `example-policies-temporal.md` (the `InsuranceAPI` reference gateway) |
-| `agentcore.dwschema` | AgentCore's event schema, transcribed from `policy-temporal-authoring.md`, *Event schema*. It is Dogwood's `session-pinned` preset with the scope fields renamed |
+| `src/translator/agentcore.dwschema` | not in this directory: AgentCore's event schema, transcribed from `policy-temporal-authoring.md`, *Event schema*, which the checker ships and these harnesses read. It is Dogwood's `session-pinned` preset with the scope fields renamed |
 | `agentcore.cedarschema` | the action schema for both gateways' tools, **ours**, built from the guide's tool lists and its JSON-to-Cedar type table. AWS does not publish the generated one |
 | `rejected/` | negative checks: policies AWS says the service rejects, each with the rejection message AWS quotes (`//| rejects …`). Read by `agentcore_replay.py` only |
 
@@ -82,7 +82,7 @@ real gateway settles that.
 
 | run | result |
 |---|---|
-| Anchor, verbatim | **all 28 refused**: the event schema declares `eventPrincipal` / `eventResource`. This is the target for step 4 |
+| Anchor, verbatim | **all 26 checkable examples conform**, on all 163 decisions, AWS's text as published: step 4's target, met. The two guardrail examples are refused as expected. (Before step 4: all 28 refused, at the event schema) |
 | Anchor, `--stripped` | **all 26 checkable examples conform**, on 163 expected decisions (47 from tables, 70 from AWS's prose, 46 ours). The two guardrail examples are refused as expected |
 | Dogwood engine, verbatim | **all 26 validate as written**, and **all 163 decisions are confirmed**, ours included. `rejected/undeclared-output` is rejected with the message AWS quotes from the service, the declared-field list identical in names and order |
 

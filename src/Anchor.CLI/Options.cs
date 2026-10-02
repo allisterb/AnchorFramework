@@ -73,10 +73,11 @@ public class CheckOptions : Options
     public string Property { get; set; } = string.Empty;
 
     [Option("event-schema", Required = false, MetaValue = "FILE.dwschema",
-        HelpText = "The .dwschema the policy set is deployed under. Without one, Anchor uses Dogwood's " +
-                   "own default: callerPrincipal pinned, so a temporal condition sees only the requesting " +
-                   "principal's earlier events. Pass the real schema if you have one, or --unpinned if " +
-                   "yours has no universal pin.")]
+        HelpText = "The .dwschema the policy set is deployed under. Without one, a policy binding " +
+                   "eventResource or eventPrincipal is read under AgentCore's own schema (history per " +
+                   "session), and any other under Dogwood's default: callerPrincipal pinned, so a " +
+                   "temporal condition sees only the requesting principal's earlier events. Pass the " +
+                   "real schema if you have one, or --unpinned if yours has no universal pin.")]
     public string EventSchema { get; set; } = string.Empty;
 
     [Option("pinned", Required = false,

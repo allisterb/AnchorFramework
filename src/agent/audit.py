@@ -677,7 +677,8 @@ def announce(plan: Plan, target: Path, out: Path, args: argparse.Namespace, read
     reading = (f"the event schema {args.event_schema.name}" if args.event_schema else
                "unpinned: every principal's events" if args.reading == "unpinned" else
                "callerPrincipal pinned, Dogwood's default" if args.reading else
-               "callerPrincipal pinned, Dogwood's default (--unpinned or --event-schema to change)")
+               "callerPrincipal pinned, Dogwood's default -- AgentCore's schema for a policy set "
+               "binding eventResource (--unpinned or --event-schema to change)")
     lines = [f"Audit of {target} ({what}):",
              f"  1. rule by rule   {what}, one or two TLC runs per rule",
              f"{pad}{bound}",

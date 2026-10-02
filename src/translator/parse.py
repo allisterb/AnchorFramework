@@ -131,6 +131,12 @@ def parse_decimal(text: str) -> Dec:
 # this name is refused rather than silently conflated; see `vocabulary`.
 SYSTEM_NOW = "systemNowTime"
 
+# The names a policy may write for the two scope fields, and the internal name each stands for.
+# Dogwood's default schema spells them `callerPrincipal` / `callerResource`, and so does the model
+# internally; a schema can rename them (AgentCore's says `eventPrincipal` / `eventResource`), and
+# `parse_schema` returns that schema's spelling to pass in here instead.
+DEFAULT_SCOPE_FIELDS = {"callerPrincipal": "callerPrincipal", "callerResource": "callerResource"}
+
 # Cedar counts a duration in MILLISECONDS, and so does this: `toTime()` returns milliseconds since
 # midnight, `duration("9h")` is 32400000, and comparing them is comparing like with like. Seconds
 # would have been tidier and would have silently truncated `500ms`.
@@ -294,10 +300,12 @@ def tokenize(text: str) -> list[str]:
 
 
 class Parser:
-    def __init__(self, tokens: list[str], max_window: int | None = DEFAULT_MAX_WINDOW):
+    def __init__(self, tokens: list[str], max_window: int | None = DEFAULT_MAX_WINDOW,
+                 scope_fields: dict[str, str] | None = None):
         self.t = tokens
         self.i = 0
         self.max_window = max_window
+        self.scope_fields = DEFAULT_SCOPE_FIELDS if scope_fields is None else scope_fields
 
     # -- token helpers ---------------------------------------------------------
     def peek(self, n: int = 0) -> str | None:
@@ -1077,7 +1085,17 @@ class Parser:
     def bind(self) -> dict:
         lhs = self.take()
 
-        if lhs in ("callerPrincipal", "callerResource"):
+        # A scope field, under whatever name the event schema gives it. `eventResource: resource`
+        # under AgentCore's schema is the same bind as `callerResource: resource` under Dogwood's,
+        # and becomes it here; the other spelling is then not a field of the event at all.
+        if lhs not in self.scope_fields and lhs in ("callerPrincipal", "callerResource",
+                                                    "eventPrincipal", "eventResource"):
+            raise Unsupported(
+                f"bind target {lhs!r} is not a field of this event schema, which names its scope "
+                f"fields {', '.join(sorted(self.scope_fields)) or 'not at all'}",
+                "binds a scope field the event schema does not declare")
+        if lhs in self.scope_fields:
+            lhs = self.scope_fields[lhs]
             self.expect(":")
             rhs = self.take()
             # A wildcard on a scope field matches any caller -- and CANNOT bypass a universal pin,
@@ -1322,12 +1340,34 @@ def fmt_window(seconds: int) -> str:
     return f"{seconds}s"
 
 
+def scope_resource(part: str) -> str | None:
+    """The `resource` slot of a scope: None when bare, the entity when `resource == Ns::T::"id"`.
+
+    Anything else -- `in`, `is`, a slot -- is refused by the caller.
+    """
+    if part == "resource":
+        return None
+    m = re.fullmatch(r'resource\s*==\s*(\w+(?:::\w+)*::"[^"]*")', part)
+    if not m:
+        raise Unsupported(f"resource scope {part!r}", "constrains the scope beyond the modelled forms")
+    return m.group(1)
+
+
 def parse_policies(text: str, macros_text: str = "",
-                   max_window: int | None = DEFAULT_MAX_WINDOW) -> list[dict]:
+                   max_window: int | None = DEFAULT_MAX_WINDOW,
+                   scope_fields: dict[str, str] | None = None) -> list[dict]:
     """Every `permit`/`forbid` in the file, as [effect, action, cond].
 
     `macros_text` is a separate `macros.dw`, whose definitions are in scope for `text`. Inline
     `def`s in `text` are collected the same way, so the two spellings are one mechanism.
+    `scope_fields` is the event schema's spelling of the scope fields (`parse_schema` returns it);
+    omitted, Dogwood's default names.
+
+    A RESOURCE SCOPE NAMING ONE ENTITY IS ACCEPTED, and every such scope in the set must name the
+    same one. The model has one resource, so a rule scoped to it applies to every request the
+    model makes, exactly as a bare `resource` does. That is sound because a scope only narrows
+    which requests a rule applies to, and every request here is at that resource. Two different
+    resources would need a model with two, and are refused: check each gateway's rules alone.
     """
     text = re.sub(r"//[^\n]*", "", text)
     macros_text = re.sub(r"//[^\n]*", "", macros_text)
@@ -1339,9 +1379,17 @@ def parse_policies(text: str, macros_text: str = "",
     macros = {**shared, **local}
 
     policies = []
+    resources = set()
 
     for m in re.finditer(r"(permit|forbid)\s*\((.*?)\)\s*(.*?);", text, re.S):
         effect, scope, body = m.group(1), " ".join(m.group(2).split()), " ".join(m.group(3).split())
+
+        # The resource slot is read on its own, then the rest is matched as before with it bare.
+        rm = re.search(r",\s*(resource\b[^,]*)$", scope)
+        resource = scope_resource(rm.group(1).strip()) if rm else None
+        if resource is not None:
+            resources.add(resource)
+            scope = scope[:rm.start()] + ", resource"
 
         sm = re.fullmatch(r'principal,\s*action == \w+::Action::"([^"]+)",\s*resource', scope)
         im = re.fullmatch(r"principal,\s*action in \[([^\]]*)\],\s*resource", scope)
@@ -1363,17 +1411,23 @@ def parse_policies(text: str, macros_text: str = "",
             raise Unsupported(f"scope {scope!r}")
 
         if not body:
-            policies.append({"effect": effect, "actions": actions,
+            policies.append({"effect": effect, "actions": actions, "resource": resource,
                              "cond": {"op": "true", "args": []}})
             continue
 
-        p = Parser(expand_macros(tokenize(body), macros, [0]), max_window)
+        p = Parser(expand_macros(tokenize(body), macros, [0]), max_window, scope_fields)
         cond = p.body()
         if p.peek() is not None:
             raise Unsupported(f"trailing tokens from {p.peek()!r}")
 
-        policies.append({"effect": effect, "actions": actions, "cond": cond})
+        policies.append({"effect": effect, "actions": actions, "resource": resource,
+                         "cond": cond})
 
     if not policies:
         raise Unsupported("no policies parsed")
+    if len(resources) > 1:
+        raise Unsupported(
+            f"policy set scopes its rules to {len(resources)} different resources "
+            f"({', '.join(sorted(resources))}); the model has one, so check each one's rules on "
+            f"their own", "scopes rules to more than one resource")
     return policies

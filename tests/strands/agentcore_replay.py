@@ -46,7 +46,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from agentcore_conformance import SOURCES, SUITE, consistency, load, load_suite, trace  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[2]
-EVENT_SCHEMA = SUITE / "agentcore.dwschema"
+EVENT_SCHEMA = REPO / "src" / "translator" / "agentcore.dwschema"
 ACTION_SCHEMA = SUITE / "agentcore.cedarschema"
 DOGWOOD = (REPO / "ext" / "dogwood" / "target" / "release"
            / ("dogwood.exe" if sys.platform == "win32" else "dogwood"))

@@ -36,6 +36,36 @@ and recorded in the reference ledger:
   it reproduces a rejection message AWS quotes from the service, and the engine reproduces all 163
   expected decisions in the conformance suite.
 
+## Status after step 4 (2026-10-02)
+
+**Anchor checks AgentCore policies as published.** `tests/strands/agentcore_conformance.py`
+passes VERBATIM: all 26 checkable examples, all 163 expected decisions, with gateway scopes and
+`eventResource` joins as AWS wrote them. What makes that work:
+
+- `src/translator/agentcore.dwschema`: the transcribed schema, shipped with the checker. The test
+  suite reads this same file.
+- `src/translator/schema.py` recognises scope fields **by type**, so `eventResource` is the resource
+  field under that schema. `parse_policies` takes the schema's spelling.
+- `parse_policies` accepts a `resource == Ns::T::"id"` scope naming one entity per policy set
+  (question 3).
+- `src/translator/agentcore.py` holds AgentCore's own rules. **REJECTED BY AGENTCORE** for a
+  predicate missing `eventResource: resource` or more than 3 `formerly`/`previous`/`since`; a
+  warning when `count`/`sum` might push a policy over the quota; REFUSED for `previous` and
+  positive-left `since` under this reading (question 3).
+- `src/checker/properties.py` chooses this reading **automatically** for a policy binding
+  `eventResource`/`eventPrincipal`, and says so. `--witness` replays under it, with AgentCore's
+  field names, a `sessionId` and the policy's own gateway.
+
+**Not done, and still to do:**
+
+- **`principal is <Type>`.** Still refused. Only the two guardrail examples use it, and they are
+  refused for their provider anyway.
+- **Principals within a session.** Whether the model lets a principal vary within a session, so
+  that `eventPrincipal: principal` can mean anything, is unchecked; see below.
+- **Lints that need the gateway's tool schemas:** undeclared `output.*`, ordering or `sum` on a
+  non-integer, an optional input read without `has`. Anchor has no input for tool schemas yet.
+- **The response-recording delay** is a stated assumption, not modelled (question 4).
+
 ## AgentCore's event schema
 
 The schema as the guide prints it is a Dogwood event schema (Authoring, *Event schema*). Its
@@ -110,7 +140,7 @@ resolve*). Step 4 should recognise scope fields by their type selector. `eventPr
 | rule | source | class | Anchor today |
 |---|---|---|---|
 | Event kinds are `request` (decision), `response` and `error` (history-only) | Authoring, *Event schema* | model | modelled; same as Dogwood's default |
-| Scope fields are named `eventPrincipal` / `eventResource` | Authoring, *Event schema* | model | **refused** (`CONVENTIONAL_FIELDS`) |
+| Scope fields are named `eventPrincipal` / `eventResource` | Authoring, *Event schema* | model | **modelled** (step 4): a schema's scope fields are recognised by type, `principalType(A)` / `resourceType(A)` |
 | History is per session; universal symmetric pin on `sessionId` | Authoring, *Event schema*; Temporal, *Policy sessions* | model | modelled as Dogwood's `session-pinned` preset, but only under Dogwood's field names |
 | `eventPrincipal` is **not** pinned: one session can hold several principals' events | Authoring, *Event schema*; Examples, *Threshold* note ("correlate on `eventPrincipal`") | model | not reachable: see *Principals within a session* below |
 | A `request` event is recorded for every request, including denied ones | Examples, *Require a prerequisite action* ("only has to have been **attempted**"); Dogwood semantics | model | modelled |
@@ -128,11 +158,11 @@ decision.
 
 | rule | source | class | Anchor today |
 |---|---|---|---|
-| Every temporal predicate must contain `eventResource: resource` | Authoring, *Event schema* table; Examples, *Before you use* | **lint** + model | **refused** as a bind |
-| Scope `resource == AgentCore::Gateway::"arn:…"` | every example | model | **refused** (scope naming an entity) |
+| Every temporal predicate must contain `eventResource: resource` | Authoring, *Event schema* table; Examples, *Before you use* | **lint** + model | **modelled and linted** (step 4): the bind is the scope correlation; a predicate missing it is REJECTED BY AGENTCORE |
+| Scope `resource == AgentCore::Gateway::"arn:…"` | every example | model | **modelled** (step 4): one entity per policy set; two different ones are refused |
 | `principal is AgentCore::OAuthUser` (and `AgentCore::IamEntity`) | Examples, *Combine temporal, guardrail…*; Reference, *Principals* | model | refused |
 | Action names: `Target___tool` (MCP) and `Target___METHOD:/path` (runtime, inference) | Reference, *Action names* | model | opaque strings. Step 2 confirms the parser accepts `:` and `/` |
-| At most **3 temporal operators** per policy | Temporal, *Quotas*; Examples, *Two prerequisites* ("two of the three") | **lint** | not checked. How aggregates count is **open**, below |
+| At most **3 temporal operators** per policy | Temporal, *Quotas*; Examples, *Two prerequisites* ("two of the three") | **lint** | **linted** (step 4): over 3 `formerly`/`previous`/`since` is REJECTED BY AGENTCORE; over 3 counting `count`/`sum` too is a warning, since how they count is **open**, below |
 | At most **20 temporal policies** per policy engine | Temporal, *Quotas* | **lint** | not checked |
 | Window at most **24h** | Temporal, *Quotas* | lint | already enforced through `max_window` (default 24h) |
 | Ordering in a temporal block needs integers on both sides | Examples, *Before you use*; Reference, *Numeric parameters* | **lint** | **refused** today. Should become the lint, since AgentCore rejects it at creation |
@@ -198,9 +228,9 @@ other-gateway event in the same session is such a position, and the operand fail
 the `eventResource` bind excludes it (Dogwood guide `03-event-schema.md`, *Universal symmetric
 pins*). `previous` likewise sees the slice's previous event, whichever gateway it came from. No
 AgentCore example uses either form, and the guide's operator list (Temporal, *The Dogwood policy
-language*) does not mention `previous`. **Step 4 should refuse those two forms under the AgentCore
+language*) does not mention `previous`. **Step 4 refuses those two forms under the AgentCore
 reading**, with this reason, rather than give a one-gateway answer that is wrong for multi-gateway
-sessions.
+sessions (`tests/policies/agentcore_previous.dw`).
 
 **4. The response-recording delay: what is visible to the next request?** **Not defined.** The
 guide gives client discipline instead: issue a dependent request only after the prior response has

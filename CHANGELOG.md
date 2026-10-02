@@ -5,6 +5,42 @@ Container images are published to `public.ecr.aws/v4q7x8t1/anchor`, for `linux/a
 
 ## Unreleased
 
+### Added — AgentCore policies, checked as published
+
+**A policy written for Amazon Bedrock AgentCore is checked as AWS writes it**: gateway scope
+`resource == AgentCore::Gateway::"arn:…"` and `eventResource: resource` joins included. Both used to
+be refused, so every AgentCore temporal policy had to be edited by hand before Anchor would look at
+it. All 26 of the AgentCore guide's checkable temporal examples now reproduce every decision AWS
+states for them (163 decisions; `tests/strands/agentcore_conformance.py`).
+
+- **The reading is chosen automatically.** A policy binding `eventResource` or `eventPrincipal` is
+  read under AgentCore's own event schema, history partitioned by session, and the run says so.
+  It is shipped as `src/translator/agentcore.dwschema`, transcribed from the AgentCore guide and
+  corroborated against the Dogwood engine. An explicit `--event-schema`, `--pinned` or `--unpinned`
+  still wins.
+- **Scope fields are recognised by type.** An event schema's `principalType(A)` and
+  `resourceType(A)` fields are the scope fields whatever they are called, as in Dogwood itself.
+  `actor`, `eventPrincipal` and `callerPrincipal` are one case, not three names.
+- **A gateway scope naming one entity** is accepted. A set scoping rules to two different ones is
+  refused: check each gateway's rules on their own.
+- **REJECTED BY AGENTCORE** is a new answer, exit 2. It covers a temporal predicate without
+  `eventResource: resource`, or more than three `formerly`/`previous`/`since` in one policy.
+  AgentCore would refuse to create such a policy, so nothing is checked. When `count`/`sum` might
+  take a policy over the three-operator quota, the run warns instead. It is not stated whether they
+  count.
+- **Refused under the AgentCore reading:** `previous`, and `since` with a positive left operand.
+  An AgentCore session can span gateways, and both read events a one-gateway model cannot see.
+- **`--witness` replays in AgentCore's terms**: `eventPrincipal`/`eventResource`, a `sessionId`,
+  the policy's own gateway, under `agentcore.dwschema`. Written in Dogwood's default terms, the
+  replay would have judged a different policy, with every gateway-scoped rule simply not applying.
+
+### Changed
+
+The reading descriptions no longer imply Dogwood's default is what every deployment gets. It is
+what a policy set deployed on Dogwood with no schema of its own gets; AgentCore deployments get
+AgentCore's schema. This affects the `--event-schema` help, the CLI's and the audit's announcements,
+the MCP tool description and `Reading` field, and the `event-schemas-and-pins` knowledge article.
+
 ### Fixed
 
 **An aggregate written `exists (n: Long). (count …) == n && n > 3` is no longer refused.** Anchor

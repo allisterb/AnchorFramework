@@ -257,17 +257,6 @@ public class TranslationHarnessTests : TestsRuntime
     }
 
     /// <summary>
-    /// Our reading against <b>AWS's own statement</b> of how AgentCore decides: the 28 worked
-    /// temporal examples in the AgentCore guide, with their decision tables as the oracle.
-    /// </summary>
-    /// <remarks>
-    /// Run <c>--stripped</c>, with the gateway scope and <c>eventResource</c> joins removed, because
-    /// Anchor does not yet model AgentCore's event schema; with one gateway that removal changes no
-    /// decision (<c>docs/agentcore.md</c>). The verbatim run is the target for modelling it, and
-    /// refuses every case until then. Caught on its first run: the parser accepted only the
-    /// corpus's parenthesised <c>exists</c> body, which refused all six of AWS's aggregates.
-    /// </remarks>
-    /// <summary>
     /// The Dogwood engine against the same AgentCore decision tables, with the guide's policies
     /// verbatim under our transcription of AgentCore's event schema.
     /// </summary>
@@ -291,15 +280,69 @@ public class TranslationHarnessTests : TestsRuntime
         Assert.DoesNotContain("ENGINE DISAGREES", run.Output);
     }
 
+    /// <summary>
+    /// The AgentCore reading in the checker itself: chosen automatically for a policy that binds
+    /// <c>eventResource</c>, with AgentCore's creation-time rules and its two refusals.
+    /// </summary>
+    /// <remarks>
+    /// A policy AgentCore would refuse to create is reported as such and checked no further, which
+    /// is distinct from REFUSED (outside what Anchor models). The witness case is the one that
+    /// matters most: a counterexample replayed in Dogwood's default terms would be judged against a
+    /// different policy, since every gateway-scoped rule would simply not apply.
+    /// </remarks>
+    [PythonHarness("properties.py", RequiresExecutable = "ext/dogwood/target/release/dogwood")]
+    public async Task AgentCorePoliciesAreCheckedUnderAgentCoresSchema()
+    {
+        var verbatim = await PythonHarness.RunAsync(
+            "src/checker/properties.py", "tests/policies/agentcore/examples/06-one-time-approval.dw");
+        Assert.True(verbatim.ExitCode == 0, verbatim.Output);
+        Assert.Contains("AgentCore's event schema", verbatim.Output);
+        Assert.DoesNotContain("REFUSED", verbatim.Output);
+
+        var missing = await PythonHarness.RunAsync(
+            "src/checker/properties.py", "tests/policies/agentcore_missing_resource.dw");
+        Assert.Equal(2, missing.ExitCode);
+        Assert.Contains("REJECTED BY AGENTCORE", missing.Output);
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(missing.Output, "has no `eventResource: resource`"));
+
+        var previous = await PythonHarness.RunAsync(
+            "src/checker/properties.py", "tests/policies/agentcore_previous.dw");
+        Assert.Equal(2, previous.ExitCode);
+        Assert.Contains("uses `previous`", previous.Output);
+
+        var witness = await PythonHarness.RunAsync(
+            "src/checker/properties.py", "tests/policies/agentcore/examples/06-one-time-approval.dw",
+            "--property", "tests/policies/AgentCoreOneTimeWrong.tla", "--witness");
+        Assert.True(witness.ExitCode == 1, witness.Output);
+        Assert.Contains("confirms the finding", witness.Output);
+        Assert.Contains("--event-schema agentcore.dwschema", witness.Output);
+        Assert.Contains("eventResource: AgentCore::Gateway::\"arn:", witness.Output);
+    }
+
+    /// <summary>
+    /// Our reading against <b>AWS's own statement</b> of how AgentCore decides: the 28 worked
+    /// temporal examples in the AgentCore guide, with their decision tables as the oracle.
+    /// </summary>
+    /// <remarks>
+    /// VERBATIM is the one that matters: AWS's policy text as published, gateway scope and
+    /// <c>eventResource</c> joins included, read under AgentCore's event schema. <c>--stripped</c>
+    /// removes those two constructs and reads under Dogwood's session-pinned preset; it is kept
+    /// because it reaches the same semantics without the AgentCore layer, so a failure in one run
+    /// and not the other says which half broke. Caught on its first run: the parser accepted only
+    /// the corpus's parenthesised <c>exists</c> body, which refused all six of AWS's aggregates.
+    /// </remarks>
     [PythonHarness("agentcore_conformance.py",
                    RequiresPath = "ext/dogwood/dogwood-language/configuration/event-schemas")]
     public async Task DogwoodSemanticsReproduceAgentCoreDecisionTables()
     {
-        var run = await PythonHarness.RunAsync("tests/strands/agentcore_conformance.py", "--stripped");
-        Assert.True(run.ExitCode == 0, run.Output);
+        foreach (var args in new[] { System.Array.Empty<string>(), new[] { "--stripped" } })
+        {
+            var run = await PythonHarness.RunAsync("tests/strands/agentcore_conformance.py", args);
+            Assert.True(run.ExitCode == 0, run.Output);
 
-        Assert.Contains("every example conforms", run.Output);
-        Assert.DoesNotContain("DISAGREES", run.Output);
+            Assert.Contains("every example conforms", run.Output);
+            Assert.DoesNotContain("DISAGREES", run.Output);
+        }
     }
 
     /// <summary>

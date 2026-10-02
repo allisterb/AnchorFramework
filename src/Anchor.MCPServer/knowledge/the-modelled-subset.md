@@ -62,15 +62,37 @@ Measured against Dogwood's own grammar, with each construct confirmed legal by
 | other `context.system` fields | `context.system.now` compared as a datetime, `.durationSince(…)`, `.toDate()`, `.offset(…)` | only `.toTime()` is modelled — the time of day, optionally converted with `.toHours()` and the like. A datetime comparison needs calendar arithmetic |
 | an aggregate compared against an aggregate | `(count …) < (count …)` | not modelled — an aggregate's bound must be an integer literal |
 | entity attributes | `principal.dept` | deliberate: Anchor models actions, event kinds and input/output fields, not entity hierarchies |
-| a scope naming an entity | `resource == AgentCore::Gateway::"arn:…"`, `principal == User::"alice"` | **not yet modelled — a gap, because AgentCore's examples scope every policy to its gateway.** Refused rather than dropped: `principal` and `resource` are modelled only as the caller of each event — what pins and `callerPrincipal` / `callerResource` binds correlate on — not as which entity it is, and dropping the scope would widen the policy to every entity. When every request goes through one gateway, removing the scope by hand is safe; say so in the file |
-| AgentCore's event fields | `eventResource: resource`, `eventPrincipal: principal` | **not yet modelled — a gap, because AgentCore makes `eventResource: resource` mandatory in every temporal predicate.** AgentCore's events name their scope fields `eventPrincipal` / `eventResource`; Dogwood's default event schema names them `callerPrincipal` / `callerResource`, which is all Anchor models, and an event schema declaring other fields is refused. So a policy written for AgentCore must have its joins removed by hand — safe with one gateway — before Anchor will check it. The open-source `dogwood validate` rejects these fields too, under its default schema |
+| a principal scope, or a resource scope naming two entities | `principal == User::"alice"`, `principal is AgentCore::OAuthUser`; two rules scoped to two different gateways | not modelled. A `resource == …` scope naming **one** entity IS modelled (below); `principal` is modelled only as the caller of each event, not as which entity it is. A set spanning two gateways is refused: check each gateway's rules on their own |
 | array terms | `input.tags: [1, 2]` | not modelled |
 | disjunction between temporal terms | `formerly … \|\| formerly …` | deliberate |
 
 Everything else in the temporal grammar is modelled, including the parts easiest to assume are
 not: **`since`** with full MFOTL semantics and a negated left operand (`!A since within W B`),
-**aggregates** (`count`, `sum`, `for` binders, `tp()`, the `exists` idiom), field injection,
-`previous`, dotted field paths, entity and decimal terms, wildcards, negative integers and macros.
+**aggregates** (`count`, `sum`, `for` binders, `tp()`, the `exists` idiom, its body parenthesised or
+not), field injection, `previous`, dotted field paths, entity and decimal terms, wildcards, negative
+integers and macros.
+
+## Policies written for Amazon Bedrock AgentCore
+
+AgentCore runs Dogwood under an event schema of its own, and a policy written for it is checked as
+published — gateway scope and `eventResource` joins included. All 26 of the AgentCore guide's
+checkable temporal examples reproduce every decision AWS states for them.
+
+- **The reading is chosen for you** when a policy binds `eventResource` or `eventPrincipal`:
+  AgentCore's schema, history partitioned by session. See `event-schemas-and-pins`.
+- **One gateway per model.** A rule scoped `resource == AgentCore::Gateway::"arn:…"` applies to
+  every request the model makes. That is exact because every AgentCore predicate must say
+  `eventResource: resource`, so it can only match events at the deciding request's own gateway.
+- **REJECTED BY AGENTCORE** is its own answer, not a refusal: a predicate without
+  `eventResource: resource`, or more than three `formerly` / `previous` / `since` in one policy.
+  AgentCore would not create the policy, so nothing is checked. A policy that might exceed the
+  three-operator quota, depending on whether `count` and `sum` count, gets a warning.
+- **Refused under this reading only:** `previous`, and `since` with a positive left operand. An
+  AgentCore session can span gateways, and both read events a one-gateway model cannot see.
+- **Not modelled, and stated in every answer:** AgentCore records a response "shortly after" the
+  call completes. The model has it recorded before the next request — the client AgentCore's guide
+  asks for. A client that sends requests back to back can get decisions the model does not show:
+  two disbursements against one one-time approval, both allowed.
 
 ## The wall clock
 

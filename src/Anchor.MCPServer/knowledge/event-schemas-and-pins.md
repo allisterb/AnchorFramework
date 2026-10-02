@@ -22,8 +22,17 @@ The consequence is blunt: a rule can be `live` under one reading and `VACUOUS` u
 | reading | history a temporal predicate sees |
 |---|---|
 | **pinned** by `callerPrincipal` — Dogwood's default, and the checker's when no schema is given | only the requesting principal's events |
+| **AgentCore's** — chosen automatically when the policy binds `eventResource` or `eventPrincipal` | only the events of the request's own **session**, from every principal in it |
 | **unpinned** (`pinned: false`) | one global trace — every event from every caller |
 | **another partition** (a schema's own universal pin, such as `sessionId`) | only the events in its own partition |
+
+**Dogwood's default is not AgentCore's.** A policy set deployed on Amazon Bedrock AgentCore runs
+under AgentCore's own event schema, which pins `sessionId` and nothing else, and spells the scope
+fields `eventPrincipal` / `eventResource`. A policy written for AgentCore binds `eventResource` in
+every predicate — AgentCore requires it — so the checker recognises one and reads it that way
+without being told. It also applies AgentCore's creation-time rules: a predicate missing
+`eventResource: resource` is reported as **REJECTED BY AGENTCORE**, not checked, because AgentCore
+would not create the policy. See `the-modelled-subset` for what the AgentCore reading refuses.
 
 **Neither reading is uniformly stricter.** A permit that needs an earlier event fires less often
 pinned, because fewer events count. But a forbid that counts earlier events — a rate limit — also
@@ -53,8 +62,8 @@ A schema raises the cap with `max_window = 30d`, or lowers it to tighten what po
 ## What to do
 
 - Pass `eventSchema` whenever the policy has one.
-- If you do not have one, say in your summary that the answer is under Dogwood's default reading,
-  `callerPrincipal` pinned, and that a deployment with a different schema could decide differently.
+- If you do not have one, say in your summary which reading the answer is under — the `Reading`
+  field says — and that a deployment with a different schema could decide differently.
 - If the deployment is known to have no universal pin, pass `pinned: false`.
 - Never compare a verdict computed with a schema against one computed without, and call it a change
   in the policy.
