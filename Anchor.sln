@@ -104,6 +104,21 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "aws2", "aws2", "{3482C1EF-6
 		examples\aws2\results.json = examples\aws2\results.json
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "dogwoodrepo1", "dogwoodrepo1", "{9CE1B689-1EE0-42C6-A2AF-76D54911431B}"
+	ProjectSection(SolutionItems) = preProject
+		examples\dogwoodrepo1\findings.html = examples\dogwoodrepo1\findings.html
+		examples\dogwoodrepo1\findings.md = examples\dogwoodrepo1\findings.md
+		examples\dogwoodrepo1\guide-set.dw = examples\dogwoodrepo1\guide-set.dw
+		examples\dogwoodrepo1\README.md = examples\dogwoodrepo1\README.md
+		examples\dogwoodrepo1\results.json = examples\dogwoodrepo1\results.json
+		examples\dogwoodrepo1\schema.cedarschema = examples\dogwoodrepo1\schema.cedarschema
+		examples\dogwoodrepo1\skill-set.dw = examples\dogwoodrepo1\skill-set.dw
+		examples\dogwoodrepo1\SuccessfulRead.cfg = examples\dogwoodrepo1\SuccessfulRead.cfg
+		examples\dogwoodrepo1\SuccessfulRead.tla = examples\dogwoodrepo1\SuccessfulRead.tla
+		examples\dogwoodrepo1\SuccessfulReadGuide.cfg = examples\dogwoodrepo1\SuccessfulReadGuide.cfg
+		examples\dogwoodrepo1\SuccessfulReadGuide.tla = examples\dogwoodrepo1\SuccessfulReadGuide.tla
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -266,6 +281,7 @@ Global
 		{4C9A2E15-7B83-4D26-8E0F-5A1C3D7B92E6} = {F0069B9E-0A21-44CA-BC3F-81B77885FD03}
 		{EEEAAF25-06EC-4DFA-BA18-3E18D1EC3F3F} = {FC91202A-F219-4D48-BA09-B73BB4B43485}
 		{3482C1EF-68EF-4399-A161-3DA74CC62ACC} = {FC91202A-F219-4D48-BA09-B73BB4B43485}
+		{9CE1B689-1EE0-42C6-A2AF-76D54911431B} = {FC91202A-F219-4D48-BA09-B73BB4B43485}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {F5715F99-B6C8-47A8-8813-968B2AEF6BB2}

@@ -1,0 +1,23 @@
+// The write-after-read policy AS DOGWOOD'S `autoformalize-policies` SKILL PRINTS IT -- section 2b
+// of ext/dogwood/.claude/skills/autoformalize-policies/SKILL.md, at c6237c88 -- verbatim below,
+// deployed beside read access control so that a Read can actually be allowed or denied.
+// Dogwood is (c) Amazon.com Inc, Apache 2.0. See README.md.
+//
+// Compare guide-set.dw: the same rule as the Dogwood guide and its gallery print it.
+
+// -- ours: who may read. Anyone may read any document except the restricted one.
+permit ( principal, action == Drupe::Action::"Read", resource );
+
+forbid ( principal, action == Drupe::Action::"Read", resource )
+when { context.input.document == "restricted" };
+
+// -- the skill's example, verbatim
+// Permit a Write only if this user read the same document within the last hour.
+@id("write_after_read")
+permit ( principal, action == Drupe::Action::"Write", resource )
+when temporal {
+    formerly within 1h Drupe::Action::"Read"::request{
+        input.user: context.input.user,
+        input.document: context.input.document
+    }
+};

@@ -1,0 +1,637 @@
+{
+  "directory": "examples\\dogwoodrepo1",
+  "derived": {
+    "guide-set.dw": {
+      "kind": "derived",
+      "policy": "guide-set.dw",
+      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
+      "bound": {
+        "attempts": 3,
+        "amount": 2,
+        "exhaustive": true,
+        "randomSessions": null
+      },
+      "rules": [
+        {
+          "index": 1,
+          "effect": "permit",
+          "actions": [
+            "Read"
+          ],
+          "verdict": "live",
+          "note": "witness: Read",
+          "witness": "Read",
+          "session": [
+            {
+              "action": "Read",
+              "kind": "request",
+              "input": {
+                "document": "\u0000none",
+                "user": 1
+              },
+              "output": {},
+              "time": 1,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            },
+            {
+              "action": "Read",
+              "kind": "response",
+              "input": {
+                "document": "\u0000none",
+                "user": 1
+              },
+              "output": {},
+              "time": 2,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            }
+          ],
+          "narrative": [
+            "1. Read(document = \"\u0000none\", user = 1)  allowed"
+          ],
+          "blame": null
+        },
+        {
+          "index": 2,
+          "effect": "forbid",
+          "actions": [
+            "Read"
+          ],
+          "verdict": "live",
+          "note": "witness: Read",
+          "witness": "Read",
+          "session": [
+            {
+              "action": "Read",
+              "kind": "request",
+              "input": {
+                "document": "restricted",
+                "user": 1
+              },
+              "output": {},
+              "time": 1,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            },
+            {
+              "action": "Read",
+              "kind": "error",
+              "input": {
+                "document": "restricted",
+                "user": 1
+              },
+              "output": {},
+              "time": 2,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            }
+          ],
+          "narrative": [
+            "1. Read(document = \"restricted\", user = 1)  denied"
+          ],
+          "blame": null
+        },
+        {
+          "index": 3,
+          "effect": "permit",
+          "actions": [
+            "Write"
+          ],
+          "verdict": "live",
+          "note": "witness: Read -> Write",
+          "witness": "Read -> Write",
+          "session": [
+            {
+              "action": "Read",
+              "kind": "request",
+              "input": {
+                "document": "\u0000none",
+                "user": 1
+              },
+              "output": {},
+              "time": 1,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            },
+            {
+              "action": "Read",
+              "kind": "response",
+              "input": {
+                "document": "\u0000none",
+                "user": 1
+              },
+              "output": {},
+              "time": 2,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            },
+            {
+              "action": "Write",
+              "kind": "request",
+              "input": {
+                "document": "\u0000none",
+                "user": 1
+              },
+              "output": {},
+              "time": 3,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            },
+            {
+              "action": "Write",
+              "kind": "response",
+              "input": {
+                "document": "\u0000none",
+                "user": 1
+              },
+              "output": {},
+              "time": 4,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            }
+          ],
+          "narrative": [
+            "1. Read (document = \"\u0000none\", user = 1)  allowed",
+            "2. Write(document = \"\u0000none\", user = 1)  allowed"
+          ],
+          "blame": null
+        }
+      ],
+      "defects": [],
+      "unknown": [],
+      "artifacts": "examples\\dogwoodrepo1\\traces\\guide-set"
+    },
+    "skill-set.dw": {
+      "kind": "derived",
+      "policy": "skill-set.dw",
+      "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
+      "bound": {
+        "attempts": 3,
+        "amount": 2,
+        "exhaustive": true,
+        "randomSessions": null
+      },
+      "rules": [
+        {
+          "index": 1,
+          "effect": "permit",
+          "actions": [
+            "Read"
+          ],
+          "verdict": "live",
+          "note": "witness: Read",
+          "witness": "Read",
+          "session": [
+            {
+              "action": "Read",
+              "kind": "request",
+              "input": {
+                "document": "\u0000none",
+                "user": 1
+              },
+              "output": {},
+              "time": 1,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            },
+            {
+              "action": "Read",
+              "kind": "response",
+              "input": {
+                "document": "\u0000none",
+                "user": 1
+              },
+              "output": {},
+              "time": 2,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            }
+          ],
+          "narrative": [
+            "1. Read(document = \"\u0000none\", user = 1)  allowed"
+          ],
+          "blame": null
+        },
+        {
+          "index": 2,
+          "effect": "forbid",
+          "actions": [
+            "Read"
+          ],
+          "verdict": "live",
+          "note": "witness: Read",
+          "witness": "Read",
+          "session": [
+            {
+              "action": "Read",
+              "kind": "request",
+              "input": {
+                "document": "restricted",
+                "user": 1
+              },
+              "output": {},
+              "time": 1,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            },
+            {
+              "action": "Read",
+              "kind": "error",
+              "input": {
+                "document": "restricted",
+                "user": 1
+              },
+              "output": {},
+              "time": 2,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            }
+          ],
+          "narrative": [
+            "1. Read(document = \"restricted\", user = 1)  denied"
+          ],
+          "blame": null
+        },
+        {
+          "index": 3,
+          "effect": "permit",
+          "actions": [
+            "Write"
+          ],
+          "verdict": "live",
+          "note": "witness: Read -> Write",
+          "witness": "Read -> Write",
+          "session": [
+            {
+              "action": "Read",
+              "kind": "request",
+              "input": {
+                "document": "restricted",
+                "user": 1
+              },
+              "output": {},
+              "time": 1,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            },
+            {
+              "action": "Read",
+              "kind": "error",
+              "input": {
+                "document": "restricted",
+                "user": 1
+              },
+              "output": {},
+              "time": 2,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            },
+            {
+              "action": "Write",
+              "kind": "request",
+              "input": {
+                "document": "restricted",
+                "user": 1
+              },
+              "output": {},
+              "time": 3,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            },
+            {
+              "action": "Write",
+              "kind": "response",
+              "input": {
+                "document": "restricted",
+                "user": 1
+              },
+              "output": {},
+              "time": 4,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            }
+          ],
+          "narrative": [
+            "1. Read (document = \"restricted\", user = 1)  denied",
+            "2. Write(document = \"restricted\", user = 1)  allowed"
+          ],
+          "blame": null
+        }
+      ],
+      "defects": [],
+      "unknown": [],
+      "artifacts": "examples\\dogwoodrepo1\\traces\\skill-set"
+    }
+  },
+  "properties": {
+    "SuccessfulRead.tla": {
+      "policy": "skill-set.dw",
+      "given": false,
+      "claims": {
+        "module": "SuccessfulRead.tla",
+        "states": [
+          "scenario = \"completedRead\"",
+          "scenario = \"deniedRead\"",
+          "scenario = \"failedRead\"",
+          "scenario = \"noRead\""
+        ],
+        "scope": "read from Init",
+        "claims": [
+          {
+            "name": "NoWriteAfterADeniedRead",
+            "defined": true,
+            "says": "whenever scenario is \"deniedRead\", then the policy REFUSES it (Allowed(scenario))",
+            "forbids": "scenario is \"deniedRead\", and yet the policy GRANTS it (Allowed(scenario))",
+            "condition": "scenario = \"deniedRead\"",
+            "appliesTo": [
+              "scenario = \"deniedRead\""
+            ],
+            "states": 4,
+            "unknownIn": 0,
+            "settledWithoutThePolicy": 3,
+            "falseWithoutThePolicy": [],
+            "vacuous": false,
+            "notes": []
+          },
+          {
+            "name": "NoWriteAfterAFailedRead",
+            "defined": true,
+            "says": "whenever scenario is \"failedRead\", then the policy REFUSES it (Allowed(scenario))",
+            "forbids": "scenario is \"failedRead\", and yet the policy GRANTS it (Allowed(scenario))",
+            "condition": "scenario = \"failedRead\"",
+            "appliesTo": [
+              "scenario = \"failedRead\""
+            ],
+            "states": 4,
+            "unknownIn": 0,
+            "settledWithoutThePolicy": 3,
+            "falseWithoutThePolicy": [],
+            "vacuous": false,
+            "notes": []
+          },
+          {
+            "name": "NoWriteWithoutARead",
+            "defined": true,
+            "says": "whenever scenario is \"noRead\", then the policy REFUSES it (Allowed(scenario))",
+            "forbids": "scenario is \"noRead\", and yet the policy GRANTS it (Allowed(scenario))",
+            "condition": "scenario = \"noRead\"",
+            "appliesTo": [
+              "scenario = \"noRead\""
+            ],
+            "states": 4,
+            "unknownIn": 0,
+            "settledWithoutThePolicy": 3,
+            "falseWithoutThePolicy": [],
+            "vacuous": false,
+            "notes": []
+          },
+          {
+            "name": "WriteAfterACompletedRead",
+            "defined": true,
+            "says": "whenever scenario is \"completedRead\", then the policy GRANTS it (Allowed(scenario))",
+            "forbids": "scenario is \"completedRead\", and yet the policy REFUSES it (Allowed(scenario))",
+            "condition": "scenario = \"completedRead\"",
+            "appliesTo": [
+              "scenario = \"completedRead\""
+            ],
+            "states": 4,
+            "unknownIn": 0,
+            "settledWithoutThePolicy": 3,
+            "falseWithoutThePolicy": [],
+            "vacuous": false,
+            "notes": []
+          }
+        ],
+        "definedButNotChecked": [],
+        "vacuous": []
+      },
+      "witness": [
+        {
+          "invariant": "NoWriteAfterADeniedRead",
+          "state": {
+            "scenario": "\"deniedRead\""
+          },
+          "demanded": false,
+          "engine": "allow",
+          "confirms": true,
+          "at": 3,
+          "events": [
+            {
+              "time": 1,
+              "action": "Read",
+              "kind": "request",
+              "input": "[document |-> \"restricted\", user |-> \"alice\"]",
+              "output": "[]"
+            },
+            {
+              "time": 2,
+              "action": "Read",
+              "kind": "error",
+              "input": "[document |-> \"restricted\", user |-> \"alice\"]",
+              "output": "[]"
+            },
+            {
+              "time": 3,
+              "action": "Write",
+              "kind": "request",
+              "input": "[document |-> \"restricted\", user |-> \"alice\"]",
+              "output": "[]"
+            }
+          ],
+          "why": "",
+          "sentence": "with scenario = \"deniedRead\", the Dogwood engine ALLOWS this session at t=3, where `NoWriteAfterADeniedRead` says your policy set must REFUSE it",
+          "trace": "@1 scope(principal: Drupe::OAuthUser::\"agent\", resource: Drupe::Gateway::\"gw\") request_context(input: { document: \"restricted\", user: \"alice\" }) Drupe::Action::\"Read\"::request(input: { document: \"restricted\", user: \"alice\" }, callerPrincipal: Drupe::OAuthUser::\"agent\", callerResource: Drupe::Gateway::\"gw\", requestId: \"e1\")\n@2 scope(principal: Drupe::OAuthUser::\"agent\", resource: Drupe::Gateway::\"gw\") Drupe::Action::\"Read\"::error(input: { document: \"restricted\", user: \"alice\" }, callerPrincipal: Drupe::OAuthUser::\"agent\", callerResource: Drupe::Gateway::\"gw\", requestId: \"e2\")\n@3 scope(principal: Drupe::OAuthUser::\"agent\", resource: Drupe::Gateway::\"gw\") request_context(input: { document: \"restricted\", user: \"alice\" }) Drupe::Action::\"Write\"::request(input: { document: \"restricted\", user: \"alice\" }, callerPrincipal: Drupe::OAuthUser::\"agent\", callerResource: Drupe::Gateway::\"gw\", requestId: \"e3\")\n",
+          "directory": "examples\\dogwoodrepo1\\traces\\skill-set-SuccessfulRead\\witness",
+          "command": "dogwood replay --policy-schema generated.cedarschema --event-schema pinned.dwschema --trace NoWriteAfterADeniedRead.log skill-set.dw"
+        }
+      ],
+      "kind": "property",
+      "held": false,
+      "exitCode": 1,
+      "output": "no --event-schema given, so every answer below uses Dogwood's own default\n  reading: callerPrincipal pinned on every kind, so a temporal condition sees\n  only the requesting principal's events. Pass --event-schema for your\n  deployment's real one, or --unpinned if it has no universal pin.\n\nskill-set.dw against SuccessfulRead.tla: 3 rule(s)\n\n  BROKEN  Invariant NoWriteAfterADeniedRead is violated by the initial state:\n      scenario = \"deniedRead\"\n        \\* A Read the set refused read nothing, so it cannot license a Write.\n        NoWriteAfterADeniedRead == scenario = \"deniedRead\" => ~Allowed(scenario)\n\nThe policy set does not mean what the property module says it means. The state above\nis the request that breaks the claim, and the claim is quoted beneath it -- read the two\ntogether, because a violated invariant says which direction failed only when you can\nsee what it asserted.",
+      "error": ""
+    },
+    "SuccessfulReadGuide.tla": {
+      "policy": "guide-set.dw",
+      "given": false,
+      "claims": {
+        "module": "SuccessfulReadGuide.tla",
+        "states": [
+          "scenario = \"completedRead\"",
+          "scenario = \"deniedRead\"",
+          "scenario = \"failedRead\"",
+          "scenario = \"noRead\""
+        ],
+        "scope": "read from Init",
+        "claims": [
+          {
+            "name": "NoWriteAfterADeniedRead",
+            "defined": true,
+            "says": "whenever scenario is \"deniedRead\", then the policy REFUSES it (Allowed(scenario))",
+            "forbids": "scenario is \"deniedRead\", and yet the policy GRANTS it (Allowed(scenario))",
+            "condition": "scenario = \"deniedRead\"",
+            "appliesTo": [
+              "scenario = \"deniedRead\""
+            ],
+            "states": 4,
+            "unknownIn": 0,
+            "settledWithoutThePolicy": 3,
+            "falseWithoutThePolicy": [],
+            "vacuous": false,
+            "notes": []
+          },
+          {
+            "name": "NoWriteAfterAFailedRead",
+            "defined": true,
+            "says": "whenever scenario is \"failedRead\", then the policy REFUSES it (Allowed(scenario))",
+            "forbids": "scenario is \"failedRead\", and yet the policy GRANTS it (Allowed(scenario))",
+            "condition": "scenario = \"failedRead\"",
+            "appliesTo": [
+              "scenario = \"failedRead\""
+            ],
+            "states": 4,
+            "unknownIn": 0,
+            "settledWithoutThePolicy": 3,
+            "falseWithoutThePolicy": [],
+            "vacuous": false,
+            "notes": []
+          },
+          {
+            "name": "NoWriteWithoutARead",
+            "defined": true,
+            "says": "whenever scenario is \"noRead\", then the policy REFUSES it (Allowed(scenario))",
+            "forbids": "scenario is \"noRead\", and yet the policy GRANTS it (Allowed(scenario))",
+            "condition": "scenario = \"noRead\"",
+            "appliesTo": [
+              "scenario = \"noRead\""
+            ],
+            "states": 4,
+            "unknownIn": 0,
+            "settledWithoutThePolicy": 3,
+            "falseWithoutThePolicy": [],
+            "vacuous": false,
+            "notes": []
+          },
+          {
+            "name": "WriteAfterACompletedRead",
+            "defined": true,
+            "says": "whenever scenario is \"completedRead\", then the policy GRANTS it (Allowed(scenario))",
+            "forbids": "scenario is \"completedRead\", and yet the policy REFUSES it (Allowed(scenario))",
+            "condition": "scenario = \"completedRead\"",
+            "appliesTo": [
+              "scenario = \"completedRead\""
+            ],
+            "states": 4,
+            "unknownIn": 0,
+            "settledWithoutThePolicy": 3,
+            "falseWithoutThePolicy": [],
+            "vacuous": false,
+            "notes": []
+          }
+        ],
+        "definedButNotChecked": [],
+        "vacuous": []
+      },
+      "witness": [],
+      "kind": "property",
+      "held": true,
+      "exitCode": 0,
+      "output": "no --event-schema given, so every answer below uses Dogwood's own default\n  reading: callerPrincipal pinned on every kind, so a temporal condition sees\n  only the requesting principal's events. Pass --event-schema for your\n  deployment's real one, or --unpinned if it has no universal pin.\n\nguide-set.dw against SuccessfulReadGuide.tla: 3 rule(s)\n\n  every claim holds over every request the property module names.\n\nThat is not a proof about requests it does not name. A property module ranges over\nwhat it says it ranges over, and nothing warns you when that is less than you meant.",
+      "error": ""
+    }
+  },
+  "smoke": null,
+  "reading": "pinned",
+  "agentcore": [],
+  "unpaired": [],
+  "inputScan": {
+    "files": [
+      "guide-set.dw",
+      "schema.cedarschema",
+      "skill-set.dw",
+      "SuccessfulRead.cfg",
+      "SuccessfulRead.tla",
+      "SuccessfulReadGuide.cfg",
+      "SuccessfulReadGuide.tla"
+    ],
+    "unreadable": [],
+    "summary": "7 input files scanned: clean",
+    "high": 0,
+    "medium": 0,
+    "hits": [],
+    "census": {},
+    "modelWithheld": false
+  },
+  "llm": {
+    "provider": null,
+    "model": null,
+    "answered": 0,
+    "skipped": "--no-llm",
+    "failed": []
+  }
+}

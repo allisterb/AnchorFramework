@@ -1,0 +1,40 @@
+// The requirement as the Dogwood guide states it (04-temporal-expressions.md): "permit the write
+// only if, at some point in the last hour, this same user successfully read this same document."
+// Rows written from that sentence, not from either policy. Checked against ../skill-set.dw; the
+// rows are guide-set.table's, word for word, and `finding` marks where the skill's version decides
+// the opposite of the guide's sentence.
+// Format: tests/policies/agentcore/README.md. Times are seconds; alice throughout. Read decisions
+// are `ours`: they come from the read access control both sets add, not from the guide.
+
+row guide: alice reads doc1, it completes, she writes doc1 ten seconds later
+@0    request  Read   { document: "doc1", user: "alice" }  ALLOW ours
+@5    response Read   { document: "doc1", user: "alice" } -> { result: true }
+@10   request  Write  { document: "doc1", user: "alice" }  ALLOW
+
+row guide: alice read doc1, then writes doc2, which she never read
+@0    request  Read   { document: "doc1", user: "alice" }  ALLOW ours
+@5    response Read   { document: "doc1", user: "alice" } -> { result: true }
+@20   request  Write  { document: "doc2", user: "alice" }  DENY
+
+row guide: alice read doc1, then writes it 3700 seconds later, past the hour
+@0    request  Read   { document: "doc1", user: "alice" }  ALLOW ours
+@5    response Read   { document: "doc1", user: "alice" } -> { result: true }
+@3700 request  Write  { document: "doc1", user: "alice" }  DENY
+
+row guide: alice writes doc1 having read nothing
+@0    request  Write  { document: "doc1", user: "alice" }  DENY
+
+row guide: alice's read of the restricted document is DENIED; she then writes it
+@0    request  Read   { document: "restricted", user: "alice" }  DENY ours
+@1    error    Read   { document: "restricted", user: "alice" }
+@10   request  Write  { document: "restricted", user: "alice" }  DENY finding
+
+row guide: alice's read of doc1 is allowed but FAILS; she then writes it
+@0    request  Read   { document: "doc1", user: "alice" }  ALLOW ours
+@1    error    Read   { document: "doc1", user: "alice" }
+@10   request  Write  { document: "doc1", user: "alice" }  DENY finding
+
+row guide: a slow read -- started at 0, completed at 600 -- then a write at 3700, 3100 seconds after it completed
+@0    request  Read   { document: "doc1", user: "alice" }  ALLOW ours
+@600  response Read   { document: "doc1", user: "alice" } -> { result: true }
+@3700 request  Write  { document: "doc1", user: "alice" }  ALLOW finding

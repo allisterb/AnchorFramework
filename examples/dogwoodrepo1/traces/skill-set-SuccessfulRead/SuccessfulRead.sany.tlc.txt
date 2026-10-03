@@ -1,0 +1,18 @@
+****** SANY2 Version 2.1 created 24 February 2014
+
+Parsing file C:\Projects\Anchor\examples\dogwoodrepo1\traces\skill-set-SuccessfulRead\SuccessfulRead.tla
+Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-tyf4vndc\Integers.tla
+Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-tyf4vndc\Sequences.tla
+Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-tyf4vndc\FiniteSets.tla
+Parsing file C:\Projects\Anchor\examples\dogwoodrepo1\traces\skill-set-SuccessfulRead\PolicyUnderTest.tla
+Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-tyf4vndc\Naturals.tla
+Parsing file C:\Projects\Anchor\examples\dogwoodrepo1\traces\skill-set-SuccessfulRead\DogwoodSemantics.tla
+Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-tyf4vndc\TLC.tla
+Semantic processing of module Naturals
+Semantic processing of module Integers
+Semantic processing of module Sequences
+Semantic processing of module FiniteSets
+Semantic processing of module PolicyUnderTest
+Semantic processing of module TLC
+Semantic processing of module DogwoodSemantics
+Semantic processing of module SuccessfulRead

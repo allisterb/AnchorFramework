@@ -1,0 +1,272 @@
+{
+  "policy": "skill-set.dw",
+  "answered": true,
+  "reading": "Dogwood's default: callerPrincipal pinned, so history is per principal. Pass the deployment's event schema if it has another",
+  "engine": {
+    "ran": true,
+    "actionSchema": "schema.cedarschema"
+  },
+  "rows": [
+    {
+      "row": 1,
+      "source": "guide",
+      "title": "alice reads doc1, it completes, she writes doc1 ten seconds later",
+      "decisions": [
+        {
+          "time": 0,
+          "session": "s1",
+          "tool": "Read",
+          "expected": "ALLOW",
+          "source": "ours",
+          "finding": false,
+          "model": "ALLOW",
+          "modelRules": [
+            1
+          ],
+          "engine": "ALLOW",
+          "engineRules": [
+            1
+          ],
+          "agrees": true
+        },
+        {
+          "time": 10,
+          "session": "s1",
+          "tool": "Write",
+          "expected": "ALLOW",
+          "source": "guide",
+          "finding": false,
+          "model": "ALLOW",
+          "modelRules": [
+            3
+          ],
+          "engine": "ALLOW",
+          "engineRules": [
+            3
+          ],
+          "agrees": true
+        }
+      ]
+    },
+    {
+      "row": 2,
+      "source": "guide",
+      "title": "alice read doc1, then writes doc2, which she never read",
+      "decisions": [
+        {
+          "time": 0,
+          "session": "s1",
+          "tool": "Read",
+          "expected": "ALLOW",
+          "source": "ours",
+          "finding": false,
+          "model": "ALLOW",
+          "modelRules": [
+            1
+          ],
+          "engine": "ALLOW",
+          "engineRules": [
+            1
+          ],
+          "agrees": true
+        },
+        {
+          "time": 20,
+          "session": "s1",
+          "tool": "Write",
+          "expected": "DENY",
+          "source": "guide",
+          "finding": false,
+          "model": "DENY",
+          "modelRules": [],
+          "engine": "DENY",
+          "engineRules": [],
+          "agrees": true
+        }
+      ]
+    },
+    {
+      "row": 3,
+      "source": "guide",
+      "title": "alice read doc1, then writes it 3700 seconds later, past the hour",
+      "decisions": [
+        {
+          "time": 0,
+          "session": "s1",
+          "tool": "Read",
+          "expected": "ALLOW",
+          "source": "ours",
+          "finding": false,
+          "model": "ALLOW",
+          "modelRules": [
+            1
+          ],
+          "engine": "ALLOW",
+          "engineRules": [
+            1
+          ],
+          "agrees": true
+        },
+        {
+          "time": 3700,
+          "session": "s1",
+          "tool": "Write",
+          "expected": "DENY",
+          "source": "guide",
+          "finding": false,
+          "model": "DENY",
+          "modelRules": [],
+          "engine": "DENY",
+          "engineRules": [],
+          "agrees": true
+        }
+      ]
+    },
+    {
+      "row": 4,
+      "source": "guide",
+      "title": "alice writes doc1 having read nothing",
+      "decisions": [
+        {
+          "time": 0,
+          "session": "s1",
+          "tool": "Write",
+          "expected": "DENY",
+          "source": "guide",
+          "finding": false,
+          "model": "DENY",
+          "modelRules": [],
+          "engine": "DENY",
+          "engineRules": [],
+          "agrees": true
+        }
+      ]
+    },
+    {
+      "row": 5,
+      "source": "guide",
+      "title": "alice's read of the restricted document is DENIED; she then writes it",
+      "decisions": [
+        {
+          "time": 0,
+          "session": "s1",
+          "tool": "Read",
+          "expected": "DENY",
+          "source": "ours",
+          "finding": false,
+          "model": "DENY",
+          "modelRules": [
+            2
+          ],
+          "engine": "DENY",
+          "engineRules": [
+            2
+          ],
+          "agrees": true
+        },
+        {
+          "time": 10,
+          "session": "s1",
+          "tool": "Write",
+          "expected": "DENY",
+          "source": "guide",
+          "finding": true,
+          "model": "ALLOW",
+          "modelRules": [
+            3
+          ],
+          "engine": "ALLOW",
+          "engineRules": [
+            3
+          ],
+          "agrees": true
+        }
+      ]
+    },
+    {
+      "row": 6,
+      "source": "guide",
+      "title": "alice's read of doc1 is allowed but FAILS; she then writes it",
+      "decisions": [
+        {
+          "time": 0,
+          "session": "s1",
+          "tool": "Read",
+          "expected": "ALLOW",
+          "source": "ours",
+          "finding": false,
+          "model": "ALLOW",
+          "modelRules": [
+            1
+          ],
+          "engine": "ALLOW",
+          "engineRules": [
+            1
+          ],
+          "agrees": true
+        },
+        {
+          "time": 10,
+          "session": "s1",
+          "tool": "Write",
+          "expected": "DENY",
+          "source": "guide",
+          "finding": true,
+          "model": "ALLOW",
+          "modelRules": [
+            3
+          ],
+          "engine": "ALLOW",
+          "engineRules": [
+            3
+          ],
+          "agrees": true
+        }
+      ]
+    },
+    {
+      "row": 7,
+      "source": "guide",
+      "title": "a slow read -- started at 0, completed at 600 -- then a write at 3700, 3100 seconds after it completed",
+      "decisions": [
+        {
+          "time": 0,
+          "session": "s1",
+          "tool": "Read",
+          "expected": "ALLOW",
+          "source": "ours",
+          "finding": false,
+          "model": "ALLOW",
+          "modelRules": [
+            1
+          ],
+          "engine": "ALLOW",
+          "engineRules": [
+            1
+          ],
+          "agrees": true
+        },
+        {
+          "time": 3700,
+          "session": "s1",
+          "tool": "Write",
+          "expected": "ALLOW",
+          "source": "guide",
+          "finding": true,
+          "model": "DENY",
+          "modelRules": [],
+          "engine": "DENY",
+          "engineRules": [],
+          "agrees": true
+        }
+      ]
+    }
+  ],
+  "totals": {
+    "decisions": 13,
+    "agree": 13,
+    "disagree": 0,
+    "findings": 3,
+    "modelVersusEngine": 0
+  }
+}

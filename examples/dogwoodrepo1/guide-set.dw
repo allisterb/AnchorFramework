@@ -1,0 +1,31 @@
+// The write-after-read policy AS THE DOGWOOD GUIDE PRINTS IT -- `04-temporal-expressions.md` and
+// its runnable bundle `dogwood-docs/examples/write_after_read_formerly/policy.dw`, at c6237c88 --
+// verbatim below, deployed beside the same read access control as skill-set.dw.
+// Dogwood is (c) Amazon.com Inc, Apache 2.0. See README.md.
+//
+// The ONE difference from skill-set.dw is the event kind: `Read::response`, which the guide glosses
+// as "successfully read", where the skill has `Read::request`.
+
+// -- ours: who may read. Anyone may read any document except the restricted one.
+permit ( principal, action == Drupe::Action::"Read", resource );
+
+forbid ( principal, action == Drupe::Action::"Read", resource )
+when { context.input.document == "restricted" };
+
+// -- the guide's example, verbatim
+// Permit a Write only if the same user successfully read the same document
+// within the last hour (the canonical write-after-read policy). `formerly
+// within 1h` is the existential past operator; `input.user`/`input.document`
+// pin the past Read to the CURRENT request via context.* correlation.
+@id("write_after_read")
+permit (
+    principal,
+    action == Drupe::Action::"Write",
+    resource
+)
+when temporal {
+    formerly within 1h Drupe::Action::"Read"::response{
+        input.user: context.input.user,
+        input.document: context.input.document
+    }
+};

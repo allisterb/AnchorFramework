@@ -1,0 +1,32 @@
+guide-set.dw, read under Dogwood's default: callerPrincipal pinned, so history is per principal. Pass the deployment's event schema if it has another
+engine: replayed, action schema schema.cedarschema
+
+row 1 [guide]: alice reads doc1, it completes, she writes doc1 ten seconds later
+  @0 Read                     expected ALLOW      model ALLOW [1]  engine ALLOW [1]  ok
+  @10 Write                    expected ALLOW      model ALLOW [3]  engine ALLOW [3]  ok
+
+row 2 [guide]: alice read doc1, then writes doc2, which she never read
+  @0 Read                     expected ALLOW      model ALLOW [1]  engine ALLOW [1]  ok
+  @20 Write                    expected DENY       model DENY  engine DENY  ok
+
+row 3 [guide]: alice read doc1, then writes it 3700 seconds later, past the hour
+  @0 Read                     expected ALLOW      model ALLOW [1]  engine ALLOW [1]  ok
+  @3700 Write                    expected DENY       model DENY  engine DENY  ok
+
+row 4 [guide]: alice writes doc1 having read nothing
+  @0 Write                    expected DENY       model DENY  engine DENY  ok
+
+row 5 [guide]: alice's read of the restricted document is DENIED; she then writes it
+  @0 Read                     expected DENY       model DENY [2]  engine DENY [2]  ok
+  @10 Write                    expected DENY       model DENY  engine DENY  ok
+
+row 6 [guide]: alice's read of doc1 is allowed but FAILS; she then writes it
+  @0 Read                     expected ALLOW      model ALLOW [1]  engine ALLOW [1]  ok
+  @10 Write                    expected DENY       model DENY  engine DENY  ok
+
+row 7 [guide]: a slow read -- started at 0, completed at 600 -- then a write at 3700, 3100 seconds after it completed
+  @0 Read                     expected ALLOW      model ALLOW [1]  engine ALLOW [1]  ok
+  @3700 Write                    expected ALLOW      model ALLOW [3]  engine ALLOW [3]  ok
+
+13 decisions: 13 as the table says, 0 not
+Rules are 1-based, in the order they appear in the policy file.
