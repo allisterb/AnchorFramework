@@ -6,10 +6,10 @@
       "policy": "guide-set.dw",
       "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
       "bound": {
-        "attempts": 3,
+        "attempts": 4,
         "amount": 2,
-        "exhaustive": true,
-        "randomSessions": null
+        "exhaustive": false,
+        "randomSessions": 1000
       },
       "rules": [
         {
@@ -31,11 +31,11 @@
               },
               "output": {},
               "time": 1,
-              "principal": "caller",
+              "principal": "stranger",
               "resource": "caller",
-              "session": "caller",
+              "session": "stranger",
               "pins": {
-                "principal": "caller"
+                "principal": "stranger"
               }
             },
             {
@@ -47,11 +47,11 @@
               },
               "output": {},
               "time": 2,
-              "principal": "caller",
+              "principal": "stranger",
               "resource": "caller",
-              "session": "caller",
+              "session": "stranger",
               "pins": {
-                "principal": "caller"
+                "principal": "stranger"
               }
             }
           ],
@@ -67,9 +67,41 @@
             "Read"
           ],
           "verdict": "live",
-          "note": "witness: Read",
-          "witness": "Read",
+          "note": "witness: Write -> Read",
+          "witness": "Write -> Read",
           "session": [
+            {
+              "action": "Write",
+              "kind": "request",
+              "input": {
+                "document": "restricted",
+                "user": 2
+              },
+              "output": {},
+              "time": 1,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            },
+            {
+              "action": "Write",
+              "kind": "error",
+              "input": {
+                "document": "restricted",
+                "user": 2
+              },
+              "output": {},
+              "time": 2,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            },
             {
               "action": "Read",
               "kind": "request",
@@ -78,7 +110,7 @@
                 "user": 1
               },
               "output": {},
-              "time": 1,
+              "time": 3,
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
@@ -94,86 +126,6 @@
                 "user": 1
               },
               "output": {},
-              "time": 2,
-              "principal": "caller",
-              "resource": "caller",
-              "session": "caller",
-              "pins": {
-                "principal": "caller"
-              }
-            }
-          ],
-          "narrative": [
-            "1. Read(document = \"restricted\", user = 1)  denied"
-          ],
-          "blame": null
-        },
-        {
-          "index": 3,
-          "effect": "permit",
-          "actions": [
-            "Write"
-          ],
-          "verdict": "live",
-          "note": "witness: Read -> Write",
-          "witness": "Read -> Write",
-          "session": [
-            {
-              "action": "Read",
-              "kind": "request",
-              "input": {
-                "document": "\u0000none",
-                "user": 1
-              },
-              "output": {},
-              "time": 1,
-              "principal": "caller",
-              "resource": "caller",
-              "session": "caller",
-              "pins": {
-                "principal": "caller"
-              }
-            },
-            {
-              "action": "Read",
-              "kind": "response",
-              "input": {
-                "document": "\u0000none",
-                "user": 1
-              },
-              "output": {},
-              "time": 2,
-              "principal": "caller",
-              "resource": "caller",
-              "session": "caller",
-              "pins": {
-                "principal": "caller"
-              }
-            },
-            {
-              "action": "Write",
-              "kind": "request",
-              "input": {
-                "document": "\u0000none",
-                "user": 1
-              },
-              "output": {},
-              "time": 3,
-              "principal": "caller",
-              "resource": "caller",
-              "session": "caller",
-              "pins": {
-                "principal": "caller"
-              }
-            },
-            {
-              "action": "Write",
-              "kind": "response",
-              "input": {
-                "document": "\u0000none",
-                "user": 1
-              },
-              "output": {},
               "time": 4,
               "principal": "caller",
               "resource": "caller",
@@ -184,8 +136,155 @@
             }
           ],
           "narrative": [
-            "1. Read (document = \"\u0000none\", user = 1)  allowed",
-            "2. Write(document = \"\u0000none\", user = 1)  allowed"
+            "1. Write(document = \"restricted\", user = 2)  denied",
+            "2. Read (document = \"restricted\", user = 1)  denied"
+          ],
+          "blame": null
+        },
+        {
+          "index": 3,
+          "effect": "permit",
+          "actions": [
+            "Write"
+          ],
+          "verdict": "live",
+          "note": "witness: Read -> Write -> Read -> Write",
+          "witness": "Read -> Write -> Read -> Write",
+          "session": [
+            {
+              "action": "Read",
+              "kind": "request",
+              "input": {
+                "document": "restricted",
+                "user": 1
+              },
+              "output": {},
+              "time": 1,
+              "principal": "stranger",
+              "resource": "caller",
+              "session": "stranger",
+              "pins": {
+                "principal": "stranger"
+              }
+            },
+            {
+              "action": "Read",
+              "kind": "error",
+              "input": {
+                "document": "restricted",
+                "user": 1
+              },
+              "output": {},
+              "time": 2,
+              "principal": "stranger",
+              "resource": "caller",
+              "session": "stranger",
+              "pins": {
+                "principal": "stranger"
+              }
+            },
+            {
+              "action": "Write",
+              "kind": "request",
+              "input": {
+                "document": "restricted",
+                "user": 2
+              },
+              "output": {},
+              "time": 3,
+              "principal": "stranger",
+              "resource": "caller",
+              "session": "stranger",
+              "pins": {
+                "principal": "stranger"
+              }
+            },
+            {
+              "action": "Write",
+              "kind": "error",
+              "input": {
+                "document": "restricted",
+                "user": 2
+              },
+              "output": {},
+              "time": 4,
+              "principal": "stranger",
+              "resource": "caller",
+              "session": "stranger",
+              "pins": {
+                "principal": "stranger"
+              }
+            },
+            {
+              "action": "Read",
+              "kind": "request",
+              "input": {
+                "document": "\u0000none",
+                "user": 1
+              },
+              "output": {},
+              "time": 5,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            },
+            {
+              "action": "Read",
+              "kind": "response",
+              "input": {
+                "document": "\u0000none",
+                "user": 1
+              },
+              "output": {},
+              "time": 6,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            },
+            {
+              "action": "Write",
+              "kind": "request",
+              "input": {
+                "document": "\u0000none",
+                "user": 1
+              },
+              "output": {},
+              "time": 7,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            },
+            {
+              "action": "Write",
+              "kind": "response",
+              "input": {
+                "document": "\u0000none",
+                "user": 1
+              },
+              "output": {},
+              "time": 8,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            }
+          ],
+          "narrative": [
+            "1. Read (document = \"restricted\", user = 1)  denied",
+            "2. Write(document = \"restricted\", user = 2)  denied",
+            "3. Read (document = \"\u0000none\", user = 1)  allowed",
+            "4. Write(document = \"\u0000none\", user = 1)  allowed"
           ],
           "blame": null
         }
@@ -199,10 +298,10 @@
       "policy": "skill-set.dw",
       "reading": "no --event-schema given, so every answer below uses Dogwood's own default reading: callerPrincipal pinned on every kind, so a temporal condition sees only the requesting principal's events. Pass --event-schema for your deployment's real one, or --unpinned if it has no universal pin.",
       "bound": {
-        "attempts": 3,
+        "attempts": 4,
         "amount": 2,
-        "exhaustive": true,
-        "randomSessions": null
+        "exhaustive": false,
+        "randomSessions": 1000
       },
       "rules": [
         {
@@ -224,11 +323,11 @@
               },
               "output": {},
               "time": 1,
-              "principal": "caller",
+              "principal": "stranger",
               "resource": "caller",
-              "session": "caller",
+              "session": "stranger",
               "pins": {
-                "principal": "caller"
+                "principal": "stranger"
               }
             },
             {
@@ -240,11 +339,11 @@
               },
               "output": {},
               "time": 2,
-              "principal": "caller",
+              "principal": "stranger",
               "resource": "caller",
-              "session": "caller",
+              "session": "stranger",
               "pins": {
-                "principal": "caller"
+                "principal": "stranger"
               }
             }
           ],
@@ -260,82 +359,18 @@
             "Read"
           ],
           "verdict": "live",
-          "note": "witness: Read",
-          "witness": "Read",
+          "note": "witness: Write -> Read",
+          "witness": "Write -> Read",
           "session": [
             {
-              "action": "Read",
+              "action": "Write",
               "kind": "request",
               "input": {
                 "document": "restricted",
-                "user": 1
+                "user": 2
               },
               "output": {},
               "time": 1,
-              "principal": "caller",
-              "resource": "caller",
-              "session": "caller",
-              "pins": {
-                "principal": "caller"
-              }
-            },
-            {
-              "action": "Read",
-              "kind": "error",
-              "input": {
-                "document": "restricted",
-                "user": 1
-              },
-              "output": {},
-              "time": 2,
-              "principal": "caller",
-              "resource": "caller",
-              "session": "caller",
-              "pins": {
-                "principal": "caller"
-              }
-            }
-          ],
-          "narrative": [
-            "1. Read(document = \"restricted\", user = 1)  denied"
-          ],
-          "blame": null
-        },
-        {
-          "index": 3,
-          "effect": "permit",
-          "actions": [
-            "Write"
-          ],
-          "verdict": "live",
-          "note": "witness: Read -> Write",
-          "witness": "Read -> Write",
-          "session": [
-            {
-              "action": "Read",
-              "kind": "request",
-              "input": {
-                "document": "restricted",
-                "user": 1
-              },
-              "output": {},
-              "time": 1,
-              "principal": "caller",
-              "resource": "caller",
-              "session": "caller",
-              "pins": {
-                "principal": "caller"
-              }
-            },
-            {
-              "action": "Read",
-              "kind": "error",
-              "input": {
-                "document": "restricted",
-                "user": 1
-              },
-              "output": {},
-              "time": 2,
               "principal": "caller",
               "resource": "caller",
               "session": "caller",
@@ -345,6 +380,22 @@
             },
             {
               "action": "Write",
+              "kind": "error",
+              "input": {
+                "document": "restricted",
+                "user": 2
+              },
+              "output": {},
+              "time": 2,
+              "principal": "caller",
+              "resource": "caller",
+              "session": "caller",
+              "pins": {
+                "principal": "caller"
+              }
+            },
+            {
+              "action": "Read",
               "kind": "request",
               "input": {
                 "document": "restricted",
@@ -360,8 +411,8 @@
               }
             },
             {
-              "action": "Write",
-              "kind": "response",
+              "action": "Read",
+              "kind": "error",
               "input": {
                 "document": "restricted",
                 "user": 1
@@ -377,8 +428,122 @@
             }
           ],
           "narrative": [
-            "1. Read (document = \"restricted\", user = 1)  denied",
-            "2. Write(document = \"restricted\", user = 1)  allowed"
+            "1. Write(document = \"restricted\", user = 2)  denied",
+            "2. Read (document = \"restricted\", user = 1)  denied"
+          ],
+          "blame": null
+        },
+        {
+          "index": 3,
+          "effect": "permit",
+          "actions": [
+            "Write"
+          ],
+          "verdict": "live",
+          "note": "witness: Read -> Write -> Write",
+          "witness": "Read -> Write -> Write",
+          "session": [
+            {
+              "action": "Read",
+              "kind": "request",
+              "input": {
+                "document": "restricted",
+                "user": 2
+              },
+              "output": {},
+              "time": 1,
+              "principal": "stranger",
+              "resource": "caller",
+              "session": "stranger",
+              "pins": {
+                "principal": "stranger"
+              }
+            },
+            {
+              "action": "Read",
+              "kind": "error",
+              "input": {
+                "document": "restricted",
+                "user": 2
+              },
+              "output": {},
+              "time": 2,
+              "principal": "stranger",
+              "resource": "caller",
+              "session": "stranger",
+              "pins": {
+                "principal": "stranger"
+              }
+            },
+            {
+              "action": "Write",
+              "kind": "request",
+              "input": {
+                "document": "\u0000none",
+                "user": 2
+              },
+              "output": {},
+              "time": 3,
+              "principal": "stranger",
+              "resource": "caller",
+              "session": "stranger",
+              "pins": {
+                "principal": "stranger"
+              }
+            },
+            {
+              "action": "Write",
+              "kind": "error",
+              "input": {
+                "document": "\u0000none",
+                "user": 2
+              },
+              "output": {},
+              "time": 4,
+              "principal": "stranger",
+              "resource": "caller",
+              "session": "stranger",
+              "pins": {
+                "principal": "stranger"
+              }
+            },
+            {
+              "action": "Write",
+              "kind": "request",
+              "input": {
+                "document": "restricted",
+                "user": 2
+              },
+              "output": {},
+              "time": 5,
+              "principal": "stranger",
+              "resource": "caller",
+              "session": "stranger",
+              "pins": {
+                "principal": "stranger"
+              }
+            },
+            {
+              "action": "Write",
+              "kind": "response",
+              "input": {
+                "document": "restricted",
+                "user": 2
+              },
+              "output": {},
+              "time": 6,
+              "principal": "stranger",
+              "resource": "caller",
+              "session": "stranger",
+              "pins": {
+                "principal": "stranger"
+              }
+            }
+          ],
+          "narrative": [
+            "1. Read (document = \"restricted\", user = 2)  denied",
+            "2. Write(document = \"\u0000none\", user = 2)  denied",
+            "3. Write(document = \"restricted\", user = 2)  allowed"
           ],
           "blame": null
         }
@@ -605,7 +770,7 @@
       "error": ""
     }
   },
-  "smoke": null,
+  "smoke": 1000,
   "reading": "pinned",
   "agentcore": [],
   "unpaired": [],

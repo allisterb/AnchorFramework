@@ -119,6 +119,9 @@ StyleCopReport.xml
 *.tmp_proj
 *_wpftmp.csproj
 *.log
+# but not the Dogwood traces a check keeps beside each finding: they are the evidence, and
+# `dogwood replay` needs them to reproduce the finding from a clone
+!examples/**/witness/*.log
 *.tlog
 *.vspscc
 *.vssscc

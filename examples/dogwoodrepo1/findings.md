@@ -6,6 +6,19 @@
 
 1. **skill-set.dw does not satisfy SuccessfulRead.tla** — with scenario = "deniedRead", the Dogwood engine ALLOWS this session at t=3, where `NoWriteAfterADeniedRead` says your policy set must REFUSE it
 
+> **This run was `--smoke 1000`.** Each policy set was explored as 1000 random
+> behaviours instead of exhaustively, because this set's request space is the product
+> of its field domains and too large to exhaust. That changes what the verdicts mean:
+>
+> | | |
+> |---|---|
+> | `live` | **sound.** A witness is a witness however it was found, so the rule really does change some verdict |
+> | `unknown` | **not a finding.** This walk did not reach a session where the rule matters. It does not mean the rule is inert |
+>
+> **VACUOUS, REDUNDANT and DEAD cannot appear in this report at all** — each is a claim
+> that no session exists, and a random walk cannot establish one. To get those verdicts,
+> re-run without `--smoke` and expect it to take much longer.
+
 ## What was checked
 
 | | |

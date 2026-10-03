@@ -43,7 +43,7 @@ request that breaks your claim. No inversion there.
 
 ## What the bound was
 
-`MaxAttempts = 3`, `MaxAmount = 2`. Every negative answer is bounded by
+`MaxAttempts = 4`, `MaxAmount = 2`. Every negative answer is bounded by
 those and by nothing else; raising them trades runtime for confidence. `Target` selects which rule
 a run is about -- `0` means the second policy file. Each `.cfg` carries the values that run used.
 
