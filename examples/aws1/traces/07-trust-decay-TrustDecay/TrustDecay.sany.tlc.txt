@@ -1,13 +1,13 @@
 ****** SANY2 Version 2.1 created 24 February 2014
 
 Parsing file C:\Projects\Anchor\examples\aws1\traces\07-trust-decay-TrustDecay\TrustDecay.tla
-Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-02wyziux\Integers.tla
-Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-02wyziux\Sequences.tla
-Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-02wyziux\FiniteSets.tla
+Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-q9u1ayo_\Integers.tla
+Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-q9u1ayo_\Sequences.tla
+Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-q9u1ayo_\FiniteSets.tla
 Parsing file C:\Projects\Anchor\examples\aws1\traces\07-trust-decay-TrustDecay\PolicyUnderTest.tla
-Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-02wyziux\Naturals.tla
+Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-q9u1ayo_\Naturals.tla
 Parsing file C:\Projects\Anchor\examples\aws1\traces\07-trust-decay-TrustDecay\DogwoodSemantics.tla
-Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-02wyziux\TLC.tla
+Parsing file C:\Users\Allister\AppData\Local\Temp\anchor-sany-q9u1ayo_\TLC.tla
 Semantic processing of module Naturals
 Semantic processing of module Integers
 Semantic processing of module Sequences

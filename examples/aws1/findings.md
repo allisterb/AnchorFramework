@@ -2,12 +2,13 @@
 
 **Input scan.** 17 input files scanned: clean.
 
-**4 thing(s) to look at.**
+**5 thing(s) to look at.**
 
 1. **agent-policy.dw does not satisfy EmptyTrajectory.tla** — with amount = 1000, the Dogwood engine ALLOWS this session at t=1, where `NoTradeFromAnEmptyTrajectory` says your policy set must REFUSE it
 2. **agent-policy.dw does not satisfy TradeGate.tla** — with prereq = "freshPriceOnly", the Dogwood engine ALLOWS this session at t=40, where `FreshPriceAloneIsNotEnough` says your policy set must REFUSE it
 3. **07-trust-decay.dw does not satisfy TrustDecay.tla** — with gap = 1, the Dogwood engine REFUSES this session at t=2, where `KeepsWriteWhileAdvisorEngaged` says your policy set must ALLOW it
 4. **07-trust-decay.dw does not satisfy TrustDecay10.tla** — with gap = 960, the Dogwood engine ALLOWS this session at t=961, where `LosesWriteAfter10m` says your policy set must REFUSE it
+5. **agent-policy.dw could not be checked** — the checker produced no verdict
 
 > **This run was `--smoke 1000`.** Each policy set was explored as 1000 random
 > behaviours instead of exhaustively, because this set's request space is the product
@@ -29,7 +30,7 @@
 | policy sets | 7 |
 | stated intentions (`.tla`) | 4 |
 | questions answered | 0 of 5 — not asked: --no-llm |
-| event-schema reading | pinned by `callerPrincipal`, Dogwood's default |
+| event-schema reading | AgentCore's schema, history per session, chosen because it binds `eventResource`/`eventPrincipal`: every policy set |
 
 ## Per policy set
 
@@ -41,7 +42,7 @@
 | `04-cumulative-budget-cap.dw` | 1 | live |
 | `05-human-approval.dw` | 1 | live |
 | `07-trust-decay.dw` | 1 | live |
-| `agent-policy.dw` | 12 | live, unknown |
+| `agent-policy.dw` | — | could not be checked |
 
 ## Stated intentions
 

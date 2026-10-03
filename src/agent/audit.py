@@ -56,6 +56,7 @@ from agent.invoke import run_relayed  # noqa: E402
 from checker import scan as screen  # noqa: E402
 from checker.explain import as_dict, explain_file  # noqa: E402
 from checker.witness import Confirmation, confirm, reading_schema  # noqa: E402
+from translator.agentcore import uses_agentcore_fields  # noqa: E402
 
 
 def as_finding(c: Confirmation) -> dict:
@@ -272,6 +273,11 @@ def check_all(plan: Plan, out: Path, attempts: int | None = None,
                      "smoke": smoke,
                      # Which event-schema reading every verdict below was computed under.
                      "reading": event_schema.name if event_schema else (reading or "pinned"),
+                     # With no reading chosen, the checker reads these under AgentCore's schema
+                     # itself (properties.py `agentcore_auto`); the report must not call it the default.
+                     "agentcore": [p.name for p in plan.policies
+                                   if reading is None and event_schema is None
+                                   and uses_agentcore_fields(p.read_text(encoding="utf-8"))],
                      "unpaired": [{"module": m.name, "why": w} for m, w in plan.unpaired]}
 
     # Numbered, because the first answer can be minutes away; `announce` has said what the steps
@@ -392,6 +398,43 @@ def questions_row(plan: Plan, results: dict, model_used: bool) -> str:
     return row.replace("|", "\\|")
 
 
+def portable(value, directory: Path):
+    """`value` with every `directory` / `artifacts` path made relative: to the repo inside Anchor,
+    else to the audited directory's parent. `anchor check` passes an absolute target, and a report
+    is meant to be sent to someone -- an absolute path puts the sender's machine in it."""
+    def rel(p: str) -> str:
+        path = Path(p).resolve()
+        for root in (REPO, directory.resolve().parent):
+            try:
+                return str(path.relative_to(root))
+            except ValueError:
+                pass
+        return p
+    if isinstance(value, dict):
+        return {k: rel(v) if k in ("directory", "artifacts") and isinstance(v, str) and v
+                else portable(v, directory) for k, v in value.items()}
+    if isinstance(value, list):
+        return [portable(v, directory) for v in value]
+    return value
+
+
+def reading_row(plan: Plan, results: dict) -> str:
+    """The event-schema reading, including the one the checker picks itself for an AgentCore policy."""
+    reading = str(results.get("reading", ""))
+    if reading.endswith(".dwschema"):
+        return f"`{reading}`, the schema given"
+    if reading == "unpinned":
+        return "unpinned, by `--unpinned`: no pins, so a temporal condition sees every principal's events"
+    default = "pinned by `callerPrincipal`, Dogwood's default"
+    agentcore = results.get("agentcore", [])
+    if not agentcore:
+        return default
+    why = "AgentCore's schema, history per session, chosen because it binds `eventResource`/`eventPrincipal`"
+    if len(agentcore) == len(plan.policies):
+        return f"{why}: every policy set"
+    return f"{why}: {', '.join(f'`{n}`' for n in agentcore)}; {default} for the rest"
+
+
 def report(plan: Plan, results: dict, findings: list[str], *, model_used: bool,
            scanned: list[str] | None = None) -> str:
     """The findings file. Written whether or not a model ran."""
@@ -455,11 +498,7 @@ def report(plan: Plan, results: dict, findings: list[str], *, model_used: bool,
               f"| questions answered | {questions_row(plan, results, model_used)} |",
               # SAID EVERY TIME, the default included: a verdict is scoped to a reading, and one
               # that does not say which gets read as being about the deployed configuration.
-              "| event-schema reading | " + (
-                  f"`{results['reading']}`, the schema given" if str(results.get("reading", "")).endswith(".dwschema")
-                  else "unpinned, by `--unpinned`: no pins, so a temporal condition sees every "
-                       "principal's events" if results.get("reading") == "unpinned"
-                  else "pinned by `callerPrincipal`, Dogwood's default") + " |", ""]
+              f"| event-schema reading | {reading_row(plan, results)} |", ""]
 
     # THE SENTENCE THAT KEEPS THIS HONEST. A clean report over a directory with no stated
     # intentions means far less than a clean report over one with them, and nothing else in this
@@ -905,8 +944,7 @@ def main() -> int:
     print(announce(plan, target, out, args, ready if asking else None, skipped), file=sys.stderr)
     for w in warnings:
         print(f"warning: {w}", file=sys.stderr)
-    print("", file=sys.stderr, flush=True)
-
+    print("\nRunning TLC model checker...", file=sys.stderr, flush=True)
     out.mkdir(parents=True, exist_ok=True)
     results = check_all(plan, out, attempts=args.attempts, smoke=args.smoke,
                         max_fields=args.max_fields, reading=args.reading,
@@ -924,7 +962,8 @@ def main() -> int:
                       "answered": answered, "skipped": skipped, "failed": failed}
 
     note = scan_note(scan, withheld=withheld, overridden=bool(scan.high) and asking)
-    (out / "results.json").write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
+    (out / "results.json").write_text(json.dumps(portable(results, plan.directory), indent=2, default=str),
+                                      encoding="utf-8")
     (out / "findings.md").write_text(
         report(plan, results, findings, model_used=bool(answered), scanned=note["md"]),
         encoding="utf-8")

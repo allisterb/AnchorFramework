@@ -38,7 +38,8 @@ if str(REPO / "src") not in sys.path:
 
 from checker.engine import DOGWOOD, available  # noqa: E402
 from checker import scan as screen  # noqa: E402
-from translator.parse import Unsupported, fmt_window, parse_policies  # noqa: E402
+from translator.parse import DEFAULT_MAX_WINDOW, Unsupported, fmt_window, parse_policies  # noqa: E402
+from translator.schema import parse_schema  # noqa: E402
 from translator.trace import parse_trace  # noqa: E402
 
 # `@2 (time point 0): DENY  [rules: 4]` -- and `@2 (time point 0): DENY` with no bracket at all.
@@ -195,14 +196,20 @@ def where(pred: dict) -> list[dict]:
     return out
 
 
-def parsed(policy: Path) -> tuple[list[dict] | None, str | None]:
+def parsed(policy: Path, events: Path | None = None) -> tuple[list[dict] | None, str | None]:
     """The policy through Anchor's parser, or no parse and the reason.
+
+    `events` is the event schema the finding was confirmed under: an AgentCore policy binds
+    `eventResource`, which Dogwood's default schema has no field for.
 
     A picture is never worth failing a run for: a policy outside the parser's subset still has a
     trace and verdicts worth drawing, so this reports rather than raises.
     """
     try:
-        return parse_policies(policy.read_text(encoding="utf-8")), None
+        schema = parse_schema(events.read_text(encoding="utf-8")) if events else None
+        return parse_policies(policy.read_text(encoding="utf-8"),
+                              max_window=schema["max_window"] if schema else DEFAULT_MAX_WINDOW,
+                              scope_fields=schema["scope_fields"] if schema else None), None
     except Unsupported as e:
         return None, f"outside the parser's subset: {e}"
     except Exception as e:  # noqa: BLE001
@@ -294,7 +301,7 @@ def build(witness: Path) -> dict:
 
     text = policy.read_text(encoding="utf-8")
     rules = rules_in(text)
-    tree, why_unparsed = parsed(policy)
+    tree, why_unparsed = parsed(policy, next(iter(sorted(witness.glob("*.dwschema"))), None))
 
     # THE TWO INDEXINGS MUST AGREE, OR NOTHING IS DESCRIBED. `rules` is positional over the text,
     # which is how `replay` numbers `[rules: N]`; `tree` is the parser's list. Zipping two lists of
