@@ -117,6 +117,15 @@ def they_answer() -> None:
         # pipeline is built around.
         check("...and it is told never to weaken a claim to make it hold",
               "NEVER weaken" in said or "Do NOT weaken" in said, said[:300])
+        # REFUSAL-ONLY IS WARNED ABOUT, NEVER REJECTED. firewall.tla has one claim each way, so it
+        # gets no warning; the same module with only its refusal claim named does, and still passes.
+        check("a module with claims both ways is not warned about", "WARNING" not in said, said[-300:])
+        refusing = call(by, "check_module", module=mod,
+                        config="SPECIFICATION Spec\nINVARIANT OutsideIsRefused\n")
+        check("one whose every claim says 'must refuse' is warned, naming the claim",
+              "WARNING, not a rejection" in refusing and "`OutsideIsRefused`" in refusing,
+              refusing[-400:])
+        check("...and is still accepted", refusing.startswith("Compiles, evaluates"), refusing[:200])
 
         broken = mod.replace("OutsideIsRefused ==", "OutsideIsRefused == FALSE /\\ ")
         said = call(by, "check_module", module=broken, config=cfg)

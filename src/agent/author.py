@@ -388,6 +388,34 @@ def misplaced_fields(module: str, vocab: dict) -> list[str]:
     return complaints
 
 
+def refusal_only(module: str, config: str, name: str) -> str | None:
+    """A WARNING when every claim says the policy must refuse, or None. Never a rejection.
+
+    No mutation that REMOVES a permission can break such a module, which is half of what mutation
+    scoring tries. Of 36 recorded drafts, 19 were refusal-only and 12 of those died at scoring (63%),
+    against 4 of the 12 with claims both ways (33%). But 2 refusal-only drafts passed, and a pure
+    prohibition is a real kind of requirement, so this advises and does not reject.
+
+    Read through the explainer, which says what each claim forbids: a refusal claim forbids "the
+    policy GRANTS it", an allowing one "the policy REFUSES it". Claims it cannot read count as
+    neither, so an unreadable module is never warned about on a guess.
+    """
+    from checker.explain import Module, explain              # noqa: PLC0415
+
+    claims = [c for c in explain(Module(module, config, name)).claims if c.checked and c.defined]
+    refusing = [c.name for c in claims if "the policy GRANTS it" in c.forbids]
+    allowing = [c.name for c in claims if "the policy REFUSES it" in c.forbids]
+    if not refusing or allowing:
+        return None
+    return ("WARNING, not a rejection: every claim here says the policy must REFUSE ("
+            + ", ".join(f"`{n}`" for n in refusing) + "). No mutation that removes a permission can "
+            "break a module like this, and most recorded drafts that looked like this were rejected "
+            "at mutation scoring. If the requirement allows anything at all, add one claim that a "
+            "specific, fully compliant session -- every prerequisite present -- is ALLOWED. Keep it "
+            "to that session: 'X requires Y' means 'without Y, refused', not 'with Y, always "
+            "allowed'.")
+
+
 def diagnose(output: str) -> str | None:
     """The specific mistake a TLC run-time error points to, or None when it is not one of these.
 

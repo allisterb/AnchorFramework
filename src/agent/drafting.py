@@ -111,9 +111,14 @@ def tools(run) -> list:
         # BOTH ARE FINE AND IT SAYS SO. A property that fails on the policy as written has already
         # shown it can tell one policy from another; a drafter told only "it does not hold" will
         # weaken the claim until it does, which is the failure this whole pipeline is built around.
-        return (f"Compiles, evaluates, and {held}. Either answer is acceptable -- a property that "
-                f"fails has already shown it discriminates. Do NOT weaken the claim to make it "
-                f"hold.")
+        answer = (f"Compiles, evaluates, and {held}. Either answer is acceptable -- a property that "
+                  f"fails has already shown it discriminates. Do NOT weaken the claim to make it "
+                  f"hold.")
+        # ADVICE, SAID WHILE IT IS STILL CHEAP. A module of refusal claims alone is the commonest
+        # shape mutation scoring rejects, minutes later; here it is milliseconds, and the drafter
+        # decides whether the requirement really is a pure prohibition.
+        warning = author.refusal_only(module, config, run.module_name)
+        return answer + (f"\n\n{warning}" if warning else "")
 
     @tool
     def what_it_forbids(module: str, config: str) -> str:
