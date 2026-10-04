@@ -893,10 +893,50 @@ class English:
     def __init__(self, module: Module):
         self.m = module
 
-    def decides(self, name: str) -> bool:
-        """Does this operator ask the policy for a decision? Then its truth is a grant."""
+    def decides(self, name: str, seen: frozenset = frozenset()) -> bool:
+        """Is this operator the policy's decision? Then its truth is a grant.
+
+        Its body must BE a decision: a call to `Decide`, or a reference to another operator that is
+        one -- `TransferAllowed == D!Decide(...)`, `Allowed == Grants(req)` -- through any number of
+        aliases. A body that merely CONTAINS one is not: `IsExternalGrant(r) == r.origin = ... /\\
+        Grants(r)` is "external and granted", and saying "the policy grants it" of that would be a
+        confident mistranslation where quoting it is honest.
+
+        Read from the parse tree, not the text. This used to ask whether the body contained the
+        word "Decide", which a helper like `DecideIndex == 2` satisfies. And a decision held in a
+        helper with no arguments was missed outright, so a claim like `~TransferAllowed` read as
+        "TransferAllowed does not hold" -- to the reviewer, and to a person approving it.
+        """
         d = self.m.defs.get(name)
-        return bool(d and "Decide" in d.source)
+        if d is None or name in seen:
+            return False
+        tree = d.tree()
+        if tree is None:
+            # `LET s == ... IN D!Decide(s, ...)`, which the reader does not parse. Two of the 38
+            # decision helpers in the recorded drafts were written this way. What follows the last
+            # IN is the value.
+            last_in = max((m.end() for m in re.finditer(r"\bIN\b", d.source)), default=None)
+            try:
+                tree = parse(d.source[last_in:]) if last_in is not None else None
+            except ParseError:
+                tree = None
+        return tree is not None and self.is_decision(tree, seen | {name})
+
+    def is_decision(self, node, seen: frozenset = frozenset()) -> bool:
+        match node:
+            case ("app", fn, _) if fn == "Decide" or fn.endswith("!Decide"):
+                return True
+            case ("app", fn, _) | ("name", fn):
+                return self.decides(fn, seen)
+            # A choice between decisions is a decision -- `IF hasVerification THEN D!Decide(<<v, t>>,
+            # ...) ELSE D!Decide(<<t>>, ...)`, which a recorded draft wrote -- but only when EVERY
+            # branch is one. `IF c THEN Decide(...) ELSE TRUE` is not "the policy grants it".
+            case ("ite", _, then, otherwise):
+                return self.is_decision(then, seen) and self.is_decision(otherwise, seen)
+            case ("case", arms, other):
+                return (all(self.is_decision(value, seen) for _, value in arms)
+                        and (other is None or self.is_decision(other, seen)))
+        return False
 
     def value(self, node) -> str:
         """A term. Evaluated only when that makes it plainer: `10 * Minute` is clearer said both
@@ -936,6 +976,10 @@ class English:
                 # The whole point of the module, said as the outcome rather than as a truth value.
                 which = "REFUSES" if negate else "GRANTS"
                 return f"the policy {which} it ({show(('app', name, args))})"
+            case ("name", name) if self.decides(name):
+                # The same, held in a helper with no arguments: `TransferAllowed`.
+                which = "REFUSES" if negate else "GRANTS"
+                return f"the policy {which} it ({name})"
             case ("quant", "\\A", binds, body) if not negate:
                 return ("every " + ", ".join(f"{n} in {show(s)}" for n, s in binds)
                         + f" has {self.phrase(body)}")

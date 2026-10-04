@@ -4,9 +4,10 @@
     python src/agent/repair.py firewall.dw --ask "also open RDP" --against firewall.dw --no-widening
 
 WHY THE LOOP IS CODE AND THE MODEL IS NOT. The pattern the field has converged on -- AutoRocq
-against Rocq, Baldur against Isabelle, AxDafny against Dafny -- is `propose -> check -> feedback ->
-repair`, and its two load-bearing parts are a CORRECTNESS ORACLE and feedback rich enough to act
-on. Anchor is already the oracle. What was missing was the loop around it.
+against Rocq (arXiv:2511.17330), Baldur against Isabelle, neuro-formal verification against Dafny
+(arXiv:2608.21516) -- is `propose -> check -> feedback -> repair`. Its two load-bearing parts are a
+CORRECTNESS ORACLE and feedback rich enough to act on. Anchor is already the oracle. What was
+missing was the loop around it.
 
 The division matters more than it looks:
 
@@ -14,10 +15,20 @@ The division matters more than it looks:
     this file      decides what is checked, with what bounds, and whether the result is acceptable
 
 An agent that could choose its own acceptance criteria would eventually choose ones it meets. That
-is not a hypothetical: the literature's most-reported pathology in repair loops is ADVERSARIAL
-ASSERTION PRUNING -- when a property is hard to satisfy, the model weakens the property. AxDafny
-locks the original pre- and postconditions as an immutable subset for exactly this reason, and
-here the equivalent is that `--property`, `--against` and `--no-widening` are arguments to this
+is not a hypothetical. Lahiri (arXiv:2608.21516) ran an agent in a repair loop against Dafny with
+nothing held fixed, and it "proved" 98% of known-buggy programs. Of those false proofs:
+- 57% rewrote the code;
+- 35% restated the goal with invented helpers;
+- 8% rested on an explicit assumption.
+
+His fix is to freeze everything the proof is ABOUT -- the translated source, the library theory, the
+precondition, the goal -- and re-check it mechanically every round. TLA-Prover (arXiv:2606.06133)
+names the TLA+ form of the same failure: an always-true invariant passes TLC on every problem.
+AxDafny (arXiv:2606.32007) defends a Dafny repair loop the same way. Code checks that the original
+requires/ensures clauses survive, and rejects proof bypasses (`assume`, `{:axiom}`, `{:verify false}`,
+`{:extern}`) before the verifier runs.
+
+Here the frozen parts are `--property`, `--against` and `--no-widening`: arguments to this
 function, evaluated after the model has spoken and never shown to it as something editable.
 
 BOUNDED, and the bound is reported. A loop that cannot fail is a loop that will not stop; `rounds`

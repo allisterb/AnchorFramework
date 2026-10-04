@@ -13,9 +13,11 @@ typing rule that a two-line probe would have settled in seconds.
 WHAT IS DELIBERATELY MISSING IS THE POINT OF THE FILE. There is no mutation scoring here and there
 never should be. `score` asks whether the property notices the policy breaking, and a model that
 can run it will tune the property until it catches a mutant -- which is optimising against the gate
-rather than stating the requirement, and is the single most-reported pathology in this field.
-`reference/README.md` records TLA-Prover's models "rapidly learning reward hacking" against exactly
-this kind of signal. The reviewing model is absent for the same reason: it judges the property
+rather than stating the requirement, a documented failure mode in agentic verification.
+TLA-Prover (Spencer, Bisharat et al., arXiv:2606.06133) names it for TLA+: a model optimised on TLC
+passing alone would learn invariants that are always true. It blocks that with a mutation test the
+model is graded by but does not control, which is the separation kept here. The reviewing model
+is absent for the same reason: it judges the property
 against the REQUIREMENT, and a drafter that can consult it can negotiate with it.
 
 So the line is: **the drafter may check its own mechanics, and may not see the gates that judge
@@ -92,7 +94,7 @@ def tools(run) -> list:
 
         # STATIC BEFORE EXPENSIVE, the same order the pipeline uses.
         try:
-            said = author.preflight(module, config, run.module_name)
+            said = author.preflight(module, config, run.module_name, run.vocab)
         except Exception as e:                              # noqa: BLE001 - answered, not raised
             return f"Compiles, but the module could not be read: {e}"
         if said:
@@ -102,7 +104,8 @@ def tools(run) -> list:
                                      max_fields=run.max_fields)
         if once.get("_failed"):
             return ("COMPILED BUT DID NOT EVALUATE:\n\n"
-                    + briefly(str(once.get("_why")))[:1500] + "\n\n" + TAGGING_HINT)
+                    + briefly(str(once.get("_why")))[:1500] + "\n\n"
+                    + (author.diagnose(str(once.get("_why"))) or TAGGING_HINT))
 
         held = "holds on this policy" if once.get("held") else "does NOT hold on this policy"
         # BOTH ARE FINE AND IT SAYS SO. A property that fails on the policy as written has already
@@ -201,8 +204,11 @@ def without_the_state_list(reading: str) -> str:
 
 
 TAGGING_HINT = (
-    "Two ways to get this wrong, and they are opposites. INSIDE a field record a value must be "
-    "TAGGED -- `x <= Num(22)`, never `x <= 22`. But a VARIABLE must range over PLAIN values and be "
+    "Three rules, and the first and last are opposites. INSIDE an event's field record a value "
+    "must be TAGGED -- `[amount |-> Num(60000)]`. COMPARING one: `=` and `#` take two tagged values "
+    "(`s = Str(\"a1\")`), but `<`, `<=`, `>`, `>=` and arithmetic need the number inside, `.v` -- "
+    "`x.v <= 22`; both `x <= 22` and `x <= Num(22)` die with `The first argument of <= should be "
+    "an integer`. But a VARIABLE must range over PLAIN values and be "
     "tagged where it is USED: `verified \\in {TRUE, FALSE}` with `[verified |-> Bool(verified)]`, "
     "never `verified \\in {Bool(TRUE), Bool(FALSE)}`. Tagged values in an `Init` domain produce "
     "`Attempted to check equality of integer 1 with non-integer`, a message that names neither "

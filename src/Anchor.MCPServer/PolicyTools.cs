@@ -216,9 +216,11 @@ public partial class PolicyTools : Runtime
         "GENERATES from the policy, and its vocabulary is derived from that policy's own text, so " +
         "it cannot be guessed.\n\n" +
         "The reply gives the action names, the input and output field names with each field's " +
-        "domain, the pin keys, the rule list, and the tagged-value constructors. Values are " +
-        "TAGGED: write `Num(22)`, never `22`, and an address is four octets via `Addr(a,b,c,d)` " +
-        "because TLC works in Java ints and cannot hold one as a 32-bit number.\n\n" +
+        "domain, the pin keys, the rule list, and the tagged-value constructors. Field values are " +
+        "TAGGED: put `Num(22)`, never `22`, in an event's record, and an address is four octets via " +
+        "`Addr(a,b,c,d)` because TLC works in Java ints and cannot hold one as a 32-bit number. To " +
+        "COMPARE a tagged value, `=` and `#` take two tagged values (`s = Str(\"a1\")`), but `<`, `<=`, " +
+        "`>`, `>=` need the number inside: `x.v <= 22`. `x <= Num(22)` fails at run time.\n\n" +
         "THE TRAP THIS EXISTS TO PREVENT. There is deliberately no `Inputs` set to quantify over. " +
         "A request space derived from the policy's own literals cannot test a claim about a value " +
         "the policy never mentions -- the value is absent from the vocabulary, so the claim ranges " +

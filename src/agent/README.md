@@ -68,9 +68,9 @@ division is the point:
 
 **The acceptance criteria are arguments, evaluated after the model has spoken.** `--no-widening`,
 `--property` and the defect checks are never shown to it as something it may change. That is not
-caution for its own sake: the most-reported pathology in repair loops is a model weakening the
-property it cannot satisfy, and the only structural defence is that the property is not an input
-it can reach.
+caution for its own sake: a repair loop with nothing held fixed lets the model change what it is
+checked against (measured by Lahiri, arXiv:2608.21516: rewritten code, restated goals, bare assumptions). The structural defence is
+that the property is not an input it can reach.
 
 `repair()` takes its proposer as an argument, which is what lets the loop be tested without
 credentials. A scripted proposer returns known-bad text then known-good text, and the harness pins
@@ -122,7 +122,7 @@ add a server process and break the hermetic harness.
 
 **What it deliberately cannot reach is `score`.** A model that can run mutation scoring will tune
 the property until it catches a mutant — optimising against the gate instead of stating the
-requirement, which is the most-reported pathology in this field. The reviewer is absent for the same
+requirement, a documented failure mode in agentic verification. The reviewer is absent for the same
 reason. So nothing new is checked before `score`; what changes is who drives the loop and how fast
 the answer arrives. `check_module` reports in one call the failure that ended three live sessions.
 

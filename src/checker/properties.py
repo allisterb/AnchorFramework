@@ -539,9 +539,10 @@ def prove(args, policies: list[dict], vocab: dict, keys: list[str] | None = None
             print(f"      {why}")
             if verdict == "error":
                 print("\nNothing was checked, and this is a defect in the module rather than a "
-                      "verdict about\nthe policy. The commonest cause is comparing a TAGGED value "
-                      "against a bare one --\n`Num(22)` is a record, not the integer 22, so "
-                      "`x <= 22` fails where `x <= Num(22)` works.")
+                      "verdict about\nthe policy. The commonest cause is ordering a TAGGED value -- "
+                      "`Num(22)` is a record,\nnot the integer 22, so `x <= 22` and `x <= Num(22)` "
+                      "both fail. Compare the number inside:\n`x.v <= 22`. (`=` and `#` do take two "
+                      "tagged values: `s = Str(\"a1\")`.)")
                 return 2
             if verdict == "constant":
                 print("\nNOTHING THIS PROPERTY MODULE SAYS CAN BE TESTED against this policy set. Give the "
@@ -976,10 +977,10 @@ def definition_of(module: str, name: str) -> list[str]:
 # property that survives every mutant is not constraining the policy; it is describing something
 # else, or nothing.
 #
-# This matters most for a property somebody did not write by hand. The literature's most-reported
-# pathology in agentic verification is exactly this: asked to produce both an artifact and its
-# specification, a model discovers that a trivial specification is the cheapest way to pass. A
-# mutation score is the only mechanical defence, because the failure mode is a property that is
+# This matters most for a property somebody did not write by hand. A documented failure in agentic
+# verification (measured by Lahiri, arXiv:2608.21516) is exactly this: asked to produce both an artifact and its
+# specification, a model can find that a trivial specification is the cheapest way to pass. A
+# mutation score is the mechanical defence here, because the failure mode is a property that is
 # perfectly true.
 #
 # NOT A COVERAGE METRIC. A surviving mutant is not automatically a gap: a property about trades
@@ -1330,10 +1331,18 @@ def describe(args, policies: list[dict], vocab: dict, schema: dict, reading: str
         },
         "rules_for_writing_one": [
             "EXTENDS PolicyUnderTest, and instantiate DogwoodSemantics with Cases <- << >>.",
-            "Scalars are TAGGED. Write Num(22), never 22 -- TLC refuses a cross-kind comparison "
-            "rather than quietly answering one.",
+            "Scalars are TAGGED. Inside an event's record write Num(22), never 22. Compare with = "
+            "and # against a tagged value (s = Str(\"a1\")), but order the number inside "
+            "(x.v <= 22): x <= Num(22) fails at run time.",
             "There is no Inputs. State the requests your claim is about, including values this "
             "policy never mentions, or the claim may range over nothing and pass.",
+            "Decide the allowed and denied cases from the requirement BEFORE evaluating the "
+            "policy. A claim written from the policy's own behaviour restates it.",
+            "Include a claim that one specific, fully compliant session is ALLOWED. A module of "
+            "refusal claims alone cannot be broken by removing a permission. 'X requires Y' means "
+            "'without Y, refused', not 'with Y, always allowed'.",
+            "Put every prerequisite event in the session, and each value where the policy reads it: "
+            "inputFields in an event's input record, outputFields in its output record.",
             "The .cfg must name SPECIFICATION Spec and every INVARIANT. A claim nobody listed is "
             "a claim nobody checked.",
         ],

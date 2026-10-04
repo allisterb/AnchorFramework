@@ -6,9 +6,9 @@
                      every rejection still reports, and nothing raises
 
 THE SEPARATION IS THE POINT. The agent that DRAFTS the property is not the agent that ANSWERS with
-it. Asked to produce both an artifact and its specification, a model finds that a trivial
-specification is the cheapest way to pass -- the most-reported pathology in agentic verification,
-and the reason this is two agents rather than one with two prompts. `GraphBuilder` enforces it:
+it. Asked to produce both an artifact and its specification, a model can find that a trivial
+specification is the cheapest way to pass -- a documented failure in agentic verification
+(measured by Lahiri, arXiv:2608.21516), and the reason this is two agents rather than one with two prompts. `GraphBuilder` enforces it:
 one Agent instance cannot be two nodes, and neither sees the other's context.
 
 WHAT IS A MODEL'S DECISION AND WHAT IS NOT. Only `draft`, `review` and `answer` are language models. The five
@@ -83,9 +83,13 @@ HITL_STAGES = STAGES[:5] + ("confirm",) + STAGES[5:]
 # was the wrong half for the failure it was attached to. It told a drafter to add tags, three live
 # sessions running, while the fault was tags in the one place they must not appear.
 TAGGING = (
-    "Two ways to get this wrong, and they are opposites.\n\n"
-    "INSIDE a field record a value must be TAGGED: write `x <= Num(22)` and `s = Str(\"a1\")`, "
-    "never `x <= 22`.\n\n"
+    "Three rules about tagged values, and the first and last are opposites.\n\n"
+    "INSIDE an event's field record a value must be TAGGED: `[amount |-> Num(60000)]`, "
+    "`[account |-> Str(\"a1\")]`.\n\n"
+    "COMPARING a tagged value depends on the operator. `=` and `#` take two tagged values: "
+    "`s = Str(\"a1\")`. But `<`, `<=`, `>`, `>=` and arithmetic need the number inside, `.v`: "
+    "`x.v <= 22`. Both `x <= 22` and `x <= Num(22)` die with `The first argument of <= should be "
+    "an integer`.\n\n"
     "But a VARIABLE must range over PLAIN values, and you tag it where you USE it:\n"
     "    VARIABLES verified, account\n"
     "    Init == verified \\in {TRUE, FALSE} /\\ account \\in {1, 2}\n"
@@ -515,7 +519,7 @@ def stage_draft(run: Run, asked: str, drafter) -> str:
 
         # AND DOES IT SAY ANYTHING? Free, and it is the other way a draft comes back useless.
         try:
-            said = author.preflight(module, config, run.module_name)
+            said = author.preflight(module, config, run.module_name, run.vocab)
         except Exception as e:                              # noqa: BLE001 - fed back, not raised
             feedback = f"Your module could not be read: {e}"
             continue
@@ -536,7 +540,7 @@ def stage_draft(run: Run, asked: str, drafter) -> str:
             # difference between one round of feedback and the whole allowance spent producing a
             # diagnostic nobody read.
             feedback = ("Your module compiled but could not be evaluated:\n\n" + why[-1500:]
-                        + "\n\n" + TAGGING)
+                        + "\n\n" + (author.diagnose(why) or TAGGING))
             continue
 
         # AND DO THE CLAIMS THEMSELVES EVALUATE? The probe only exercises the decision term, and
@@ -548,7 +552,7 @@ def stage_draft(run: Run, asked: str, drafter) -> str:
         if once.get("_failed"):
             feedback = ("Your module compiled, but checking it produced no verdict:\n\n"
                         + str(once.get("_why"))[-1500:]
-                        + "\n\n" + TAGGING)
+                        + "\n\n" + (author.diagnose(str(once.get("_why"))) or TAGGING))
             continue
 
         if verdict == "constant":
@@ -578,7 +582,7 @@ def stage_preflight(run: Run, said: str) -> str:
         return gate(False, run.complaints[0])
 
     try:
-        run.complaints = author.preflight(run.module, run.config, run.module_name)
+        run.complaints = author.preflight(run.module, run.config, run.module_name, run.vocab)
         # WHAT THE CLAIM FORBIDS, AND OVER HOW MANY STATES. Read here because the module is
         # already in hand and it costs milliseconds -- and carried all the way to `answer`,
         # because it is the only thing in the whole run that states the BOUND. Without it the

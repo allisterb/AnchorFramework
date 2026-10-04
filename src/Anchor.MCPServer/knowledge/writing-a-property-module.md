@@ -18,19 +18,54 @@ kind: *SSH from the local range is permitted, and every external source is denie
 
 You state one as a TLA+ module passed to `CheckPolicy`'s `property` argument.
 
+## The workflow
+
+Six phases, in order. Each says what went wrong when it was skipped. The evidence is about 45 drafted
+modules from recorded runs: once the mechanics were right, most failures came from phases 1 and 4.
+
+1. **Decide the cases from the REQUIREMENT, before looking at the policy.** In words: which sessions
+   must be allowed, which must be denied, and where the boundary sits. Do not first evaluate what
+   the policy does and then describe it. A claim derived from the policy restates it, and passes
+   whatever the policy says. One drafter called `evaluate` eight times to learn the policy's
+   behaviour, then wrote claims matching that behaviour, and the reviewer rejected them.
+2. **Read the vocabulary.** Action names, field names, and which fields live in an event's `input`
+   and which in its `output`. A policy that reads the `input` of an earlier response is not
+   satisfied by a value placed in its `output`. One draft did that, and passed every gate while
+   testing nothing.
+3. **Build the sessions.** Use plain-valued variables, times in seconds, and values the policy never
+   names. **Put every prerequisite in the session**: a policy that needs `verify_identity` first
+   denies every transfer in a session without it, and then every refusal claim holds without
+   testing anything.
+4. **Write claims in BOTH directions.** At least one claim must say a specific session is
+   **allowed**: a fully compliant one, with every prerequisite present, that the requirement plainly
+   intends to permit. Without it, every claim says "must refuse". No mutation that *removes* a
+   permission can break such a module, and a policy that refuses everything passes it. 12 of the
+   recorded drafts were refusal-only, and 8 of those died at mutation scoring.
+   Keep the allowed claim to that one session, not a rule. "X requires Y" means *without Y, refused*.
+   It does not mean *with Y, always allowed*, since other rules may still deny. The reviewer rejects
+   a claim that turns one into the other.
+5. **Check the mechanics.** Does it compile, does it evaluate, and when something is odd, what IS
+   that value? See the tools below. This is seconds; the real check is minutes.
+6. **Read it back before answering.** Read the `forbids` line and the `applies` count (see "Read what
+   it forbids"). If the `forbids` line does not describe something you would object to, the claim is
+   not your requirement.
+
 ## The loop, and the tool for each step
 
 Writing one is four steps, and each has a tool. The two in the middle cost about a second; only the
 last costs minutes, so reaching for it first is the expensive mistake.
 
-| | | |
-|---|---|---|
-| what may I name? | **`DescribePolicyModule`** | the vocabulary, from the policy's own text, plus a skeleton that runs |
-| does it compile? | **`CheckPropertyModule`** | SANY against that policy's generated vocabulary. ~1s. A misspelled operator gets you a line and a column instead of a failed model-checking run |
-| **what IS this value?** | **`EvaluateExpression`** | evaluates a TLA+ expression in the policy's own semantics. ~2s |
-| does it say what I meant? | **`ExplainPropertyModule`** | what each claim FORBIDS, in English, and how many of its states its condition applies to. Milliseconds |
-| **can it fail at all?** | `--decision-probe` | does the policy ever ANSWER differently over these states? Seconds. A policy that refuses everything the property names makes every refusal claim hold having tested nothing |
-| do the claims hold? | **`CheckPolicy`** with `property` | the actual check. Minutes |
+The tools have two names: one over MCP, and one when Anchor's own drafting pipeline runs you. Use
+whichever set you were given.
+
+| | over MCP | in the drafting pipeline | |
+|---|---|---|---|
+| what may I name? | **`DescribePolicyModule`** | already in your prompt, as "the vocabulary" | the vocabulary, from the policy's own text, plus a skeleton that runs |
+| does it compile? | **`CheckPropertyModule`** | **`check_module`**, which also evaluates the module once | SANY against that policy's generated vocabulary. ~1s. A misspelled operator gets you a line and a column instead of a failed model-checking run |
+| **what IS this value?** | **`EvaluateExpression`** | **`evaluate`** | evaluates a TLA+ expression in the policy's own semantics. ~2s |
+| does it say what I meant? | **`ExplainPropertyModule`** | **`what_it_forbids`** | what each claim FORBIDS, in English, and how many of its states its condition applies to. Milliseconds |
+| **can it fail at all?** | `--decision-probe` | run for you after you answer | does the policy ever ANSWER differently over these states? Seconds. A policy that refuses everything the property names makes every refusal claim hold having tested nothing |
+| do the claims hold? | **`CheckPolicy`** with `property` | run for you after you answer | the actual check. Minutes |
 
 **`EvaluateExpression` is the one to reach for when something is behaving oddly**, because most of
 what goes wrong here is a value being other than you assumed — the units of a window, what a
@@ -61,22 +96,29 @@ Edit the skeleton's claim rather than starting from a blank file.
 
 ## Scalars are tagged, and this is the mistake that wastes the most runs
 
-**A tagged value is a RECORD, not the thing inside it.** `Num(22)` is `[k |-> "n", v |-> 22]`. So:
+**A tagged value is a RECORD, not the thing inside it.** `Num(22)` is `[k |-> "n", v |-> 22]`, with
+the kind in `.k` and the value in `.v`. Which form a comparison needs depends on the operator:
 
 ```tla
+req.origin = Str("external")    \* right: = and # compare two tagged values
+req.origin = "external"         \* WRONG. Dies at run time: "Attempted to check equality of
+                                \*        record: ..." -- a record cannot be compared with a string
+
+input.amount.v <= 2500          \* right: <, <=, >, >= and arithmetic need the number, .v
 input.amount <= 2500            \* WRONG. Dies at run time: "The first argument of <= should
-                                \*        be an integer, but instead it is: [k |-> ...]"
-input.amount <= Num(2500)       \* right
-req.origin = "external"         \* WRONG
-req.origin = Str("external")    \* right
+input.amount <= Num(2500)       \* WRONG too, the same way: <= is applied to two records
 ```
 
-It compiles either way — SANY resolves names, not record fields — so the module passes every cheap
-check and then dies during evaluation, having established nothing. **This is the single commonest
-reason a drafted module produces no verdict**: five drafts out of five, in one real run.
+Both wrong ordering forms die with the same message, "The first argument of <= should be an integer,
+but instead it is: [k |-> ...]". `Num(1) <= Num(2)` fails; `Num(1).v <= 2` is `TRUE`.
 
-Write `Num(22)`, never `22`. Every value carries its kind so that TLC refuses a cross-kind
-comparison instead of quietly answering one.
+They compile — SANY resolves names, not record fields — so the module passes every cheap check and
+then dies during evaluation, having established nothing. **This is the single commonest reason a
+drafted module produces no verdict**: seven attempts across the recorded sweeps. An earlier version
+of this article gave `input.amount <= Num(2500)` as the right form, and drafters followed it.
+
+The simplest way to avoid all of it is in the next section: keep your own variables plain, compare
+them as plain integers (`amount <= 2500`), and tag them only where they go into an event.
 
 | constructor | for |
 |---|---|
@@ -141,6 +183,25 @@ Your claims then read more naturally too — `verified /\ account = 2` rather th
   IsExternalGrant(r) == r.origin = Str("external") /\ Grants(r)
   OutsideIsRefused   == ~IsExternalGrant(req)
   ```
+
+### TLA+ that drafts have got wrong
+
+Each of these ended a recorded draft.
+
+```tla
+LET e == Ev("verify_identity", "response", NoFields, NoFields, 1) IN e   \* ==, never = in a LET
+{x.v : x \in S}                     \* map: an expression, then the set it ranges over
+{x \in S : x.v > 100}               \* filter: a variable in a set, then a condition
+{x.v : x \in {y \in S : y.v > 100}} \* both: nest them; {e : x \in S : P} does not parse
+D!Decide(s, Policies, 2, AllValues) \* an instance's operator takes !, never D.Decide
+~Allowed(s)                         \* Decide returns a BOOLEAN; it has no .permit field
+x.v                                 \* a tagged value's fields are .k and .v, never .val
+```
+
+- **There is no `SUM`.** Do not compute totals in a claim. Build the session with amounts whose total
+  you already know, and state the claim about that session.
+- **A module needs its header and its terminator.** The first line is `---- MODULE Name ----` and
+  the last is `====`. The name must be the one you were given.
 
 **Do not `EXTENDS TLC`.** It breaks evaluation of the policy semantics on any policy that both joins
 across value kinds and carries an aggregate — the module compiles and then fails with
@@ -320,6 +381,20 @@ Session(gap) == << Verify(1), Transfer(1 + gap) >>     \* not just << Transfer(t
 Two TLC runs, seconds. `VARIES` is a precondition for checking the claims, not a verdict on them;
 `CONSTANT` exits 4, the same code as a property that catches no mutant, because it is the same
 defect found earlier and more cheaply.
+
+## When it goes wrong
+
+| you see | it means | do this |
+|---|---|---|
+| `The first argument of <= should be an integer, but instead it is: [k \|-> ...]` | `<`, `<=`, `>` or `>=` applied to a tagged value | compare the number inside: `x.v <= 2500` |
+| `Attempted to check equality of record: [k \|-> ...] with non-record` (or `of string`/`of integer` ... `with non-string: [k \|-> ...]`) | a tagged value compared with a plain one by `=` or `#` | tag both sides, `s = Str("a1")`, or compare the insides |
+| `Attempted to check equality of integer 1 with non-integer: FALSE` | a VARIABLE ranging over tagged values | plain values in `Init`, tagged where they go into an event |
+| `Attempted to check equality of string ... with non-string` on a policy that joins and aggregates | `EXTENDS TLC` | remove it |
+| `Unknown operator: Decide` | no `D == INSTANCE DogwoodSemantics WITH Cases <- << >>` line | add it, and call `D!Decide` |
+| decision over the module's states: **CONSTANT** | the policy answers every named session the same way, usually from a missing prerequisite | put the prerequisite event in the session |
+| `applies to NONE` | the claim's condition is never true in any state it ranges over | range over values that make it true |
+| survives every mutant ("holds of every broken version") | every claim says "must refuse", or none can tell the policy from a broken one | add the allowed claim from phase 4 |
+| the reviewer says the claim describes the policy, not the requirement | the claims were written from the policy's behaviour | go back to phase 1 |
 
 ## Reading the result
 

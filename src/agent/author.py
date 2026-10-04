@@ -5,9 +5,9 @@
 
 THE HAZARD THIS IS BUILT AROUND, stated before the feature: a property an agent derives from the
 POLICY is a restatement of the policy. Checking a policy against its own restatement always passes
-and establishes nothing, and it is the most-reported pathology in agentic verification -- asked to
-produce both an artifact and its specification, a model finds that a trivial specification is the
-cheapest way to pass. `ensures TRUE` holds of everything.
+and establishes nothing. It is a documented failure in agentic verification (measured by Lahiri, arXiv:2608.21516): asked to
+produce both an artifact and its specification, a model can find that a trivial specification is
+the cheapest way to pass. `ensures TRUE` holds of everything.
 
 So two things, and neither is optional:
 
@@ -180,7 +180,7 @@ def score(policy: Path, module: Path, *, event_schema: Path | None = None,
                                    "Parsing or semantic analysis failed"))}
 
 
-def preflight(module: str, config: str, name: str) -> list[str]:
+def preflight(module: str, config: str, name: str, vocab: dict | None = None) -> list[str]:
     """What is wrong with this draft that can be seen WITHOUT running anything.
 
     The gate below costs one TLC run for the property plus one per mutant -- minutes, for a draft
@@ -211,7 +211,205 @@ def preflight(module: str, config: str, name: str) -> list[str]:
                 + f". It would forbid: {claim.forbids} -- and no state it examines is one. Range "
                   f"over values that can make the condition true, and state the claim in terms of "
                   f"what the policy DECIDES")
+
+    complaints += tagged_orderings(module)
+    if vocab:
+        complaints += misplaced_fields(module, vocab)
     return complaints
+
+
+# An ordering operator beside a tag constructor: `x <= Num(2500)`, `Num(1) > 0`. Certain to fail,
+# because `Num(...)` is a record and `<=` wants integers -- and an earlier version of the property
+# module article TAUGHT `input.amount <= Num(2500)` as the right form. The lookarounds keep out
+# `<<`, `>>`, `->`, `|->`, `<-`, `=>` and `<=>`.
+ORDERING = r"(?<![<=>\-|])(?:<=|>=|=<|<|>|\\leq|\\geq)(?![<=>\-])"
+TAG_CALL = r"\b(?:Num|Str|Bool|Addr)\([^()]*\)"
+TAGGED_ORDERING = re.compile(rf"{ORDERING}\s*{TAG_CALL}|{TAG_CALL}\s*{ORDERING}")
+
+
+def code_only(module: str) -> str:
+    """`module` with comments and string literals blanked, line and column positions kept."""
+    out, i, n, depth = list(module), 0, len(module), 0
+    while i < n:
+        two = module[i:i + 2]
+        if depth:
+            if two == "(*":
+                depth += 1
+            elif two == "*)":
+                depth -= 1
+                out[i] = out[i + 1] = " "
+                i += 2
+                continue
+            if module[i] != "\n":
+                out[i] = " "
+            i += 1
+        elif two == "(*":
+            depth = 1
+            out[i] = out[i + 1] = " "
+            i += 2
+        elif two == "\\*":
+            while i < n and module[i] != "\n":
+                out[i] = " "
+                i += 1
+        elif module[i] == '"':
+            j = i + 1
+            while j < n and module[j] not in '"\n':
+                j += 2 if module[j] == "\\" else 1
+            for k in range(i + 1, min(j, n)):
+                out[k] = " "
+            i = j + 1
+        else:
+            i += 1
+    return "".join(out)
+
+
+def tagged_orderings(module: str) -> list[str]:
+    """One complaint per ordering of a tagged value the text makes. Certain, so a rejection."""
+    code = code_only(module)
+    complaints = []
+    for m in TAGGED_ORDERING.finditer(code):
+        line = code.count("\n", 0, m.start()) + 1
+        complaints.append(
+            f"line {line}: `{m.group(0).strip()}` orders a TAGGED value. `Num(...)` is a record, not "
+            f"a number, so `<`, `<=`, `>` and `>=` on it fail at run time with \"The first argument "
+            f"of <= should be an integer\". Compare the number inside instead: `x.v <= 2500`. "
+            f"(`=` and `#` do take two tagged values: `s = Str(\"a1\")`.)")
+    return complaints
+
+
+def split_top(text: str) -> list[str]:
+    """`text` split at commas that are not inside (), [], {} or << >>."""
+    parts, depth, start, i = [], 0, 0, 0
+    while i < len(text):
+        two = text[i:i + 2]
+        if two == "<<":
+            depth += 1
+            i += 2
+            continue
+        if two == ">>":
+            depth -= 1
+            i += 2
+            continue
+        ch = text[i]
+        if ch in "([{":
+            depth += 1
+        elif ch in ")]}":
+            depth -= 1
+        elif ch == "," and depth == 0:
+            parts.append(text[start:i])
+            start = i + 1
+        i += 1
+    parts.append(text[start:])
+    return [p.strip() for p in parts]
+
+
+def call_args(code: str, open_paren: int) -> tuple[str, int] | None:
+    """The text between the parenthesis at `open_paren` and its match, and the match's index."""
+    depth = 0
+    for i in range(open_paren, len(code)):
+        if code[i] == "(":
+            depth += 1
+        elif code[i] == ")":
+            depth -= 1
+            if depth == 0:
+                return code[open_paren + 1:i], i
+    return None
+
+
+DEFINITION = re.compile(r"^([A-Za-z_]\w*)\s*(?:\([^)]*\))?\s*==", re.MULTILINE)
+
+
+def record_fields(arg: str, defs: dict[str, str]) -> set[str] | None:
+    """The field names of a record argument, or None when it is not one this can read.
+
+    A literal `[a |-> ..., b |-> ...]`, `NoFields`, or a name defined as one -- `Done ==` or
+    `Doc(d) ==` -- which is how drafts usually build them. Anything else is skipped, not guessed.
+    """
+    arg = arg.strip()
+    if arg == "NoFields":
+        return set()
+    name = re.fullmatch(r"([A-Za-z_]\w*)(?:\(.*\))?", arg, re.DOTALL)
+    if name and name.group(1) in defs:
+        arg = defs[name.group(1)].strip()
+    if not (arg.startswith("[") and arg.endswith("]")):
+        return None
+    fields = set()
+    for item in split_top(arg[1:-1]):
+        if "|->" not in item:
+            return None                    # a function or a set of records, not a record literal
+        fields.add(item.split("|->", 1)[0].strip())
+    return fields
+
+
+def misplaced_fields(module: str, vocab: dict) -> list[str]:
+    """Values put in the half of an event the policy never reads them from.
+
+    The vocabulary says which field names the policy reads from an event's `input` and which from
+    its `output`. A value the policy reads only as an input, placed only in an event's output, can
+    match no rule. One recorded draft did exactly that -- `profile_id` in a lookup's output, where
+    the policy read the lookup's input -- and passed every gate while testing nothing.
+
+    Deliberately narrow, so it never fires on a good module: a name the policy reads from both
+    halves, a value it reads from neither (`result` on a response, say), or an event that also
+    carries the value where the policy reads it, is left alone.
+    """
+    reads_in = {f["name"] for f in vocab.get("inputFields") or []}
+    reads_out = {f["name"] for f in vocab.get("outputFields") or []}
+    code = code_only(module)
+    defs = {}
+    starts = [m for m in DEFINITION.finditer(code)]
+    for here, nxt in zip(starts, starts[1:] + [None]):
+        defs[here.group(1)] = code[here.end():nxt.start() if nxt else len(code)].split("====")[0]
+
+    complaints = []
+    for m in re.finditer(r"\bEv\s*\(", code):
+        found = call_args(code, m.end() - 1)
+        if not found:
+            continue
+        args = split_top(found[0])
+        if len(args) != 5:
+            continue
+        given_in, given_out = record_fields(args[2], defs), record_fields(args[3], defs)
+        if given_in is None or given_out is None:
+            continue
+        line = code.count("\n", 0, m.start()) + 1
+        for field_name in sorted(given_out - reads_out - given_in):
+            if field_name in reads_in:
+                complaints.append(
+                    f"line {line}: `{field_name}` is in this event's OUTPUT record, but the policy "
+                    f"reads `{field_name}` only from an event's INPUT, so no rule can see it there. "
+                    f"Put it in the input record, Ev's third argument.")
+        for field_name in sorted(given_in - reads_in - given_out):
+            if field_name in reads_out:
+                complaints.append(
+                    f"line {line}: `{field_name}` is in this event's INPUT record, but the policy "
+                    f"reads `{field_name}` only from an event's OUTPUT, so no rule can see it there. "
+                    f"Put it in the output record, Ev's fourth argument.")
+    return complaints
+
+
+def diagnose(output: str) -> str | None:
+    """The specific mistake a TLC run-time error points to, or None when it is not one of these.
+
+    TLC's messages are precise about WHAT failed and say nothing about why. Each mistake below has
+    its own signature, read off real runs; `[k |->` after the message is what marks a tagged value.
+    """
+    if re.search(r"argument of \S+ should be an integer, but instead it is:\s*\[k \|->", output):
+        return ("You applied an ordering operator (<, <=, >, >=) to a TAGGED value. `Num(...)` is a "
+                "record, not a number, so `x <= 22` and `x <= Num(22)` both fail. Compare the "
+                "number inside: `x.v <= 22`.")
+    # Two shapes, depending on which side is tagged: "equality of record: [k |-> ...] with
+    # non-record", or "equality of string "a" with non-string: [k |-> ...]".
+    if re.search(r"Attempted to check equality of record:\s*\[k \|->|with non-\w+:\s*\[k \|->",
+                 output):
+        return ("You compared a TAGGED value with a plain one using `=` or `#`. Tag both sides "
+                "(`s = Str(\"a1\")`, `n = Num(22)`), or compare the insides (`s.v = \"a1\"`).")
+    if re.search(r"Attempted to check equality of integer \S+ with non-integer:\s*(?:TRUE|FALSE)",
+                 output):
+        return ("This is the known `Init`-domain pattern: a VARIABLE ranging over TAGGED values. "
+                "Let variables hold PLAIN values (`verified \\in {TRUE, FALSE}`) and tag them where "
+                "they go into an event (`[verified |-> Bool(verified)]`).")
+    return None
 
 
 def assess(result: dict, config: str) -> list[str]:
@@ -308,7 +506,7 @@ def author(policy: Path, intent: str, propose, *, rounds: int = 3,
             # Read before running. A draft rejected here costs a second instead of the minutes
             # the mutation gate takes to reach the same conclusion, and the round it saves is a
             # round spent on a better draft.
-            if complaints := preflight(module, config, module_path.name):
+            if complaints := preflight(module, config, module_path.name, vocab):
                 result = {}
             else:
                 result = score(policy, module_path, event_schema=event_schema, mutants=mutants)
@@ -428,6 +626,26 @@ DRAFTER_PROMPT = (
         "one or more named invariants. State the claim about concrete actions and values the "
         "policy actually names: a claim that ranges over nothing passes without checking "
         "anything, which is worse than failing.\n\n"
+        # THE RULES, short and first-class. Each was a recorded way a draft failed, and each also sits
+        # somewhere in the 23 KB manual -- where it competed with everything else and was missed. The
+        # ones a check can see are ALSO checked (preflight, the decision probe, mutation scoring);
+        # a rule here shapes what is tried, a check decides what is kept.
+        "RULES. Each one is a way an earlier draft failed.\n\n"
+        "1. Decide from the REQUIREMENT which sessions must be ALLOWED and which DENIED before you "
+        "evaluate anything. Never write a claim because `evaluate` showed the policy does it: that "
+        "restates the policy, and passes whatever the policy says.\n"
+        "2. Include at least one claim that ONE specific, fully compliant session -- every "
+        "prerequisite present -- is ALLOWED. If every claim says 'must refuse', no mutation that "
+        "removes a permission can break your module. Keep it to that session: 'X requires Y' "
+        "means 'without Y, refused', never 'with Y, always allowed'.\n"
+        "3. Put every prerequisite event the policy needs into the session before the decision, "
+        "or the policy refuses everything and your claims test nothing.\n"
+        "4. Put each value where the policy reads it: a field listed in the vocabulary's "
+        "inputFields goes in an event's input record (Ev's third argument), one in outputFields "
+        "in its output record (the fourth).\n"
+        "5. VARIABLES hold plain values; tag them only inside event records. Compare a tagged "
+        "value with = and #, but order the number inside: x.v <= 22, never x <= Num(22).\n"
+        "6. Times are in SECONDS.\n\n"
         # CHECK YOUR OWN WORK. Without this the tools are present and unused: a model asked for two
         # files returns two files. The instruction is specific about WHEN, because a check run
         # after the answer has been given is a check nobody acts on.

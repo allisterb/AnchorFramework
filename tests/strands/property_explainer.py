@@ -106,6 +106,82 @@ def main() -> int:
     check("the tagging is not shown to the reader as content",
           "Num(" not in allowed.says and "22" in allowed.says, allowed.says)
 
+    # --- a decision held in a helper -------------------------------------------------------------
+    # Drafters wrap the decision: `TransferAllowed == D!Decide(...)`. Read only as a CALL, a claim
+    # `~TransferAllowed` came out as "TransferAllowed does not hold" -- to the reviewer, and to the
+    # person approving it -- and 15 of 36 recorded drafts could not be read for direction at all.
+    # Each shape is asserted in its sense, both ways, and so is what must NOT count as a decision.
+    helpers = explain(module(
+        "Requests == {[port |-> Num(22)], [port |-> Num(443)]}\n"
+        "VARIABLE req\n"
+        "Init == req \\in Requests\n"
+        "Next == UNCHANGED req\n"
+        "Spec == Init /\\ [][Next]_req\n"
+        "\n"
+        "TradeAllowed == D!Decide(<<Request(\"Connect\", req)>>, Policies, 1, AllValues)\n"
+        "\n"
+        "Allowed == Grants(req)\n"
+        "\n"
+        "Wrapped(r) == LET s == <<Request(\"Connect\", r)>>\n"
+        "              IN D!Decide(s, Policies, 1, AllValues)\n"
+        "\n"
+        "IsSshGrant(r) == r.port = Num(22) /\\ Grants(r)\n"
+        "\n"
+        "Either == IF req.port = Num(22) THEN Grants(req) ELSE TradeAllowed\n"
+        "\n"
+        "Mixed == IF req.port = Num(22) THEN Grants(req) ELSE TRUE\n"
+        "\n"
+        "DecideIndex == 1\n"
+        "\n"
+        "IndexOk == DecideIndex > 0\n"
+        "\n"
+        "Loop1 == Loop2\n"
+        "\n"
+        "Loop2 == Loop1\n"
+        "\n"
+        "HttpsRefused == (req.port = Num(443)) => ~TradeAllowed\n"
+        "\n"
+        "SshAllowed == (req.port = Num(22)) => Allowed\n"
+        "\n"
+        "SshViaLet == (req.port = Num(22)) => Wrapped(req)\n"
+        "\n"
+        "NotAnSshGrant == ~IsSshGrant(req)\n"
+        "\n"
+        "IndexIsFine == IndexOk\n"
+        "\n"
+        "EitherWay == ~Either\n"
+        "\n"
+        "MixedWay == ~Mixed\n"
+        "\n"
+        "Circular == Loop1\n",
+        "SPECIFICATION Spec\nINVARIANT HttpsRefused\nINVARIANT SshAllowed\nINVARIANT SshViaLet\n"
+        "INVARIANT NotAnSshGrant\nINVARIANT IndexIsFine\nINVARIANT EitherWay\nINVARIANT MixedWay\nINVARIANT Circular\n"))
+
+    c = claim_named(helpers, "HttpsRefused")
+    check("a decision held in a helper with no arguments forbids a GRANT when negated",
+          "the policy GRANTS it (TradeAllowed)" in c.forbids, c.forbids)
+    c = claim_named(helpers, "SshAllowed")
+    check("...and an alias of another decision forbids a REFUSAL",
+          "the policy REFUSES it (Allowed)" in c.forbids, c.forbids)
+    c = claim_named(helpers, "SshViaLet")
+    check("...and one written as LET ... IN D!Decide(...) is read through the LET",
+          "the policy REFUSES it" in c.forbids, c.forbids)
+    c = claim_named(helpers, "NotAnSshGrant")
+    check("a helper that CONTAINS a decision is quoted, not said to be one",
+          "the policy" not in c.forbids and "IsSshGrant" in c.forbids, c.forbids)
+    c = claim_named(helpers, "IndexIsFine")
+    check("a helper whose text mentions DecideIndex is not a decision",
+          "the policy" not in c.forbids, c.forbids)
+    c = claim_named(helpers, "EitherWay")
+    check("IF ... THEN a decision ELSE a decision is a decision",
+          "the policy GRANTS it (Either)" in c.forbids, c.forbids)
+    c = claim_named(helpers, "MixedWay")
+    check("...but not when one branch is something else",
+          "the policy" not in c.forbids, c.forbids)
+    c = claim_named(helpers, "Circular")
+    check("a circular definition ends the search instead of looping",
+          "the policy" not in c.forbids, c.forbids)
+
     # --- the counting -----------------------------------------------------------------------------
     check("the states are enumerated from Init", len(x.states) == 2, str(x.states))
     check("a condition true in one state applies to one state",

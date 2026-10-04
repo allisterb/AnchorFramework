@@ -154,8 +154,15 @@ EXTENDS Integers, Sequences, FiniteSets, {extends}
 \\* reproduction and the fix, and `tests/policies/eval_join.dw` holds the line.
 T == INSTANCE TLC
 
+\\* THE EXPRESSION GETS A DEFINITION OF ITS OWN, starting at column 0 on a line of its own. It used
+\\* to sit inside the junction list below, where any continuation line starting left of the bullets
+\\* ENDED the list mid-expression: every multi-line expression a caller wrote failed to parse,
+\\* `<<1,\\n2>>` included. Here its columns are exactly the caller's, and no list surrounds it.
+AnchorEvalValue ==
+{expr}
+
 ASSUME /\\ T!PrintT("{start}")
-       /\\ T!PrintT({expr})
+       /\\ T!PrintT(AnchorEvalValue)
        /\\ T!PrintT("{end}")
 ============================================================================
 """

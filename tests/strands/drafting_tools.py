@@ -8,8 +8,9 @@ sessions in a row died on one typing rule.
   1. THE BOUNDARY, and it is the reason this file exists. `score` asks whether the property notices
      the policy breaking, and a model that can RUN that will tune the property until it catches a
      mutant -- optimising against the gate instead of stating the requirement. That is the
-     most-reported pathology in the field and `reference/README.md` records TLA-Prover's models
-     learning it. So: the mechanical checks yes, the gates that judge it no, asserted by name and
+     documented failure mode; TLA-Prover (arXiv:2606.06133) names it for TLA+ and
+     keeps its mutation gate out of the model's hands for the same reason. So: the mechanical
+     checks yes, the gates that judge it no, asserted by name and
      by behaviour rather than by reading the list.
   2. THEY ANSWER, and correctly, on the real fixtures -- including the failure that cost the three
      sessions, which `check_module` reports in one call.
@@ -130,6 +131,12 @@ def they_answer() -> None:
 
         value = call(by, "evaluate", expression="Num(22) = Num(22)", module=mod, config=cfg)
         check("an expression evaluates to a value", "TRUE" in value, value[-200:])
+        # MULTI-LINE, AS A MODEL WRITES IT. The wrapper used to put the expression inside a junction
+        # list, where a continuation line starting left of the bullets ended the list: every
+        # multi-line expression failed to parse. Five tool calls in the recorded runs died this way.
+        value = call(by, "evaluate", expression="LET s == Num(22)\nIN s.v + 1", module=mod,
+                     config=cfg)
+        check("...and so does one written over several lines", "23" in value, value[-200:])
 
 
 def the_failure_that_cost_three_sessions() -> None:

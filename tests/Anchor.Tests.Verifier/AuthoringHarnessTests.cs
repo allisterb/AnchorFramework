@@ -38,11 +38,11 @@ public class AuthoringHarnessTests : TestsRuntime
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Drafting is a convenience; refusing to keep one that says nothing is the feature. The
-    /// most-reported pathology in agentic verification is a model asked to produce both an artifact
-    /// and its specification discovering that a trivial specification is the cheapest way to pass —
-    /// and the failure mode is a property that is perfectly, uselessly <i>true</i>. Mutation is the
-    /// only mechanical defence: break the policy and see whether the property notices.
+    /// Drafting is a convenience; refusing to keep one that says nothing is the feature. A
+    /// documented failure in agentic verification (measured by Lahiri, arXiv:2608.21516) is a model asked to produce both an
+    /// artifact and its specification discovering that a trivial specification is the cheapest way
+    /// to pass — and the failure mode is a property that is perfectly, uselessly <i>true</i>.
+    /// Mutation is the mechanical defence here: break the policy and see whether the property notices.
     /// </para>
     /// <para>
     /// The negative case is the one that matters, and it is asserted three ways — the draft is
@@ -480,8 +480,8 @@ public class AuthoringHarnessTests : TestsRuntime
     /// <b>The boundary is what this test is really for.</b> There is no mutation scoring here and
     /// there never should be: <c>score</c> asks whether the property notices the policy breaking,
     /// and a model that can run it will tune the property until it catches a mutant — optimising
-    /// against the gate rather than stating the requirement, which is the most-reported pathology
-    /// in this field and the thing the whole pipeline shape exists to prevent. The reviewing model
+    /// against the gate rather than stating the requirement, a documented failure mode in agentic
+    /// verification and the thing the whole pipeline shape exists to prevent. The reviewing model
     /// is absent for the same reason. Asserted by name <i>and</i> by inspecting every tool's actual
     /// output, because a tool that merely shelled out with <c>--mutation-score</c> would pass a
     /// name check and hand the model the gate anyway.

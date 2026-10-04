@@ -3,8 +3,8 @@
     python tests/strands/property_authoring.py
 
 THE GATE IS THE FEATURE. Drafting a property module is a convenience; refusing to keep one that
-says nothing is what makes the convenience safe. The literature's most-reported pathology in
-agentic verification is a model asked to produce both an artifact and its specification
+says nothing is what makes the convenience safe. A documented failure in agentic verification
+(measured by Lahiri, arXiv:2608.21516) is a model asked to produce both an artifact and its specification
 discovering that a trivial specification is the cheapest way to pass -- and the failure mode is a
 property that is perfectly, uselessly true.
 
