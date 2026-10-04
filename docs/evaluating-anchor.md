@@ -98,26 +98,34 @@ no: *can this permit ever grant anything*, *is this rule doing anything*, and wi
 
 ## 2. The question that needs you  — *12 seconds, no API key*
 
-This is the finding the project exists for, and it comes from a real AWS article's example.
+This is the kind of finding the project exists for, and this one comes from Dogwood's own repository.
 
 ```bash
 docker run --rm -w /app public.ecr.aws/v4q7x8t1/anchor:latest \
-    check examples/aws2/agent-policy.dw --property examples/aws2/CumulativeCap.tla --max-fields 8
+    check examples/dogwoodrepo1/skill-set.dw --property examples/dogwoodrepo1/SuccessfulRead.tla
 ```
 
 ```
-BROKEN  Invariant ARefusedAttemptDoesNotConsumeTheBudget is violated by the initial state:
-    scenario = "afterRefused"
+BROKEN  Invariant NoWriteAfterADeniedRead is violated by the initial state:
+    scenario = "deniedRead"
 ```
 
-The requirement, quoted from the article, is *"block a transfer if the total amount **transferred**
-in the past 12 hours would exceed $50,000."* The policy sums `::request` — the **attempt**. Under
-AgentCore's convention an attempt is recorded whether or not it succeeded, so one refused $60,000
-request blocks every transfer for twelve hours having moved no money.
+The policy is the write-after-read rule as Dogwood's `autoformalize-policies` agent skill prints it.
+It permits a Write only if the user "read" the same document within the hour, and it gates on
+`Read::request`, the **attempt**. The Dogwood guide prints the same rule on `Read::response`, which
+it glosses as "successfully read". An attempt is recorded whether or not it succeeded, so the
+skill's version lets a user who was **refused** read access write the document anyway, by attempting
+the read first. The Dogwood engine, replaying the session, agrees.
 
-Run mode 1 on that same file and all seven rules report **live**. The rule is live. It is also
+Run mode 1 on that same file and all three rules report **live**. The rule is live. It is also
 wrong. That gap is the whole argument, and closing it took somebody writing down what the policy was
-supposed to mean.
+supposed to mean. `examples/dogwoodrepo1/README.md` has the guide's version as a control, and a
+decision table.
+
+`examples/aws2` shows the same distinction from the other side. AWS's natural-language article
+translates a $50,000 cap as a sum of `::request`, attempts rather than completed transfers, and *says
+so*, as "the safer reading for a cap". So it is recorded as a cost there, not a defect. The
+difference between the two is exactly whether anyone wrote down which was meant.
 
 ## 3. What a claim will actually catch  — *instant*
 

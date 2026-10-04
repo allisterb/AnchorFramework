@@ -10,7 +10,9 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Docs", "Docs", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
 	ProjectSection(SolutionItems) = preProject
 		.gitignore = .gitignore
+		CHANGELOG.md = CHANGELOG.md
 		CLAUDE.md = CLAUDE.md
+		EXISTING-RESEARCH.md = EXISTING-RESEARCH.md
 		NOTICES.md = NOTICES.md
 		src\translator\README.md = src\translator\README.md
 		src\checker\README.md = src\checker\README.md

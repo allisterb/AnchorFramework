@@ -34,6 +34,14 @@ python/
 **/*.pyc
 .venv/
 
+# Local scratch output: gitignored, so it exists only on the machine that built the image, and it
+# carries that machine's paths (TLC prints the absolute path of every module it parses). Nothing
+# reads either at runtime -- TLC WRITES states/ under its working directory, and still can.
+# Committed example output (findings, traces, witness logs) is NOT matched by these.
+examples/*/testoutput/
+examples/*/testprop/
+**/states/
+
 # Version control and IDE state.
 .git/
 .github/

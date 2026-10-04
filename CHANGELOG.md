@@ -1,14 +1,11 @@
 # Changelog
 
-Container images are published to `public.ecr.aws/v4q7x8t1/anchor`, for `linux/amd64` and
-`linux/arm64` under each tag.
+## 0.1.3
 
-## Unreleased
+### Added: `CheckDecisionTable`
 
-### Added — `CheckDecisionTable`
-
-**A new MCP tool, and `src/checker/table.py` behind it, that checks a policy set against a decision
-table**: sessions of requests, each with the ALLOW or DENY it should get. Every decision goes to
+A new MCP tool, and `src/checker/table.py` behind it, that checks a policy set against a decision
+table: sessions of requests, each with the ALLOW or DENY it should get. Every decision goes to
 Anchor's model and to the Dogwood engine. Each one comes back with the expected verdict, both
 checkers' verdicts, and which rules decided it, and a decision where the two checkers disagree with
 each other is flagged as a defect in Anchor. It is the way to check a policy against what somebody
@@ -21,38 +18,36 @@ rather than only the first. The case-module code moved from `tests/strands/dogwo
 to `src/translator/cases.py`, and the table format from `agentcore_conformance.py` to
 `checker/table.py`; the harnesses now import both.
 
-### Added — AgentCore policies, checked as published
+### Added: AgentCore policies, checked as published
 
-**A policy written for Amazon Bedrock AgentCore is checked as AWS writes it**: gateway scope
-`resource == AgentCore::Gateway::"arn:…"` and `eventResource: resource` joins included. Both used to
-be refused, so every AgentCore temporal policy had to be edited by hand before Anchor would look at
-it. All 26 of the AgentCore guide's checkable temporal examples now reproduce every decision AWS
+A policy written for Amazon Bedrock AgentCore is checked as AWS writes it: gateway scope
+`resource == AgentCore::Gateway::"arn:…"` and `eventResource: resource` joins included. All 26 of the AgentCore guide's checkable temporal examples now reproduce every decision AWS
 states for them (163 decisions; `tests/strands/agentcore_conformance.py`).
 
-- **The reading is chosen automatically.** A policy binding `eventResource` or `eventPrincipal` is
+- The reading is chosen automatically. A policy binding `eventResource` or `eventPrincipal` is
   read under AgentCore's own event schema, history partitioned by session, and the run says so.
   It is shipped as `src/translator/agentcore.dwschema`, transcribed from the AgentCore guide and
   corroborated against the Dogwood engine. An explicit `--event-schema`, `--pinned` or `--unpinned`
   still wins.
-- **Scope fields are recognised by type.** An event schema's `principalType(A)` and
+- Scope fields are recognised by type. An event schema's `principalType(A)` and
   `resourceType(A)` fields are the scope fields whatever they are called, as in Dogwood itself.
   `actor`, `eventPrincipal` and `callerPrincipal` are one case, not three names.
-- **A gateway scope naming one entity** is accepted. A set scoping rules to two different ones is
+- A gateway scope naming one entity is accepted. A set scoping rules to two different ones is
   refused: check each gateway's rules on their own.
-- **REJECTED BY AGENTCORE** is a new answer, exit 2. It covers a temporal predicate without
+- REJECTED BY AGENTCORE is a new answer, exit 2. It covers a temporal predicate without
   `eventResource: resource`, or more than three `formerly`/`previous`/`since` in one policy.
   AgentCore would refuse to create such a policy, so nothing is checked. When `count`/`sum` might
   take a policy over the three-operator quota, the run warns instead. It is not stated whether they
   count.
-- **Refused under the AgentCore reading:** `previous`, and `since` with a positive left operand.
+- Refused under the AgentCore reading: `previous`, and `since` with a positive left operand.
   An AgentCore session can span gateways, and both read events a one-gateway model cannot see.
-- **`--witness` replays in AgentCore's terms**: `eventPrincipal`/`eventResource`, a `sessionId`,
+- `--witness` replays in AgentCore's terms: `eventPrincipal`/`eventResource`, a `sessionId`,
   the policy's own gateway, under `agentcore.dwschema`. Written in Dogwood's default terms, the
   replay would have judged a different policy, with every gateway-scoped rule simply not applying.
 
-### Changed — `examples/aws1` checks the article as published
+### Changed: `examples/aws1` checks the article as published
 
-**`examples/aws1` now holds the AgentCore blog post's policies verbatim** and checks them against the
+`examples/aws1` now holds the AgentCore blog post's policies verbatim and checks them against the
 post's own decision tables (`examples/aws1/tables/`). Before, it held transcriptions that had dropped
 more than they said. Deployed together, the post's policies allow a trade from an empty trajectory:
 two of its four `execute_trade` permits match one. That is the headline among 16 findings, each
@@ -60,21 +55,80 @@ reproduced by Anchor and confirmed by the Dogwood engine. `examples/aws1/fixed/`
 corrected, and satisfies every row of every table. The conformance harnesses take `--suite DIR`, and
 a decision line may be marked `finding`.
 
-### Changed — `examples/aws2` under AgentCore's semantics
+### Changed: `examples/aws2` under AgentCore's semantics
 
-**`examples/aws2` is checked under AgentCore's own reading** (history per session) and against its
+`examples/aws2` is checked under AgentCore's own reading (history per session) and against its
 article's published text, which its transcriptions turn out to match exactly. That reading shows
 two things the earlier per-principal reading could not:
 
-- **The article's $50,000 / 12-hour transfer cap is a per-session cap.** A second $40,000 transfer
+- The article's $50,000 / 12-hour transfer cap is a per-session cap. A second $40,000 transfer
   in a new session is allowed, which the engine confirms. The article itself names cross-session
   limits as outside what enforcement can do, then translates one without saying so.
-- **AgentCore would refuse to create four of the five policies**, because none binds the
+- AgentCore would refuse to create four of the five policies, because none binds the
   `eventResource: resource` the Developer Guide makes mandatory.
 
 The finding aws2 reported before, that a refused transfer counts against the cap, is now presented
 as the article's stated choice ("the safer reading for a cap"), with its cost. The conformance format
 gains `@T session=s2` for a second session.
+
+### Added: drafting mistakes in a property module are named precisely, and the drafter is given the rules
+
+Drawn from about 45 recorded drafting attempts. Three checks name a recorded mistake instead of
+leaving it to a run-time error, or to no error at all:
+
+- **`author.tagged_orderings`**, in `preflight`, rejects an ordering operator beside a tag
+  constructor (`x <= Num(2500)`) and gives the line. It runs inside both `check_module` and the
+  pipeline. It flags none of the repo's 17 property modules. It would have rejected the two
+  historical drafts that wrote this pattern, both of which had crashed.
+- **`author.diagnose`** reads TLC's own error and says which mistake it was: ordering a tagged
+  value, comparing a tagged value with a plain one, or a variable ranging over tagged values. The
+  general hint is used only when the message is none of these.
+
+- **`author.misplaced_fields`**, in `preflight`, rejects a value placed in the half of an event the
+  policy never reads it from. For example, `profile_id` in a lookup's output, when the policy reads
+  the lookup's input. One recorded draft did this and passed every gate while testing nothing. The
+  check is deliberately narrow: it leaves alone a value echoed in both halves, and one the policy
+  reads from neither. It flags none of the repo's property modules.
+
+**`check_module` warns, and does not reject, when every claim says the policy must refuse.** No
+mutation that removes a permission can break such a module. Of 36 recorded drafts, 19 were
+refusal-only and 63% of those were rejected at mutation scoring, against 33% of drafts with claims
+both ways. Two refusal-only drafts passed, and a pure prohibition is a real requirement, so it is
+advice: it names the claims and the reason, minutes before scoring would. It is read through the
+explainer, and a claim the explainer cannot read counts as neither direction.
+
+**The drafter's system prompt now states six rules**, each a recorded way a draft failed. The
+vocabulary's `rules_for_writing_one`, which every agent receives, carries the same ones:
+
+1. Decide the allowed and denied cases from the requirement before evaluating the policy.
+2. Include one claim that a specific, fully compliant session is allowed. "X requires Y" means
+   "without Y, refused", not "with Y, always allowed".
+3. Put prerequisites in the session.
+4. Put each value where the policy reads it.
+5. Keep variables plain, and order tagged numbers by `.v`.
+6. Times are in seconds.
+
+The vocabulary's own tagging rule ("Write Num(22), never 22") was the sixth copy of the wrong
+comparison rule, and is corrected.
+
+Pinned by `tests/strands/draft_diagnostics.py`, against TLC's real output.
+
+The property-module article gains three sections, all built from the same evidence: a six-phase
+workflow, the TLA+ constructs recorded drafts got wrong (each checked against SANY), and a table
+from error message to fix. The workflow says to decide the cases from the requirement before looking
+at the policy, to put prerequisites in the session, and to write at least one claim that a specific
+compliant session is allowed. Most failures, once the mechanics were right, came from those three.
+
+### Added: `examples/dogwoodrepo1`, Dogwood's own write-after-read example
+
+The `autoformalize-policies` agent skill in Dogwood's repository prints the guide's flagship
+temporal example with `Read::request` where the guide has `Read::response`, and so permits a Write
+after a *denied* Read. `examples/dogwoodrepo1` checks both versions, verbatim, as policy sets:
+- rule by rule;
+- against a stated intention, `SuccessfulRead.tla`, with a twin as the control;
+- against a decision table written from the guide's sentence.
+
+Anchor's model and the Dogwood engine agree on every verdict. See its README.
 
 ### Changed
 
@@ -85,7 +139,56 @@ the MCP tool description and `Reading` field, and the `event-schemas-and-pins` k
 
 ### Fixed
 
-**An aggregate written `exists (n: Long). (count …) == n && n > 3` is no longer refused.** Anchor
+**The explainer recognises the policy's decision behind a helper.** It recognised a decision only
+as a call (`Grants(req)`), while drafters often write `TransferAllowed == D!Decide(...)`. A claim
+like `~TransferAllowed` then read as "TransferAllowed does not hold", to the reviewer judging the
+claim and to the person approving it in `hitl`. It now follows a decision through four shapes:
+- a helper with no arguments;
+- an alias of another helper;
+- a `LET ... IN`;
+- an `IF` or `CASE` whose every branch is a decision.
+
+A body that merely *contains* a decision (`origin = "external" /\ Grants(r)`) is still quoted, not
+translated. The test is structural now: it used to ask whether the text contained the word
+"Decide", which a body mentioning `DecideIndex` satisfies. Of 36 recorded drafts, the direction of
+every claim could not be read in 15; now 5, all because the claim itself is outside the reader's
+subset.
+
+The guidance for comparing a tagged value was wrong, and drafters followed it. The property-module
+article, both hints shown after a failed draft (`TAGGING` in `pipeline.py`, `TAGGING_HINT` in
+`drafting.py`), the checker's own run-time hint and the `DescribePolicyModule` description all gave
+`x <= Num(22)` as the right form. It fails at run time exactly as `x <= 22` does, because `Num(22)`
+is a record: `=` and `#` take two tagged values, but `<`, `<=`, `>` and `>=` need the number
+inside, `x.v <= 22`. This was the commonest way a drafted module died, in seven recorded attempts.
+All five places now say so.
+
+`EvaluateExpression`, and the drafter's `evaluate` tool, could not evaluate any expression written
+over more than one line. The wrapper put the expression inside a junction list, where a
+continuation line starting left of the bullets ended the list. `<<1,\n2>>` failed. The expression
+now gets a definition of its own, at column 0.
+
+The property-module article named the MCP tools, while the drafter it is given to has
+`check_module`, `evaluate` and `what_it_forbids`. Its tool table now names both.
+
+An audit of AgentCore policies said it used Dogwood's default reading. The checker reads a
+policy set binding `eventResource` under AgentCore's schema automatically, but the report's
+event-schema line still said "pinned by `callerPrincipal`, Dogwood's default". It now names
+AgentCore's schema and the sets it applied to (`results.json` gains `agentcore`).
+
+`findings.html` drew no rule shapes for an AgentCore policy. The timeline parsed every policy
+under Dogwood's default schema, which has no `eventResource`. It now parses under the event schema
+kept beside the witness.
+
+`results.json` held absolute paths when written by `anchor check`, which passes the target as a
+full path. `directory` and `artifacts` are now relative to the repository, or to the audited
+directory's parent outside it.
+
+The image carried local scratch output: gitignored test runs under `examples/aws1/` and TLC's
+`states/` directories, with the build machine's paths in them. `.dockerignore` now excludes both.
+Witness `.log` files, which ARE evidence, are now committed (a `.gitignore` exception), so every
+example's findings replay from a clone or the image.
+
+An aggregate written `exists (n: Long). (count …) == n && n > 3` is no longer refused. Anchor
 accepted the `exists` idiom only with its body in parentheses, `exists (n: Long). ((count …) == n
 && n > 3)`, which is how Dogwood's corpus writes it. AWS's AgentCore guide writes every aggregate
 without them. That is equally legal Dogwood, since an `exists` scope runs to the right, and
@@ -93,18 +196,18 @@ without them. That is equally legal Dogwood, since an `exists` scope runs to the
 guide was refused as outside the modelled subset. Both forms now mean the same thing. Dogwood's
 corpus differential is unchanged at 923 pairs.
 
-**A wall-clock rule demanding a time past midnight is reported VACUOUS, not live.** The model's
+A wall-clock rule demanding a time past midnight is reported VACUOUS, not live. The model's
 domain for `context.system.now.toTime()` ran past 24h. So `toTime() >= duration("25h")`, which no
 request can satisfy, found a witness at 25:00 and was reported live. The time of day now stays
-within [0h, 24h).
+within [0h, 24h].
 
-**Two refusals now name what they refused.** `context.system.now >= datetime(…)` used to be refused
+Two refusals now name what they refused. `context.system.now >= datetime(…)` used to be refused
 with `expected '.', got '>='`, and a method on a request field (`context.input.wait.toHours()`)
 with `comparison operator '.'`. Neither said what the construct was. Both now do.
 
 ### Added
 
-**`context.system.now.toTime()` converted to an integer**, with `.toMilliseconds()`,
+`context.system.now.toTime()` converted to an integer, with `.toMilliseconds()`,
 `.toSeconds()`, `.toMinutes()`, `.toHours()` or `.toDays()` and compared against an integer
 literal. Cedar truncates these conversions, so `toHours() < 17` admits 16:59 and nothing later, and
 the model does the same. Comparing one against a `duration(…)` literal is refused as the Cedar
@@ -118,9 +221,7 @@ schema, an action schema for the guide's two gateways, and `tests/strands/agentc
 which runs the Dogwood engine over the same examples. The engine confirms all 163 expected
 decisions and reproduces a rejection message AWS quotes from the service. See `docs/agentcore.md`.
 
-## 0.1.3
-
-### Changed — breaking
+### Changed: breaking
 
 Two options are renamed, because in Anchor "model" means the TLA+ model TLC checks, and an option
 about the language model should not read as one about model checking. The old names are gone, not
@@ -133,7 +234,7 @@ aliased; a command using them now stops with `Option '...' is unknown`.
 
 `--provider` is unchanged. Help text that said "model" for the language model now says "LLM".
 
-**An audit is `check --full`, for a directory or a single policy set.** `check <directory>` used to
+An audit is `check --full`, for a directory or a single policy set. `check <directory>` used to
 audit, writing a report and asking an LLM, while `check <policy-set.dw>` could do neither, so a
 single policy set had no way to be audited. Now one flag means one thing whichever the shape:
 
@@ -149,7 +250,7 @@ ones found by header, and the report marks it as given. **`check <directory>` al
 that relied on it. Options that apply in only one mode are refused in the other, where several used
 to be silently ignored, among them `--event-schema` for a directory, which an audit now takes.
 
-**The default event-schema reading is now Dogwood's own: `callerPrincipal` pinned.** With no
+The default event-schema reading is now Dogwood's own: `callerPrincipal` pinned. With no
 `--event-schema`, a temporal condition sees only the requesting principal's earlier events, which is
 what a policy set deployed without a schema of its own gets. It used to be the opposite, unpinned —
 every principal's events — so an unconfigured check answered about a deployment nobody gets unless
@@ -160,7 +261,7 @@ whose schema has no universal pin. The reading is stated in every run, as before
 
 ### Added
 
-- **`--pinned` and `--unpinned` on `anchor check`**, for a single policy set and for a directory
+- `--pinned` and `--unpinned` on `anchor check`, for a single policy set and for a directory
   audit, and as `pinned` on the MCP `CheckPolicy` tool. `--pinned` was recommended by the checker's
   own warning and rejected by the CLI as an unknown option. Only one of `--event-schema`, `--pinned`
   and `--unpinned` may be given: the checker used to take the first and ignore the rest, silently.

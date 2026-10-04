@@ -90,10 +90,6 @@ for a trade is allowed by the published set:
 python src/checker/properties.py examples/aws1/agent-policy.dw --property examples/aws1/EmptyTrajectory.tla --witness
 ```
 
-The finding earlier versions of this example reported — that the integrity and freshness checks are
-alternatives, not requirements — is the same effect seen from two of the four permits. With all four
-in the set, closing it means more than joining those two.
-
 ### 2. Policy 7 is inverted
 
 > "After 15 minutes without advisor interaction, the agent loses access to write operations."
@@ -191,18 +187,6 @@ puts the questions in [`questions.md`](questions.md) to an agent, which calls a 
 when there is something to look at, so it can gate a pipeline, and **3** when the run could not happen
 at all. The tables are checked by the two harnesses above.
 
-## Earlier versions of this example
-
-Until 2026-10-02 this directory held **transcriptions**, made on 2026-09-13, that differed from the
-published text in more than the README then recorded. Policy 1's `FinTarget___` prefixes were
-dropped; policy 7 had only `execute_trade` of its two actions; policies 2–6 were said to have lost
-gateway scopes they never had; and every `eventResource: resource` join was removed, because Anchor
-did not yet model AgentCore's event schema. Whether the article changed or the transcription
-simplified cannot be told from here.
-
-Those transcriptions supported two findings: policy 7 inverted (finding 2 above, unchanged), and the
-trade protections being alternatives (now part of finding 1). `transcript.md` is the agent's run on
-them, and is kept as a record of that run.
 
 ## What this example is evidence for
 

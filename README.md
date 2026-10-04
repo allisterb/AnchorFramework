@@ -1,35 +1,37 @@
 # Anchor
 
 ## About
-Anchor is an agentic formal verification framework that uses the [TLA+](https://lamport.azurewebsites.net/tla/tla.html) formal specification language and model checker to formally verify Amazon Dogwood temporal policies, and provides a Strands SDK agent that allows humans to perform formal verification of these policies and code using natural language questions and prompts, without knowing the technical details of the formal verification framework or tools or theory.
+Anchor is an agentic formal verification framework that uses the [TLA+](https://lamport.azurewebsites.net/tla/tla.html) formal specification language and model checker to formally verify AWS [Dogwood](https://aws.amazon.com/blogs/opensource/introducing-dogwood-runtime-verification-for-ai-agents/) temporal policies, and provides a [Strands Agents SDK](https://strandsagents.com/) agent that allows humans to perform formal verification of these policies using natural language prompts and questions without knowing the technical details of the formal verification language or tools or theory.
 
-Anchor allows developers and engineers and administrators to use the benefits of formal verification without requiring the specialized knowledge and skills formal methods typically demands. It uses a graph-based Strands multi-agent workflow to try to address the [known issues](https://arxiv.org/html/2606.05792v1) in agentic formal verification.
+Anchor allows developers and engineers and administrators to use the benefits of formal verification without requiring the specialized knowledge and skills formal methods typically demand. It uses a graph-based Strands multi-agent workflow to try to address the [known issues](EXISTING-RESEARCH.md) in agentic formal verification.
 
 Anchor provides:
 
-* A parser and [translator](https://github.com/allisterb/Anchor/tree/master/src/translator) from the Dogwood policy language to TLA+.
-* A [specification](https://github.com/allisterb/Anchor/tree/master/specs/policy/TemporalPolicy) that models a large subset of Dogwood temporal policy semantics, validated in [CI](https://github.com/allisterb/Anchor/actions/workflows/build.yml) against the Dogwood unit test and examples corpus.
-* A [model property checker](https://github.com/allisterb/Anchor/tree/master/src/checker) that checks:
+* A parser and [translator](https://github.com/allisterb/AnchorFramework/tree/master/src/translator) from the Dogwood policy language to TLA+.
+* A [specification](https://github.com/allisterb/AnchorFramework/tree/master/specs/policy/TemporalPolicy) that models a large subset of Dogwood temporal policy semantics, validated in [CI](https://github.com/allisterb/Anchor/actions/workflows/build.yml) against the Dogwood unit test and examples corpus.
+* A [model property checker](https://github.com/allisterb/AnchorFramework/tree/master/src/checker) that checks:
      * *derivable* property checks, which can be mechanically derived from all policies e.g. "is this policy vacuous or redundant?"
-     * *intentional* property checks where a human or agent authors a check to explicitly capture the intent or requirements of a policy or workflow e.g. "Does this firewall policy block all inbound connections from external addresses?"
+     * *intentional* property checks where a human or agent authors a *property module* to explicitly capture the intent or requirements of a policy e.g. "Does this Dogwood policy forbid all trades without a human interaction for more than 15 minutes?"
 * An [input scanner](src/checker/scan.py) that reads a policy's inputs for hidden characters, look-alike names, instructions aimed at a model and markup, before an agent, a browser or a terminal is shown them.
-* A self-contained [HTML report](#auditing-a-directory), `findings.html`, that draws each broken claim as the session that breaks it, with the reference engine's verdict on every decision.
-* An [MCP server](https://github.com/allisterb/Anchor/tree/master/src/Anchor.MCPServer) that provides the following tools to agents:
+* A self-contained [HTML report](#auditing-a-directory), `findings.html`, that draws each broken policy claim as the session that breaks it, with the reference Dogwood engine's verdict on every decision.
+* An [MCP server](https://github.com/allisterb/AnchorFramework/tree/master/src/Anchor.MCPServer) that provides the following tools to agents:
     * The TLA+ SANY parser and a TLA+ evaluator to assist in code generation
-    * The Dogwood translator and model property checker 
+    * The Dogwood to TLA+ translator and model property checker 
     * Knowledge resources that an agent can use to author TLA+ specifications and property modules.
-* A Strands [agentic workflow](https://github.com/allisterb/Anchor/tree/master/src/agent) for autonomous and HITL formal verification of Dogwood policies.
+* A Strands [agentic workflow](https://github.com/allisterb/Anchor/tree/master/src/agent) for autonomous and HITL generation of Dogwood policy property modules.
+
 * A [CLI](https://github.com/allisterb/Anchor/tree/master/src/Anchor.CLI) that provides command-line access to the framework tools and MCP server and agent workflow launcher .
 
 Anchor's formal verification can proceed in three modes. 
 
-* `check` Mechanically checks a Dogwood policy against a mechanically translated base policy specification and an existing TLA+ property module that captures the intent of the policy. The most precise
-mode but it requires an existing TLA+ property module and the knowledge to author one accurately. 
-* `auto` This is the autoformalization mode. The only artifact a human supplies is a natural language brief that describes the intent of the policy. The agent is handed a vocabulary derived mechanically from
-the policy, a knowledge article on how to write a property module, and the brief, and it writes the TLA+ module. It never sees the policy's rule conditions, so what it drafts cannot be a restatement of the policy. Three models and four gates stand between a property module draft and a acceptance verdict. An accepted property is model-checked against the policy set in the same run, a BROKEN one replayed in Dogwood as the session that breaks it, and the run ends with the verdicts and the `check --full` command that audits with the new module. Needs no formal methods knowledge on the user's part.
+* `check` Mechanically checks a Dogwood policy set file against a mechanically translated base policy specification and an existing TLA+ property module that captures the intent of the policy set. The most precise
+mode and it does not require an LLM, but it requires an existing TLA+ property module and the knowledge to author one accurately. 
+
+* `auto` This is the autoformalization mode. The only artifact a human supplies is a natural language brief that describes the intent of the policy set. The agent is handed a vocabulary derived mechanically from
+the policy set, a knowledge article on how to write a property module using the Anchor MCP tools and the brief, and it autonomously writes the TLA+ module. It never sees the policy set's rules, so what it drafts cannot be a restatement of the policy set. Three models and four gates stand between a property module draft and a acceptance verdict. An accepted property module is model-checked against the policy set in the same run, a BROKEN one replayed in Dogwood as the session that breaks it, and the run ends with the verdicts and a `check --full` run that checks the policy set with the newly generated property module. Needs no formal methods knowledge on the user's part but requires an LLM.
 
 
-* `hitl` Similar to auto mode but with one additional step: when a gate rejects a property module draft, it asks the person about the problem *requirement*, (never about TLA+), folds the answer into the brief and tries drafting the property module again. Before the property module is used, it reads the claim back in plain English for the user to confirm the intent is accurate. Needs no formal methods knowledge on the user's part.
+* `hitl` Similar to auto mode but with one additional step: when a gate rejects a property module draft, it asks the person about the problem *requirement*, (never about TLA+), folds the answer into the brief and tries drafting the property module again. Before the property module is used, it reads the claim back in plain English for the user to confirm the intent is accurate. Needs no formal methods knowledge on the user's part but requires an LLM.
 
 ## Architecture diagram
 ![Anchor architecture](docs/images/architecture.svg)
@@ -47,13 +49,8 @@ docker pull public.ecr.aws/v4q7x8t1/anchor:latest
 docker run --rm public.ecr.aws/v4q7x8t1/anchor:latest version
 ```
 
-The image is on Amazon ECR Public, and pulling it needs no AWS account or login. `latest` is
-currently `0.1.3`; pin `public.ecr.aws/v4q7x8t1/anchor:0.1.3` for a fixed version. Docker Hub's
-`allisterb/anchor:0.1.0` is the image submitted to the hackathon, kept unchanged while judging runs;
-it predates the input scanner and `findings.html`.
-
-It is built for both `linux/amd64` and `linux/arm64` under the same tag, so Docker pulls the one
-that matches your machine and Apple Silicon runs it natively, with no `--platform` flag.
+The image is on Amazon ECR Public and is built for both `linux/amd64` and `linux/arm64` under the same tag, so Docker pulls the one
+that matches your machine and Apple Silicon runs it natively.
 
 The entry point is the `anchor` launcher, so arguments after the image name are the verb and its
 options — the container behaves like the command.
@@ -61,26 +58,27 @@ options — the container behaves like the command.
 ```bash
 docker run --rm public.ecr.aws/v4q7x8t1/anchor:latest help
 ```
+
+Your working directory is mounted at `/work`, which is the container's working directory, so paths
+read the way they do on your machine and output lands back on it. On Linux you can add
+`--user "$(id -u):$(id -g)"` so files come back owned by you.
+
 ```bash
+# Linux mount $PWD as /work in the container
 docker run --rm -v "$PWD:/work" public.ecr.aws/v4q7x8t1/anchor:latest check my-policy.dw
-```
 
- or Windows:
-
-```bash
+# Windows mount . as /work in the container
 docker run --rm -v ".:/work" public.ecr.aws/v4q7x8t1/anchor:latest check my-policy.dw
 ```
 
-Your working directory is mounted at `/work`, which is the container's working directory, so paths
-read the way they do on your machine and output lands back on it. On Linux add
-`--user "$(id -u):$(id -g)"` so files come back owned by you.
+See [Running](###running) for more info and examples of running Anchor.
 
+## Building
 ### Building Prerequisites
 If you want to build from source, you need:
 - **.NET 10 SDK.** The projects target `net10.0` and uses C# 14.
 - **A JDK, Java 11 or later**, on `JAVA_HOME` or `PATH`. TLC is run out-of-process on a real JVM, so
-  a JVM has to be there. **The build scripts do not install this** — they check for it and stop if
-  it is missing. Everything else they fetch themselves.
+  a JVM has to be there. 
 - **Python 3.13+**
 - **Rust 1.85+** for Dogwood. 
 ### Building
@@ -108,10 +106,10 @@ a fresh clone needs one of these before its first build.
 
 ### What gets fetched
 
-Two native binaries that NuGet cannot supply:
-- **tla2tools 1.7.4** used two ways: cross-compiled by IKVM for in-process SANY, and run on a real
+Two binaries that NuGet or PyPi  cannot supply get automatically fetched:
+- **tla2tools 1.7.4** (Java) used two ways: cross-compiled by IKVM for in-process SANY, and run on a real
   JVM for TLC.
-- **z3 4.12.1** (not used by Dogwood policy verification): the solver Dafny shells out to. Taken from
+- **z3 4.12.1** (native and not currently used by Dogwood policy verification): the solver Dafny shells out to. Taken from
   [dafny-lang/solver-builds](https://github.com/dafny-lang/solver-builds) — the build Dafny itself is
   tested against — rather than the upstream Z3Prover release. 
 
@@ -119,11 +117,9 @@ Two native binaries that NuGet cannot supply:
 Both are checked against pinned sha256 hashes on every run, whether just downloaded or already
 present, and a mismatch stops the build rather than being repaired silently.
 
-**z3 is pinned per platform.** Each OS gets a different binary from solver-builds, so one hash cannot
-cover them all, and solver-builds publishes no checksums of its own. Windows and Linux (x64) are
-recorded and both are built and tested in CI. macOS is not: there the build **warns and carries
-on without z3**, since z3 is only the solver Dafny shells out to and no part of the Dogwood policy
-path uses it. What it never does is install a binary it cannot verify.
+Both binary tools are pinned by their hash. z3 is pinned per platform: each OS gets a different native binary from solver-builds, so one hash cannot
+cover them all, and solver-builds publishes no checksums of its own. z3 binaries for Windows and Linux (x64) have recorded CI hashes but macOS does not so there the Anchor build warns and carries
+on since z3 is not part of the Dogwood policy checking path. What Anchor never does is fetch a binary it cannot verify.
 
 ### The Python environment
 
@@ -140,26 +136,31 @@ requirements\strands\install.cmd        # Windows
 
 **Name the version rather than saying `python3`.** Where `python3` is older, the environment is
 built with that one silently and the failure surfaces much later, as pip refusing a pin it cannot
-satisfy.
+satisfy. 
 
-The environment lives at `python/` in the repo root and is gitignored. That path is not a
-convention — it is where the launcher, `PythonProcess` on the .NET side, and the container image
-all look for an interpreter, so a venv made somewhere else has to be named with `ANCHOR_PYTHON`.
+All Python packages installed are hash-pinned. The environment lives at `python/` in the repo root and is gitignored. Anchor looks here by default for its Python tools so a venv made somewhere else has to be named with `ANCHOR_PYTHON`.
 
 ## Running
 
 Use the launcher scripts in the repo root:
 
 ```
-./anchor <verb> [args...]       # Linux, macOS
-./anchor.ps1 <verb> [args...]   # PowerShell
+./anchor <verb> [args...]       # Linux, PowerShell, macOS
 ```
 
 or from a container:
 ```bash
+# Linux
 docker run --rm -v "$PWD:/work" public.ecr.aws/v4q7x8t1/anchor:latest check my-policy.dw
+
+# Windows 
+docker run --rm -v ".:/work" public.ecr.aws/v4q7x8t1/anchor:latest auto policy.dw --config /config/appsettings.json --intent "..."
 ```
 
+You can use `ANCHOR_PYTHON` and `ANCHOR_CLI` environment variables to override the Python interpreter and the CLI binary respectively, otherwise the launcher
+takes the venv at `python/`, and a Release build before a Debug one under `src/Anchor.CLI/bin`.
+
+### Commands
 | verb | action| 
 |---|---|
 | `check` | check a policy set rule by rule, or against a property module you wrote; with `--full`, audit a policy set or a directory of them — writing `findings.md` and `findings.html` |
@@ -169,91 +170,62 @@ docker run --rm -v "$PWD:/work" public.ecr.aws/v4q7x8t1/anchor:latest check my-p
 | `scan` | read a policy's inputs for hidden text, look-alike names, instructions aimed at a model and markup |
 | `timeline` | redraw `findings.html` from the witnesses a check left, without re-running the checks |
 | `server` | the MCP server, over stdio or HTTP. The default verb |
-| `help [verb]` | get command-line help |
+| `help [verb]` | get command-line help on [verb]|
 
-`ANCHOR_PYTHON` and `ANCHOR_CLI` override the interpreter and the binary. Otherwise the launcher
-takes the venv at `python/`, and a Release build before a Debug one under `src/Anchor.CLI/bin`.
 
-### In a container, with nothing installed
-
-Four runtimes is a lot to ask of somebody who wants to check one policy.
-[`deploy/Dockerfile`](deploy/Dockerfile) carries all of them — .NET, a JVM, CPython, and the
-Rust-built `dogwood` binary — and its entry point is the launcher, so the container *is* the command.
-
+### Using LLM models
+The agentic modes: `auto` and `hitl` need a model which can be specified in an appsettings.json file and passed to the Anchor CLI e.g.
 ```bash
-./build-docker.sh          # or ./build-docker.ps1
-docker run --rm -v "$PWD:/work" anchor check tests/policies/firewall.dw
+# From the repo root, with the appsettings.json file in /config
+./anchor auto policy.dw --config /config/appsettings.json --intent "..."
+
+# Linux mount ~/.anchor as /config in the container
+docker run --rm -v "$PWD:/work" -v "$HOME/.anchor:/config:ro" public.ecr.aws/v4q7x8t1/anchor:latest auto policy.dw --config /config/appsettings.json --intent "..."
+
+# Windows mount $USERPROFILE\.anchor as /config in the container
+docker run --rm -v ".:/work" -v "$($env:USERPROFILE)\.anchor:/config" public.ecr.aws/v4q7x8t1/anchor:latest auto policy.dw --config /config/appsettings.json --intent "..."
 ```
 
-The script tags `anchor:<version>` and `anchor:latest`, where the version is `Directory.Build.props`'
-unless you name one: `./build-docker.sh 0.1.1` tags `0.1.1`, and `anchor version` inside the image
-reports it. Before the build context leaves your machine it checks that `.dockerignore` still keeps
-`appsettings.json` out, and that `ext/dogwood` is checked out, unmodified, at the commit that was
-audited. Afterwards it runs `version`, `scan` and `check` inside the new image, once per platform.
+You can also specify the environment variable `ANCHOR_APPSETTINGS` as a an alternative to `--config` to point to the appsettings.json file. 
 
-It builds `linux/amd64` and `linux/arm64` as **one multi-platform image**, which needs Docker's
-containerd image store (Docker Desktop's default for new installs, under Settings > General). `-p`
-(`-Platform`) builds just one, e.g. `-p linux/amd64`, and needs no containerd store.
+The appsettings.json file should contain the model provider and model name, as well as any necessary credentials (e.g., API keys) for the model provider.
+A single `-e GEMINI_API_KEY` also works if a key is all you need. A `--config` or `ANCHOR_APPSETTINGS` path that is not there is refused with exit 2. 
 
-It **pushes nothing**. `-r` names the repository to tag, e.g. `-r ghcr.io/you/anchor`, and the push
-commands are printed at the end for you to run; each push carries both platforms under the one tag.
-`-n` (`-DryRun`) runs the checks and prints the build command without building. The same build by
-hand:
-
-```bash
-docker buildx build -f deploy/Dockerfile --platform linux/amd64,linux/arm64 -t anchor:latest --load .
-```
-
-Your working directory is mounted at `/work`, which is the container's working directory, so paths
-read the way they do on the host and output written beside a policy lands back on the host. On Linux
-add `--user "$(id -u):$(id -g)"` so that output is owned by you rather than by the image's user.
-
-Building the platform your machine is not is where the time goes. The two **compile** stages always run on the
-build host and cross-compile — `dotnet publish` per RID, `cargo build` per target with the matching
-cross linker — so neither an emulated .NET nor an emulated Rust build ever happens. The runtime
-stage is not pinned that way, so an arm64 build on an x64 host does run its `apt-get` and its
-`pip install` under QEMU, and that is most of the wall time.
-
-The agentic modes need a model, and its configuration is yours rather than the image's. **The
-settings file is never built in** — `.dockerignore` excludes `**/appsettings.json` by name, because
-a key baked into a layer is a key published to everyone who can pull it. Mount the directory that
-holds it, read-only, and name the file:
-
-```bash
-docker run --rm -v "$PWD:/work" -v "$HOME/.anchor:/config:ro" \
-    anchor auto policy.dw --config /config/appsettings.json --intent "..."
-```
-
-`check --full` takes `--config` too, for the LLM that answers `questions.md`. It works outside a
-container as well, and `ANCHOR_APPSETTINGS` is the same thing from the environment. Without either, the file is looked for beside `src/agent/` and at the repo root — which
-is where a checkout keeps it and where an image has neither. A single `-e GEMINI_API_KEY` also works
-if a key is all you need. A `--config` path that is not there is refused with exit 2, so a typo
-fails loudly instead of running with no key. An `ANCHOR_APPSETTINGS` path that is not there means
-no settings file at all, never a fall back to the search, so a different file's key is not used
+The command `check --full` takes a `--config` param or `ANCHOR_SETTINGS` env var too, for the LLM that answers `questions.md`. 
+Without either, the file is looked for beside `src/agent/` and at the repo root — which
+is where a checkout keeps it and where an image has neither.  never a fall back to the search, so a different file's key is not used
 by accident. Every LLM mode warns about it before its first call, even when the environment
 supplies the key, because the file's `Model` and `Region` settings then quietly stop applying.
 
-Dafny and z3 are **not** in it: neither is on the Dogwood policy path, so no verb reaches the
-solver. [`deploy/Dockerfile.agentcore`](deploy/Dockerfile.agentcore) is a different image and a different shape — the
-Bedrock AgentCore service, which answers `POST /invocations` rather than taking a verb.
 
-## Verifying a Dogwood  policy
-
-### Check mode
-```bash
-[./]anchor check my_policy.dw
+In the sections below we'll use
 ```
+anchor
+```
+as an alias for either the launcher script in the repo root or the Docker container launch command with the appropriate directories mounted.
 
-**Vocabulary.** A **policy** is one `permit` or `forbid` statement, and a `.dw` file is a **policy
-set** — Dogwood's term, after Cedar's `PolicySet`. Anchor also calls a policy a **rule**, as AWS's own
+### Verifying a Dogwood policy set file
+
+#### Vocabulary
+
+* A **policy** is one `permit` or `forbid` statement, and a `.dw` file is a **policy
+set**, which Dogwood's term, after Cedar's `PolicySet`. Anchor also calls a policy a **rule**, as AWS's own
 Dogwood posts often do, because "the policy" is otherwise ambiguous between one statement and the
-file. Every question below is about what the whole set decides. A **session** is one AgentCore
+file. Every question below is about what the whole set decides. 
+
+* A **session** is one AgentCore
 [*policy session*](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/policy-temporal.html):
 the history of related requests a temporal condition can see. Anchor checks every possible session
 up to `--attempts` attempts long (3 by default), not one that was recorded.
 
-Three questions about a Dogwood policy set, each answered with a **witness session** or a bounded
-no — nothing to configure, and no statement of intent required:
+
+#### Check mode
+```bash
+anchor check my_policy.dw
+```
+
+This mode uses the TLC model checker and Anchor's Dogwood semantics specifications to answer three questions about a Dogwood policy set, each answered with a **witness session** or a bounded
+no.  There is nothing to configure and no property module or intent brief is required.
 
 | question | verdicts |
 |---|---|
@@ -261,6 +233,7 @@ no — nothing to configure, and no statement of intent required:
 | Is this rule load-bearing, or can it be deleted? | live / **REDUNDANT** / **DEAD** |
 | `--against other.dw` — did this edit change a decision? | **THEY DIFFER** / no difference |
 
+e.g.
 ```
   permit #1  action == Trade         live        witness: Approve -> Trade
   permit #2  action == Trade         REDUNDANT   deleting it changes no verdict in any session
