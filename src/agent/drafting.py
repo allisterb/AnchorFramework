@@ -33,6 +33,7 @@ with scripted models and no server at all. These call the same Python the gates 
 
 from __future__ import annotations
 
+import re
 import subprocess
 import sys
 import tempfile
@@ -163,7 +164,7 @@ def tools(run) -> list:
         except subprocess.TimeoutExpired:
             return "The expression did not finish within 300s."
         out = briefly((proc.stdout + proc.stderr).strip())
-        return out[-1500:] if out else "The checker said nothing."
+        return clipped(out, value=proc.returncode == 0) if out else "The checker said nothing."
 
     # THE ORDER IS TOOL_NAMES, so a caller asserting "these and no others" is comparing against
     # what is actually handed to the agent rather than against a list that agrees with it today.
@@ -185,6 +186,30 @@ def briefly(out: str) -> str:
     lines = out.splitlines()
     start = next((i for i, line in enumerate(lines) if ".dw against " in line), None)
     return "\n".join(lines[start + 1:] if start is not None else lines).strip()
+
+
+EVAL_CHARS = 1500
+
+
+def clipped(out: str, value: bool, limit: int = EVAL_CHARS) -> str:
+    """`evaluate`'s answer cut to `limit` characters, SAYING SO.
+
+    IT USED TO KEEP THE LAST 1500, SILENTLY. Right for a failure, whose reason TLC prints last;
+    wrong for a value, which then arrived as the tail of a structure with no head and nothing to
+    say it was cut. On the 2026-10-04 aws2 sweep one drafter asked for `Policies` three times
+    running. So a value keeps its start, a failure its end, and either says how much is missing.
+    """
+    if len(out) <= limit:
+        return out
+    if not value:
+        return (f"[TRUNCATED: the last {limit} of {len(out)} characters; TLC's reason is at the "
+                f"end.]\n\n{out[-limit:]}")
+    # The checker cuts a long value at a line count of its own, and says so on its last line --
+    # which the head kept below would drop.
+    more = re.search(r"^\.\.\. (\d+) more line\(s\) of the value not shown", out, re.M)
+    rest = f", and {more[1]} more line(s) the checker did not print" if more else ""
+    return (f"{out[:limit]}\n\n[TRUNCATED: the first {limit} of {len(out)} characters{rest}. "
+            f"Evaluate a smaller part -- one element or one field -- to see the rest.]")
 
 
 def without_the_state_list(reading: str) -> str:

@@ -1,7 +1,8 @@
 """Run the harnesses in this directory, in parallel, and say what each one cost.
 
-    python tests/strands/run.py                   all of them
+    python tests/strands/run.py                   all of them, except the opt-in ones
     python tests/strands/run.py pipeline hitl     the ones whose name contains either
+    python tests/strands/run.py semantic          an opt-in one, named
     python tests/strands/run.py --workers 4       fewer, when something else wants the machine
     python tests/strands/run.py --list            what would run, and nothing else
 
@@ -52,6 +53,10 @@ ARGS: dict[str, list[str]] = {
 # Not a harness: this file.
 SKIP = {"run.py"}
 
+# Run only when a pattern names them. They measure drafted output rather than pin a finding, so a
+# low number is not a failure, and they belong to work on drafting, not to every run.
+OPT_IN = {"semantic_mutants.py"}
+
 
 def harnesses(patterns: list[str]) -> list[Path]:
     """Every runnable harness here, filtered by substring.
@@ -63,7 +68,9 @@ def harnesses(patterns: list[str]) -> list[Path]:
     found = [p for p in sorted(HERE.glob("*.py"))
              if p.name not in SKIP
              and '__name__ == "__main__"' in p.read_text(encoding="utf-8")]
-    return [p for p in found if not patterns or any(s in p.name for s in patterns)]
+    if not patterns:
+        return [p for p in found if p.name not in OPT_IN]
+    return [p for p in found if any(s in p.name for s in patterns)]
 
 
 def run_one(path: Path, full: bool) -> tuple[Path, int, float, str]:

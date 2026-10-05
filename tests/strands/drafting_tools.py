@@ -147,6 +147,33 @@ def they_answer() -> None:
                      config=cfg)
         check("...and so does one written over several lines", "23" in value, value[-200:])
 
+        # A LONG VALUE KEEPS ITS HEAD, AND SAYS IT WAS CUT. It used to arrive as its last 1500
+        # characters with no notice, and the checker had already dropped every line past 60, also
+        # silently. One drafter on the 2026-10-04 aws2 sweep asked for `Policies` three times.
+        value = call(by, "evaluate", module=mod, config=cfg,
+                     expression="[i \\in 1..200 |-> [field_with_a_long_name |-> i, other |-> i]]")
+        check("a long value is shown from its start",
+              "<<[field_with_a_long_name |-> 1, other |-> 1]" in value, value[:200])
+        check("...and says it was truncated, and how long it was",
+              "[TRUNCATED: the first 1500 of " in value, value[-300:])
+        # TLC prints this one an element per line, so it is the checker's 60-line cut that applies.
+        value = call(by, "evaluate", expression="[i \\in 1..3000 |-> i]", module=mod, config=cfg)
+        check("a value of many lines says how many the checker did not print",
+              "2940 more line(s) of the value not shown" in value, value[-300:])
+
+    # BOTH CUTS AT ONCE, as `Policies` gets: the checker's note is past the head that is kept.
+    both = drafting.clipped("y" * 2000 + "\n\n... 940 more line(s) of the value not shown; ...",
+                            value=True)
+    check("a value cut twice reports both cuts",
+          both.startswith("y" * 1500) and "and 940 more line(s) the checker did not print" in both,
+          both[-300:])
+    # A FAILURE KEEPS ITS TAIL, where TLC puts the reason; anything short is untouched.
+    failed = drafting.clipped("x" * 2000 + "\nThe reason.", value=False)
+    check("a long failure is shown from its end, saying so",
+          failed.startswith("[TRUNCATED: the last 1500") and failed.endswith("The reason."),
+          failed[:120])
+    check("a short answer is returned exactly", drafting.clipped("TRUE", value=True) == "TRUE")
+
 
 def the_failure_that_cost_three_sessions() -> None:
     """`check_module` reports it in one call, where the pipeline took a whole round-trip."""

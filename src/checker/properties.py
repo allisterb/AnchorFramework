@@ -122,6 +122,28 @@ def workdir(args, prefix: str):
         yield Path(tmp)
 
 
+EVAL_LINES = 60
+
+
+def print_eval(expression: str, ok: bool, out: str) -> None:
+    """`--eval`'s answer: the expression, then the value indented, cut at EVAL_LINES and SAYING SO.
+
+    The cut used to be silent, so `Policies` came back as its first 60 lines with nothing to say it
+    was not the whole value. A value is kept from its START, where its structure is; a failure from
+    its END, where TLC puts the reason. `PolicyTools.Evaluated` keeps every line after the first
+    indented one, so the note reaches MCP callers too.
+    """
+    lines = out.splitlines()
+    cut = len(lines) - EVAL_LINES
+    print(f"  {expression}\n")
+    if cut > 0 and not ok:
+        print(f"... the first {cut} line(s) of TLC's output not shown\n")
+    shown = lines if cut <= 0 else lines[:EVAL_LINES] if ok else lines[-EVAL_LINES:]
+    print("\n".join(f"      {line}" for line in shown))
+    if cut > 0 and ok:
+        print(f"\n... {cut} more line(s) of the value not shown; evaluate a smaller part to see them")
+
+
 def keep_run(args, work: Path, name: str, out: str) -> None:
     """Preserve one TLC run: the config it actually used, and the output it produced.
 
@@ -491,8 +513,7 @@ def prove(args, policies: list[dict], vocab: dict, keys: list[str] | None = None
                 shutil.copyfile(cfg, work / cfg.name)
 
             ok, out = run_eval(args.eval, args.property_module.stem, work)
-            print(f"  {args.eval}\n")
-            print("\n".join(f"      {line}" for line in out.splitlines()[:60]))
+            print_eval(args.eval, ok, out)
             if not ok:
                 print("\nThe expression did not evaluate. TLC's output is above; nothing was checked.")
             return 0 if ok else 2
@@ -1620,8 +1641,7 @@ def main() -> int:
             shutil.copyfile(SPECS / "DogwoodSemantics.tla", work / "DogwoodSemantics.tla")
 
             ok, out = run_eval(args.eval, "PolicyUnderTest", work, spec=None)
-            print(f"  {args.eval}\n")
-            print("\n".join(f"      {line}" for line in out.splitlines()[:60]))
+            print_eval(args.eval, ok, out)
             if not ok:
                 print("\nThe expression did not evaluate. TLC's output is above.")
             return 0 if ok else 2

@@ -17,6 +17,10 @@ locally.
 catch. Found by comparing the directory against the `RunAsync` calls; recorded here rather than
 fixed silently, because which finding it should assert is a question for whoever wrote it.
 
+**`semantic_mutants.py` is opt-in, deliberately.** No C# test runs it, CI never does, and `run.py`
+skips it unless named. It scores drafted property modules rather than pinning a finding, so a low
+score is not a failure. Run it after changing how modules are drafted or checked.
+
 ```bash
 python tests/strands/shared_budget.py
 ```
@@ -59,6 +63,7 @@ is stable. To time one harness, run it alone.
 | `hitl_loop.py` | [`src/agent/hitl.py`](../../src/agent/hitl.py) — the loop that puts a person at the one boundary with no oracle. Driven end to end by a SCRIPTED person, which is the design constraint the file exists to hold onto. Scans what actually reached them for TLA+ (two tokens were leaking on the first run, straight out of a gate complaint written for the drafter), checks that the question matches the gate that fired and that the most upstream cause wins, and re-proves `AlwaysReports` over the hitl graph — five exclusive decisions, not four. ~103s. |
 | `checker_memo.py` | [`src/agent/invoke.py`](../../src/agent/invoke.py) — the memo under every verdict. A cache in a verification tool is a liability unless it is exact, so nothing here measures speed: determinism is established rather than assumed (the same call twice with the memo off), every hit is compared against what the checker says with it off, the key is the file's CONTENT because a drafted module is rewritten to the same path each round, and `--keep` — which makes the checker write files a caller reads — is never cached. ~74s. |
 | `drafting_tools.py` | [`src/agent/drafting.py`](../../src/agent/drafting.py) — the three mechanical checks the DRAFTER may run on itself, and the gates it deliberately cannot see. The boundary is the point: `score` is absent because a model that can run mutation scoring will tune the property until it catches a mutant, which is optimising against the gate rather than stating the requirement. Asserted by name AND by inspecting every tool's output, since a tool that merely shelled out with `--mutation-score` would pass a name check. Drives the exact module three live sessions died on. ~45s. |
+| `semantic_mutants.py` | **Opt-in.** The property modules drafted for [`examples/aws2`](../../examples/aws2) against 17 hand-written bugs in its policy set — a window or threshold off by a step, a dropped account or charge binding — where `--mutation-score` uses structural ones. No model call; a few minutes. Measures the drafts, so it fails only on its own errors (a module that does not hold on the real policy, a bug whose text has moved, an unreadable verdict). The 2026-10-04 sweep: 11 of 17. `python tests/strands/semantic_mutants.py [DIR]` |
 | `anchor_workflow.py` | **Anchor's own property-authoring pipeline as a `Graph`, checked by Anchor.** `describe → draft → preflight → score → check → answer → report`, wired three ways. Every other graph here is a shape chosen to isolate a failure class; this one is the pipeline `src/agent/author.py` already runs. |
 | `event_schema_readings.py` | every checked-in property and a set of derived findings, under **both event-schema readings** — global-trace, and the per-principal partitioning Dogwood applies by default. Uses the two schemas Dogwood ships, read from the submodule rather than copied. `--quick` in CI (~99s); the full sweep is 48 checker runs. |
 | `cedar_differential.py` | the Cedar model against the real engine. See [`specs/policy/cedar/`](../../specs/policy/cedar). |
