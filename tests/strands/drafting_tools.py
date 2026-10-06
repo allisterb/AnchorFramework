@@ -247,6 +247,11 @@ def the_prompt_says_to_use_them() -> None:
           "BEFORE YOU ANSWER" in p.upper(), p[-600:])
     check("...and not to weaken a claim to make it hold",
           "NEVER weaken" in p, p[-400:])
+    # The reviewer's half of the threshold-edge rule: shown amounts {499, 500, 2500, 2501} for "over
+    # $500", it said MATCH, and a policy whose threshold was $1000 passed every gate.
+    r = pipeline.REVIEWER_PROMPT
+    check("the reviewer rejects a reading that never examines the value just past a threshold",
+          "JUST PAST" in r and "$501" in r, r[-500:])
 
 
 def main() -> int:

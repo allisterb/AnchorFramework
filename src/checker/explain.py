@@ -1030,6 +1030,7 @@ class Explanation:
     module: str
     claims: list[Claim] = field(default_factory=list)
     states: list[str] = field(default_factory=list)
+    ranges: dict[str, list[str]] = field(default_factory=dict)   # each variable's values, shown
     scope: str = ""                       # how the state space was read, or why it was not
     unchecked: list[str] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
@@ -1037,6 +1038,25 @@ class Explanation:
     @property
     def vacuous(self) -> list[Claim]:
         return [c for c in self.claims if c.vacuous]
+
+
+def value_sets(values: dict[str, set]) -> dict[str, list[str]]:
+    """Each name's values, shown. A RECORD-valued variable is shown FIELD BY FIELD -- `req.amount`
+    -- because the records themselves are the product of the fields, 64 of them for one aws2
+    request, and printing them hid the very values this exists to show (and put `|->` in front of
+    a person). Field by field it says only which values each field takes, which is true whether or
+    not every combination occurs; the state count above it says how many do."""
+    out: dict[str, list[str]] = {}
+    for name, vs in values.items():
+        if vs and all(isinstance(v, Rec) for v in vs):
+            fields: dict[str, set] = {}
+            for v in vs:
+                for k, x in v.fields:
+                    fields.setdefault(f"{name}.{k}", set()).add(x)
+            out |= value_sets(fields)
+        else:
+            out[name] = [show_value(v) for v in sorted(vs, key=sort_key)]
+    return out
 
 
 def split_claim(tree):
@@ -1053,6 +1073,11 @@ def explain(module: Module) -> Explanation:
     states, why = module.states()
     out.scope = why
     out.states = [", ".join(f"{k} = {show_value(v)}" for k, v in s.items()) for s in states]
+    # EACH VARIABLE'S VALUES, said outright. The states are every combination of them, and a list
+    # of the first eight states hid what was never tried: aws2's supervisor-approval module ranged
+    # amount over {499, 500, 2500, 2501}, so nothing between $501 and $1000 was checked, and the
+    # reviewer -- told to look at WHICH values a claim examines -- was shown "and 184 more".
+    out.ranges = value_sets({k: {s[k] for s in states} for k in (states[0] if states else {})})
 
     for name in module.invariants:
         d = module.defs.get(name)
@@ -1140,6 +1165,13 @@ def render(x: Explanation, *, width: int = WIDTH) -> str:
     ONE STATE TO A LINE -- a state is itself a comma-separated list, so several on one line gave a
     reader no way to tell where one ended and the next began."""
     lines: list[str] = [f"{x.module}", ""]
+
+    # A block of its own, ABOVE the state count: `without_the_state_list` drops what follows that
+    # line, and the drafter needs these as much as the reviewer does.
+    if x.ranges:
+        lines.append("  Every value each variable takes -- nothing else is checked:")
+        lines += ranges(x.ranges, width)
+        lines.append("")
 
     checked = [c for c in x.claims if c.defined]
     over = (f"over {plural(len(x.states), 'state')}:" if x.states
@@ -1283,9 +1315,24 @@ def states(items: list[str], most: int, width: int, indent: int) -> list[str]:
     return out
 
 
+def ranges(values: dict[str, list[str]], width: int, indent: int = 6) -> list[str]:
+    """`name   v1, v2, v3`, one variable to a line, the values wrapped in a column of their own."""
+    import textwrap                                                     # noqa: PLC0415
+
+    name = min(max(len(k) for k in values), 24)
+    out: list[str] = []
+    for k, vs in values.items():
+        head = " " * indent + f"{k:<{name}}  "
+        out += textwrap.wrap(", ".join(vs), width, initial_indent=head,
+                             subsequent_indent=" " * len(head), break_on_hyphens=False,
+                             break_long_words=False)
+    return out
+
+
 def as_dict(x: Explanation) -> dict:
     return {
         "module": x.module,
+        "ranges": x.ranges,
         "states": x.states,
         "scope": x.scope or "read from Init",
         "claims": [{"name": c.name, "defined": c.defined, "says": c.says, "forbids": c.forbids,

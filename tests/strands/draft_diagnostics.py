@@ -152,6 +152,11 @@ check("the drafter's system prompt states the rules",
 rules = " ".join(vocab.get("rules_for_writing_one", []))
 check("the vocabulary's rules carry them to MCP agents too",
       "fully compliant session" in rules and "outputFields" in rules and "x.v <= 22" in rules, rules)
+# THE EDGE OF EACH THRESHOLD, from the requirement. aws2's supervisor-approval module used the
+# policy's own literals, so a $1000 threshold passed -- and the reviewer, shown those values, agreed.
+check("the drafter is told to range over the value just past each threshold",
+      "JUST PAST" in author.DRAFTER_PROMPT and "500 and 501" in author.DRAFTER_PROMPT)
+check("...and so are MCP agents", "just past" in rules and "500 and 501" in rules, rules)
 
 print()
 print("all passed" if not failures else f"{failures} FAILED")

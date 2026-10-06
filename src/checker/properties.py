@@ -1364,6 +1364,9 @@ def describe(args, policies: list[dict], vocab: dict, schema: dict, reading: str
             "'without Y, refused', not 'with Y, always allowed'.",
             "Put every prerequisite event in the session, and each value where the policy reads it: "
             "inputFields in an event's input record, outputFields in its output record.",
+            "For every threshold and window the REQUIREMENT states, range over the value at it and "
+            "the value just past it ('over $500': 500 and 501). Take them from the requirement, "
+            "not from these domains: a policy with the wrong threshold supplies its own wrong edge.",
             "The .cfg must name SPECIFICATION Spec and every INVARIANT. A claim nobody listed is "
             "a claim nobody checked.",
         ],

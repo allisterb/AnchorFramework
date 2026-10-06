@@ -111,8 +111,11 @@ REVIEWER_PROMPT = (
     "where the requirement forbids, or the reverse), a different threshold or window, or when it "
     "omits a condition the requirement states. Pay attention to WHICH VALUES it says it examines: "
     "a requirement about amounts over $500 that is checked only at $100 and $200 is not that "
-    "requirement. Small wording differences are fine; a difference that would let something "
-    "through is not.")
+    "requirement. And for every threshold or window the requirement states, the first value JUST "
+    "PAST it must be among the values examined -- $501 for 'over $500', 1801 seconds for 'within "
+    "30 minutes'. Without it a threshold set too high passes unnoticed: checked only at $500 and "
+    "$2,500, an approval rule that starts at $1,000 looks correct. Small wording differences are "
+    "fine; a difference that would let something through is not.")
 
 ANSWERER_PROMPT = (
     "You report formal verification results to the person who owns the policy. You are given a "

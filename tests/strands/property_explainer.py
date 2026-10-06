@@ -188,6 +188,27 @@ def main() -> int:
           allowed.applies == ["req = [port |-> 22]"], str(allowed.applies))
     check("neither claim is vacuous", not x.vacuous, str([c.name for c in x.vacuous]))
 
+    # --- the values each variable takes -----------------------------------------------------------
+    # aws2's supervisor-approval module never tried an amount between $501 and $1000, and its reading
+    # showed eight states and "and 184 more" -- to a reviewer told to check WHICH values a claim
+    # examines. Said outright now, and a record field by field rather than as its 64 records.
+    ranged = explain(module(
+        "VARIABLES amount, req\n"
+        "Init == amount \\in {2500, 499} /\\ req \\in {[port |-> Num(22)], [port |-> Num(2222)]}\n"
+        "Next == UNCHANGED <<amount, req>>\n"
+        "Spec == Init /\\ [][Next]_<<amount, req>>\n"
+        "\n"
+        "OverIsRefused == (amount > 500) => ~Grants(req)\n",
+        "SPECIFICATION Spec\nINVARIANT OverIsRefused\n"))
+    shown = render(ranged)
+    above = shown.split("will be checked", 1)[0]
+    check("each variable's values are listed, in order",
+          ranged.ranges == {"amount": ["499", "2500"], "req.port": ["22", "2222"]},
+          str(ranged.ranges))
+    check("...in the reading, above the state count",
+          "amount    499, 2500" in above and "req.port  22, 2222" in above, above)
+    check("...a record by its fields, with no TLA+ record syntax", "|->" not in above, above)
+
     # --- the finding this exists to make ----------------------------------------------------------
     # A claim about a value the experiment never presents. It HOLDS, TLC reports it holding, and it
     # examined nothing. Same defect as a vacuous policy, same invisibility in a green run.

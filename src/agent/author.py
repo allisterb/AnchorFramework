@@ -673,7 +673,14 @@ DRAFTER_PROMPT = (
         "in its output record (the fourth).\n"
         "5. VARIABLES hold plain values; tag them only inside event records. Compare a tagged "
         "value with = and #, but order the number inside: x.v <= 22, never x <= Num(22).\n"
-        "6. Times are in SECONDS.\n\n"
+        "6. Times are in SECONDS.\n"
+        # aws2, 2026-10-04: supervisor-approval ranged amount over {499, 500, 2500, 2501} -- the
+        # policy's own literals -- so a policy whose threshold was $1000 instead of $500 passed.
+        "7. For every threshold and window the REQUIREMENT states, range over the value AT it and "
+        "the value JUST PAST it: 'over $500' needs 500 and 501, 'within 30 minutes' needs 1800 and "
+        "1801 seconds. Take them from the requirement's wording, not from the vocabulary's "
+        "domains: those come from the policy, so a policy with the wrong threshold supplies its "
+        "own wrong edge.\n\n"
         # CHECK YOUR OWN WORK. Without this the tools are present and unused: a model asked for two
         # files returns two files. The instruction is specific about WHEN, because a check run
         # after the answer has been given is a check nobody acts on.
