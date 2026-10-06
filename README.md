@@ -24,11 +24,13 @@ Anchor provides:
 
 Anchor's formal verification can proceed in three modes. 
 
-* `check` Mechanically checks a Dogwood policy set file against a mechanically translated base policy specification and an existing TLA+ property module that captures the intent of the policy set. The most precise
+* `check` Checks a Dogwood policy set file against a mechanically translated base policy specification and an existing TLA+ property module that captures the intent of the policy set. The most precise
 mode and it does not require an LLM, but it requires an existing TLA+ property module and the knowledge to author one accurately. 
 
 * `auto` This is the autoformalization mode. The only artifact a human supplies is a natural language brief that describes the intent of the policy set. The agent is handed a vocabulary derived mechanically from
-the policy set, a knowledge article on how to write a property module using the Anchor MCP tools and the brief, and it autonomously writes the TLA+ module. It is not given the policy set's rules, and is told to decide its claims from the brief before looking at the policy, though its `evaluate` tool can read the generated rule set. Three models and four gates stand between a property module draft and a acceptance verdict. An accepted property module is model-checked against the policy set in the same run, a BROKEN one replayed in Dogwood as the session that breaks it, and the run ends with the verdicts and a `check --full` run that checks the policy set with the newly generated property module. Needs no formal methods knowledge on the user's part but requires an LLM.
+the policy set, knowledge articles on how to write a property module using the Anchor MCP tools and the brief, and it autonomously writes the TLA+ module. It is not given the policy set's rules, and is told to decide its claims from the brief before looking at the policy, though its `evaluate` tool can read the generated rule set. 
+Three independent agents and four gates stand between a property module draft and a acceptance verdict. An accepted property module is model-checked against the policy set in the same run, while a broken one is replayed in Dogwood as the session that broke it, and the run ends with the verdicts. 
+A `auto --full` run checks the policy set with the newly generated and accepted property module. Needs no formal methods knowledge on the user's part but requires an LLM.
 
 
 * `hitl` Similar to auto mode but with one additional step: when a gate rejects a property module draft, it asks the person about the problem *requirement*, (never about TLA+), folds the answer into the brief and tries drafting the property module again. Before the property module is used, it reads the claim back in plain English for the user to confirm the intent is accurate. Needs no formal methods knowledge on the user's part but requires an LLM.
@@ -195,18 +197,15 @@ docker run --rm -v "$PWD:/work" -v "$HOME/.anchor:/config:ro" public.ecr.aws/v4q
 # Windows mount $USERPROFILE\.anchor as /config in the container
 docker run --rm -v ".:/work" -v "$($env:USERPROFILE)\.anchor:/config" public.ecr.aws/v4q7x8t1/anchor:latest auto policy.dw --config /config/appsettings.json --intent "..."
 ```
-
+The appsettings.json file should contain the model provider and model name, as well as any necessary credentials (e.g., API keys) for the model provider. See [appsettings.json.example](docs/appsettings.json.example) for a template.
 You can also specify the environment variable `ANCHOR_APPSETTINGS` as a an alternative to `--config` to point to the appsettings.json file. 
+A single `-e GEMINI_API_KEY` also works if a key is all you need for the Gemini provider. 
+A `--config` or `ANCHOR_APPSETTINGS` path that is not there is refused with exit 2. 
 
-The appsettings.json file should contain the model provider and model name, as well as any necessary credentials (e.g., API keys) for the model provider.
-A single `-e GEMINI_API_KEY` also works if a key is all you need. A `--config` or `ANCHOR_APPSETTINGS` path that is not there is refused with exit 2. 
-
-The command `check --full` takes a `--config` param or `ANCHOR_SETTINGS` env var too, for the LLM that answers `questions.md`. 
-Without either, the file is looked for beside `src/agent/` and at the repo root — which
-is where a checkout keeps it and where an image has neither.  never a fall back to the search, so a different file's key is not used
-by accident. Every LLM mode warns about it before its first call, even when the environment
+Without either, the file is looked for beside `src/agent/` and at the repo root. Every LLM mode warns about it before its first call, even when the environment
 supplies the key, because the file's `Model` and `Region` settings then quietly stop applying.
 
+The command `check --full` also takes a `--config` param or `ANCHOR_SETTINGS` env var too, for the LLM that answers `questions.md`. 
 
 In the sections below we'll use
 ```
@@ -216,32 +215,30 @@ as an alias for either the launcher script in the repo root or the Docker contai
 
 ### Verifying a Dogwood policy set file
 
-#### Vocabulary
 
 * A **policy** is one `permit` or `forbid` statement, and a `.dw` file is a **policy
 set**, which Dogwood's term, after Cedar's `PolicySet`. Anchor also calls a policy a **rule**, as AWS's own
 Dogwood posts often do, because "the policy" is otherwise ambiguous between one statement and the
 file. Every question below is about what the whole set decides. 
 
-* A **session** is one AgentCore
-[*policy session*](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/policy-temporal.html):
+* A **session** is one AgentCore [*policy session*](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/policy-temporal.html):
 the history of related requests a temporal condition can see. Anchor checks every possible session
 up to `--attempts` attempts long (3 by default), not one that was recorded.
 
 
-#### Check mode
+### Check mode
 ```bash
 anchor check my_policy.dw
 ```
 
 This mode uses the TLC model checker and Anchor's Dogwood semantics specifications to answer three questions about a Dogwood policy set, each answered with a **witness session** or a bounded
-no.  There is nothing to configure and no property module or intent brief is required.
+no: 
 
 | question | verdicts |
 |---|---|
 | Can this permit ever grant anything? | live / **VACUOUS** |
-| Is this rule load-bearing, or can it be deleted? | live / **REDUNDANT** / **DEAD** |
-| `--against other.dw` — did this edit change a decision? | **THEY DIFFER** / no difference |
+| Can this rule be deleted? | live / **REDUNDANT** / **DEAD** |
+| `--against other.dw` did this edit change a decision? | **THEY DIFFER** / no difference |
 
 e.g.
 ```
@@ -250,42 +247,23 @@ e.g.
   forbid #3  action == Approve       DEAD        deleting it changes no verdict in any session
 ```
 
-Nothing about the policy is hand-modelled. The `.dw` text is parsed by the same parser whose reading
-agrees with the reference implementation on 911 recorded pairs, and evaluated by the same
-`DogwoodSemantics!Decide`, so what is model-checked is the policy **as written** rather than as
-paraphrased.
+The `.dw` policy set text is parsed to TLA+ by the Anchor parser which has an extensive CI-run test suite, and modelled by the
+`DogwoodSemantics.tla` specification, so what is model-checked is the policy as written rather than as paraphrased.
 
-### What it finds that reading the file does not
-
-| | |
-|---|---|
-| **One word apart, opposite security properties** | a gate on `Approve::response` requires an approval that *completed*; the same rule on `::request` matches somebody having *tried*. AgentCore records a request for every attempt, so the second grants exactly the capability the approval existed to protect — off a run of refusals. `::request` is the conventional form, 555 policy files to `::response`'s 94. |
-| **A permit killed by an unrelated rule** | forbid the approval and the sell permit still parses, still validates, still names the action — and authorizes nothing. It is not a weak control, it is zero control, and nothing in its own text says so. |
-| **A policy's meaning is not in its own text** | an `event.dwschema` can `pin` a field into every predicate. The policy never writes it, cannot see it, and cannot bypass it. Declared on *every* event kind it also partitions the trace, which changes what `previous` means — two files with the same policy and the same trace get opposite verdicts. |
-
-**Read the result backwards.** TLA+ is linear-time and has no `EF`, so reachability is asked by
-checking the negation and reading the counterexample as the witness. A TLC *violation* means the
-permit can grant — the good outcome. The tool inverts that before printing, because the raw reading
-is a trap.
-
-**VACUOUS is the answer that must never be wrong**, since it tells someone a control is dead and
+A VACUOUS verdict must never be wrong since it tells someone a control is dead and
 the obvious response is to delete it. It is falsification-tested rather than merely observed, and
-anything that is not an answer — a parse error, an unsupported construct — raises rather than
-reporting vacuous. Constructs outside the modelled subset are refused with a reason, never
+anything that is not an answer like a parse error, an unsupported construct  raises an error. Constructs outside the modelled subset are refused with a reason, never
 approximated.
 
-### Auditing: `--full`
+
+###  Check audit mode
 
 ```bash
 [./]anchor check examples/aws1 --full                    # every policy set in the directory
 [./]anchor check examples/aws1/agent-policy.dw --full    # one policy set on its own
 ```
 
-Without `--full`, `check` checks each policy set rule by rule — one file or every `.dw` in a
-directory — prints the verdicts and writes nothing. It ends by listing what it did not use: the
-property modules whose header names a policy set, and the questions in `questions.md`.
-
-With `--full` it audits the same policy set or directory. It also runs every `.tla` property module
+With `--full` check audits the same policy set or directory and also runs every `.tla` property module
 whose header names a policy set, and asks the `questions.md` questions of an LLM (`--no-llm` skips
 them). It writes `findings.md`, the written report, plus `results.json`, a `traces/` directory
 holding a re-runnable witness for every broken claim, and **`findings.html`**: one page that draws

@@ -1,0 +1,64 @@
+{
+  "_comment": [
+    "Copy this file to appsettings.json in this directory and fill it in.",
+    "appsettings.json is gitignored by **/*appsettings.json; this .example is not, because the",
+    "pattern ends at .json. Keep it that way: this file must never hold a real key.",
+    "THE Google BLOCK IS NOT OPTIONAL FOR A GOOGLE AGENT PLATFORM KEY.", 
+    "Leave the Google block out entirely for an ordinary Developer API key."
+  ],
+  "ApiKeys": {
+    "AmazonBedrock": "",
+    "GoogleAgentPlatform": ""
+  },
+  "Google": {
+    "Enterprise": true,
+    "Project": "your-project-id",
+    "Location": "global"
+  },
+
+  "_model_comment": [
+    "The model each provider runs when --llm names none. Optional: without it, Gemini runs",
+    "gemini-2.5-flash and Bedrock the Strands SDK's default. One per provider, because a model id",
+    "means nothing to the other one; --llm overrides either. Gemini has its own block rather than",
+    "sharing Google's, because the Google block is left out for an ordinary Developer API key.",
+    "`anchor check --full --provider auto` runs whatever is configured here, and stops before the",
+    "run, after a one-token test request, if it cannot be reached."
+  ],
+  "Gemini": {
+    "Model": "gemini-2.5-flash"
+  },
+
+  "_bedrock_comment": [
+    "Bedrock takes its API key as a BEARER TOKEN in the environment, not as a constructor",
+    "argument: botocore builds the name from the service's signing name, so it reads",
+    "AWS_BEARER_TOKEN_BEDROCK. ApiKeys:AmazonBedrock above is put there for you.",
+    "",
+    "REGION IS REQUIRED when you authenticate with a key, the same way the Google block is",
+    "required for an Agent Platform key. With a key we do not read ~/.aws at all, so there is no",
+    "profile for the region to come from. It also decides which models exist. AWS_REGION works too.",
+    "",
+    "Why ~/.aws is not read: create_client resolves the credential chain BEFORE consulting the",
+    "bearer token and then discards it, because bearer auth supersedes SigV4 at signing. Walking",
+    "the chain can only fail, never help -- a [default] profile with login_session reaches a",
+    "CRT-backed provider and dies with 'pip install botocore[crt]' over a value nothing would have",
+    "used. So with a key the client is pointed at os.devnull for both AWS config files.",
+    "",
+    "Profile is for naming a DIFFERENT ACCOUNT, and most people should leave it empty. Naming one",
+    "turns the above off and reads ~/.aws normally. It is NOT an authentication setting while a key",
+    "is present -- the token supersedes whatever the profile yields, so an expired profile and a",
+    "working one behave identically, which is how one sat unnoticed with dead keys for an afternoon.",
+    "",
+    "UseAwsConfig forces the question: true always reads ~/.aws, false never does. Leave it out.",
+    "",
+    "Streaming false is needed by some models. ai21.jamba-1-5-large answers 'This model doesn't",
+    "support tool use in streaming mode', and this agent is nothing but tool use. Anthropic and",
+    "Nova models stream tools fine, so leave it out unless a model complains. --no-stream is the",
+    "command-line equivalent."
+  ],
+  "Bedrock": {
+    "Region": "us-east-1",
+    "Profile": "",
+    "Streaming": true,
+    "Model": ""
+  }
+}
