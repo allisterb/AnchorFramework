@@ -1,9 +1,9 @@
 # Anchor
 
 ## About
-Anchor is an agentic formal verification framework that uses the [TLA+](https://lamport.azurewebsites.net/tla/tla.html) formal specification language and model checker to formally verify AWS [Dogwood](https://aws.amazon.com/blogs/opensource/introducing-dogwood-runtime-verification-for-ai-agents/) temporal policies, and provides a [Strands Agents SDK](https://strandsagents.com/) agent that allows humans to perform formal verification of these policies using natural language prompts and questions without knowing the technical details of the formal verification language or tools or theory.
+Anchor is an agentic formal verification framework that uses the [TLA+](https://lamport.azurewebsites.net/tla/tla.html) formal specification language and model checker to formally verify AWS [Dogwood](https://aws.amazon.com/blogs/opensource/introducing-dogwood-runtime-verification-for-ai-agents/) temporal policies. It provides a [Strands Agents SDK](https://strandsagents.com/) agent that assists humans in writing specifications for formal verification of these policies using natural language prompts and questions, without the user having to know the technical details of the formal verification language or tools or theory.
 
-Anchor allows developers and engineers and administrators to use the benefits of formal verification without requiring the specialized knowledge and skills formal methods typically demand. It uses a graph-based Strands multi-agent workflow to try to address the [known issues](EXISTING-RESEARCH.md) in agentic formal verification.
+Anchor's objective is to increase the reliability of Dogwood policies while allowing developers and engineers and administrators to use the benefits of formal verification without always requiring the specialized knowledge and skills formal methods typically demand. It uses a graph-based Strands multi-agent workflow to try to improve the correctness and address the [known issues](EXISTING-RESEARCH.md) in agentic formal verification.
 
 Anchor provides:
 
