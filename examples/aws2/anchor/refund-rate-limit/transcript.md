@@ -2,7 +2,7 @@
 
 `agent-policy.dw`: every LLM call this run made, in order -- the drafter with its tool calls, the reviewer and the reporter.
 
-*Generated 2026-10-04 17:24 UTC by `src/agent/pipeline.py`. Tool calls and their full replies are included: the prose is a claim, and the tool output is the evidence for it.*
+*Generated 2026-10-06 05:50 UTC by `src/agent/pipeline.py`. Tool calls and their full replies are included: the prose is a claim, and the tool output is the evidence for it.*
 
 ## draft round 1
 
@@ -605,9 +605,10 @@
 >     "Decide the allowed and denied cases from the requirement BEFORE evaluating the policy. A claim written from the policy's own behaviour restates it.",
 >     "Include a claim that one specific, fully compliant session is ALLOWED. A module of refusal claims alone cannot be broken by removing a permission. 'X requires Y' means 'without Y, refused', not 'with Y, always allowed'.",
 >     "Put every prerequisite event in the session, and each value where the policy reads it: inputFields in an event's input record, outputFields in its output record.",
+>     "For every threshold and window the REQUIREMENT states, range over the value at it and the value just past it ('over $500': 500 and 501). Take them from the requirement, not from these domains: a policy with the wrong threshold supplies its own wrong edge.",
 >     "The .cfg must name SPECIFICATION Spec and every INVARIANT. A claim nobody listed is a claim nobody checked."
 >   ],
->   "skeleton": "---------------------------- MODULE agent_policy ----------------------------\n\\* What agent-policy.dw is SUPPOSED to mean, stated by its author. The three built-in findings\n\\* (VACUOUS, REDUNDANT/DEAD, diff) are the claims statable WITHOUT knowing intent; this is the\n\\* other kind, and only the author can write it.\n\\*\n\\* SAVE THIS AS agent_policy.tla -- TLA+ requires the file name to match the module name, and a\n\\* module name may not contain `-` or `.` or begin with a digit, so it is not always the policy's\n\\* own name.\n\\*\n\\* Check it with:  python src/checker/properties.py agent-policy.dw --property agent_policy.tla\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\n\\* The verdict for one request. No session: \"what does this policy decide for this request\" is\n\\* not a temporal question, so there is no state machine beyond holding one request still.\nGrants(input) == D!Decide(<<Request(\"initiate_transfer\", input)>>, Policies, 1, AllValues)\n\n(***************************************************************************)\n(* THE REQUESTS THIS CLAIM IS ABOUT.                                       *)\n(*                                                                         *)\n(* Written out rather than derived from InputDomain, and that is the       *)\n(* point. A space derived from the policy's own literals cannot test a     *)\n(* claim about a value the policy never mentions: delete the rule that     *)\n(* names a value and it vanishes from the vocabulary, so the claim ranges  *)\n(* over nothing and PASSES having looked at nothing.                       *)\n(*                                                                         *)\n(* Add the values your claim is about, including ones this policy never    *)\n(* mentions.                                                               *)\n(***************************************************************************)\naccountValues == {Num(1), Num(2)}\namountValues == {Num(499), Num(500), Num(2500), Num(2501)}\ncharge_idValues == {Num(1), Num(2)}\nsystemNowTimeValues == {Num(32399999), Num(32400000), Num(61200000), Num(61200001)}\n\nRequests == {[account |-> account, amount |-> amount, charge_id |-> charge_id, systemNowTime |-> systemNowTime] : account \\in accountValues, amount \\in amountValues, charge_id \\in charge_idValues, systemNowTime \\in systemNowTimeValues}\n\n\\* One request, chosen nondeterministically and held, so a violation's counterexample NAMES the\n\\* request that breaks the claim rather than merely reporting that one exists.\nVARIABLE req\nInit == req \\in Requests\nNext == UNCHANGED req\nSpec == Init /\\ [][Nex
+>   "skeleton": "---------------------------- MODULE agent_policy ----------------------------\n\\* What agent-policy.dw is SUPPOSED to mean, stated by its author. The three built-in findings\n\\* (VACUOUS, REDUNDANT/DEAD, diff) are the claims statable WITHOUT knowing intent; this is the\n\\* other kind, and only the author can write it.\n\\*\n\\* SAVE THIS AS agent_policy.tla -- TLA+ requires the file name to match the module name, and a\n\\* module name may not contain `-` or `.` or begin with a digit, so it is not always the policy's\n\\* own name.\n\\*\n\\* Check it with:  python src/checker/properties.py agent-policy.dw --property agent_policy.tla\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\n\\* The verdict for one request. No session: \"what does this policy decide for this request\" is\n\\* not a temporal question, so there is no state machine beyond holding one request still.\nGrants(input) == D!Decide(<<Request(\"initiate_transfer\", input)>>, Policies, 1, AllValues)\n\n(***************************************************************************)\n(* THE REQUESTS THIS CLAIM IS ABOUT.                                       *)\n(*                                                                         *)\n(* Written out rather than derived from InputDomain, and that is the       *)\n(* point. A space derived from the policy's own literals cannot test a     *)\n(* claim about a value the policy never mentions: delete the rule that     *)\n(* names a value and it vanishes from the vocabulary, so the claim ranges  *)\n(* over nothing and PASSES having looked at nothing.                       *)\n(*                                                                         *)\n(* Add the values your claim is about, including ones this policy never    *)\n(* mentions.                                                               *)\n(***************************************************************************)\naccountValues == {Num(1), Num(2)}\namountValues == {Num(499), Num(500), Num(2500), Num(2501)}\ncharge_idValues == {Num(1), Num(2)}\nsystemNowTimeValues == {Num(32399999), Num(32400000), Num(61200000), Num(61200001)}\n\nRequests == {[account |-> account, amount |-> amount, charge_id |-> charge_id, systemNowTime |-> systemNowTime] : account \\in accountValues, amount \\in amountValues, charge_id \\in charge_idValues, systemNowTime \\in systemNowTimeValues}\n\n\\*
 > ```
 > 
 > The intention to state formally:
@@ -617,57 +618,25 @@
 | | |
 |---|---|
 | model | gemini-3.7-flash |
-| tokens | 202,642 |
-| seconds | 106.6 |
+| tokens | 151,338 |
+| seconds | 124.5 |
 
 **Tool call 1** — `evaluate`
 
 ```json
 {
   "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
-  "expression": "Policies",
-  "module": "---------------------------- MODULE RefundRateLimit ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE dummy\nInit == dummy = 0\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\nDummy == TRUE\n============================================================================="
+  "expression": "<<D!Decide(<<Ev(\"issue_refund\", \"request\", [account |-> Num(1), amount |-> Num(100), charge_id |-> Num(1), systemNowTime |-> Num(1000)], NoFields, 1)>>, Policies, 1, AllValues)>>",
+  "module": "---------------------------- MODULE RefundRateLimit ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE x\nInit == x = 1\nNext == UNCHANGED x\nSpec == Init /\\ [][Next]_x\n\nDummy == TRUE\n============================================================================="
 }
 ```
 
 <details><summary>tool result (success)</summary>
 
 ```
-ld |-> "",
-                             cmp |-> "",
-                             value |-> [k |-> "s", v |-> ""],
-                             other |-> "",
-                             pattern |-> <<>>,
-                             net |-> <<>>,
-                             prefix |-> 0 ],
-                       leftNeg |-> FALSE,
-                       keys |-> <<>> ] ] ],
-         [ effect |-> "permit",
-           actions |-> {"request_approval"},
-           cond |->
-               [ op |-> "true",
-                 args |-> <<>>,
-                 term |->
-                     [ op |-> "formerly",
-                       window |-> 0,
-                       atom |->
-                           [ op |-> "pred",
-                             args |-> <<>>,
-                             pred |-> [action |-> "", kind |-> "", binds |-> <<>>],
-                             var |-> "",
-                             field |-> "",
-                             cmp |-> "",
-                             value |-> [k |-> "s", v |-> ""],
-                             other |-> "",
-                             pattern |-> <<>>,
-                             net |-> <<>>,
-                             prefix |-> 0 ],
-                       left |->
-                           [ op |-> "pred",
-                             args |-> <<>>,
-                             pred |-> [action |-> "", kind |-> "", binds |-> <<>>],
-                             var |-> "",
-                             field |-> "",
+<<D!Decide(<<Ev("issue_refund", "request", [account |-> Num(1), amount |-> Num(100), charge_id |-> Num(1), systemNowTime |-> Num(1000)], NoFields, 1)>>, Policies, 1, AllValues)>>
+
+      <<FALSE>>
 ```
 
 </details>
@@ -677,40 +646,20 @@ ld |-> "",
 ```json
 {
   "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
-  "expression": "Policies[3]",
-  "module": "---------------------------- MODULE RefundRateLimit ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE dummy\nInit == dummy = 0\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\nDummy == TRUE\n============================================================================="
+  "expression": "<<\nD!Decide(<<Ev(\"verify_identity\", \"response\", NoFields, [verified |-> Bool(TRUE)], 1),\n           Ev(\"issue_refund\", \"request\", [account |-> Num(1), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 2)>>, Policies, 2, AllValues)\n>>",
+  "module": "---------------------------- MODULE RefundRateLimit ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE x\nInit == x = 1\nNext == UNCHANGED x\nSpec == Init /\\ [][Next]_x\n\nDummy == TRUE\n============================================================================="
 }
 ```
 
 <details><summary>tool result (success)</summary>
 
 ```
--> "",
-                                            field |-> "systemNowTime",
-                                            cmp |-> ">=",
-                                            value |-> [k |-> "n", v |-> 32400000],
-                                            other |-> "",
-                                            pattern |-> <<>>,
-                                            net |-> <<>>,
-                                            prefix |-> 0 ],
-                                      leftNeg |-> FALSE,
-                                      keys |-> <<"principal">> ] ],
-                              [ op |-> "term",
-                                args |-> <<>>,
-                                term |->
-                                    [ op |-> "at",
-                                      window |-> 0,
-                                      atom |->
-                                          [ op |-> "cmp",
-                                            args |-> <<>>,
-                                            pred |->
-                                                [ action |-> "",
-                                                  kind |-> "",
-                                                  binds |-> <<>> ],
-                                            var |-> "",
-                                            field |-> "systemNowTime",
-                                            cmp |-> "<=",
-                                            value |-> [k |-> "n", v |-> 61200000],
+<<
+D!Decide(<<Ev("verify_identity", "response", NoFields, [verified |-> Bool(TRUE)], 1),
+           Ev("issue_refund", "request", [account |-> Num(1), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 2)>>, Policies, 2, AllValues)
+>>
+
+      <<TRUE>>
 ```
 
 </details>
@@ -720,41 +669,25 @@ ld |-> "",
 ```json
 {
   "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
-  "expression": "<<Policies[3].actions, Policies[6], Policies[7]>>",
-  "module": "---------------------------- MODULE RefundRateLimit ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE dummy\nInit == dummy = 0\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\nDummy == TRUE\n============================================================================="
+  "expression": "<<\nD!Decide(<<\n  Ev(\"verify_identity\", \"response\", NoFields, [verified |-> Bool(TRUE)], 1),\n  Ev(\"issue_refund\", \"request\", [account |-> Num(1), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 10),\n  Ev(\"issue_refund\", \"request\", [account |-> Num(1), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 20),\n  Ev(\"issue_refund\", \"request\", [account |-> Num(1), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 30),\n  Ev(\"issue_refund\", \"request\", [account |-> Num(1), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 40)\n>>, Policies, 5, AllValues)\n>>",
+  "module": "---------------------------- MODULE RefundRateLimit ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE x\nInit == x = 1\nNext == UNCHANGED x\nSpec == Init /\\ [][Next]_x\n\nDummy == TRUE\n============================================================================="
 }
 ```
 
 <details><summary>tool result (success)</summary>
 
 ```
-eftNeg |-> FALSE,
-                       keys |-> <<>> ],
-                 cmp |-> ">",
-                 value |-> 3,
-                 agg |->
-                     [ kind |-> "count",
-                       cond |->
-                           [ op |-> "term",
-                             args |-> <<>>,
-                             term |->
-                                 [ op |-> "formerly",
-                                   window |-> 3600,
-                                   atom |->
-                                       [ op |-> "and",
-                                         args |->
-                                             << [ op |-> "pred",
-                                                  args |-> <<>>,
-                                                  pred |->
-                                                      [ action |-> "issue_refund",
-                                                        kind |-> "request",
-                                                        binds |->
-                                                            << [ kind |-> "ctx",
-                                                                 field |-> "account",
-                                                                 value |->
-                                                                     [ k |-> "s",
-                                                                       v |-> "" ],
-                                                                 side |-> "input",
+<<
+D!Decide(<<
+  Ev("verify_identity", "response", NoFields, [verified |-> Bool(TRUE)], 1),
+  Ev("issue_refund", "request", [account |-> Num(1), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 10),
+  Ev("issue_refund", "request", [account |-> Num(1), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 20),
+  Ev("issue_refund", "request", [account |-> Num(1), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 30),
+  Ev("issue_refund", "request", [account |-> Num(1), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 40)
+>>, Policies, 5, AllValues)
+>>
+
+      <<FALSE>>
 ```
 
 </details>
@@ -764,39 +697,32 @@ eftNeg |-> FALSE,
 ```json
 {
   "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
-  "expression": "<<Policies[3], Policies[6]>>",
-  "module": "---------------------------- MODULE RefundRateLimit ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE dummy\nInit == dummy = 0\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\nDummy == TRUE\n============================================================================="
+  "expression": "<<\nD!Decide(<<\n  Ev(\"verify_identity\", \"response\", NoFields, [verified |-> Bool(TRUE)], 1),\n  Ev(\"issue_refund\", \"request\", [account |-> Num(1), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 10),\n  Ev(\"issue_refund\", \"request\", [account |-> Num(1), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 20),\n  Ev(\"issue_refund\", \"request\", [account |-> Num(1), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 30),\n  Ev(\"issue_refund\", \"request\", [account |-> Num(1), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 3610)\n>>, Policies, 5, AllValues),\nD!Decide(<<\n  Ev(\"verify_identity\", \"response\", NoFields, [verified |-> Bool(TRUE)], 1),\n  Ev(\"issue_refund\", \"request\", [account |-> Num(1), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 10),\n  Ev(\"issue_refund\", \"request\", [account |-> Num(1), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 20),\n  Ev(\"issue_refund\", \"request\", [account |-> Num(1), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 30),\n  Ev(\"issue_refund\", \"request\", [account |-> Num(1), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 3611)\n>>, Policies, 5, AllValues)\n>>",
+  "module": "---------------------------- MODULE RefundRateLimit ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE x\nInit == x = 1\nNext == UNCHANGED x\nSpec == Init /\\ [][Next]_x\n\nDummy == TRUE\n============================================================================="
 }
 ```
 
 <details><summary>tool result (success)</summary>
 
 ```
-ime",
-                                               cmp |-> ">=",
-                                               value |-> [k |-> "n", v |-> 32400000],
-                                               other |-> "",
-                                               pattern |-> <<>>,
-                                               net |-> <<>>,
-                                               prefix |-> 0 ],
-                                         leftNeg |-> FALSE,
-                                         keys |-> <<"principal">> ] ],
-                                 [ op |-> "term",
-                                   args |-> <<>>,
-                                   term |->
-                                       [ op |-> "at",
-                                         window |-> 0,
-                                         atom |->
-                                             [ op |-> "cmp",
-                                               args |-> <<>>,
-                                               pred |->
-                                                   [ action |-> "",
-                                                     kind |-> "",
-                                                     binds |-> <<>> ],
-                                               var |-> "",
-                                               field |-> "systemNowTime",
-                                               cmp |-> "<=",
-                                               value |-> [k |-> "n", v |-> 61200000],
+<<
+D!Decide(<<
+  Ev("verify_identity", "response", NoFields, [verified |-> Bool(TRUE)], 1),
+  Ev("issue_refund", "request", [account |-> Num(1), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 10),
+  Ev("issue_refund", "request", [account |-> Num(1), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 20),
+  Ev("issue_refund", "request", [account |-> Num(1), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 30),
+  Ev("issue_refund", "request", [account |-> Num(1), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 3610)
+>>, Policies, 5, AllValues),
+D!Decide(<<
+  Ev("verify_identity", "response", NoFields, [verified |-> Bool(TRUE)], 1),
+  Ev("issue_refund", "request", [account |-> Num(1), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 10),
+  Ev("issue_refund", "request", [account |-> Num(1), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 20),
+  Ev("issue_refund", "request", [account |-> Num(1), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 30),
+  Ev("issue_refund", "request", [account |-> Num(1), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 3611)
+>>, Policies, 5, AllValues)
+>>
+
+      <<FALSE, TRUE>>
 ```
 
 </details>
@@ -806,42 +732,25 @@ ime",
 ```json
 {
   "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
-  "expression": "Policies[3].cond",
-  "module": "---------------------------- MODULE RefundRateLimit ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE dummy\nInit == dummy = 0\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\nDummy == TRUE\n============================================================================="
+  "expression": "<<\nD!Decide(<<\n  Ev(\"verify_identity\", \"response\", NoFields, [verified |-> Bool(TRUE)], 1),\n  Ev(\"issue_refund\", \"request\", [account |-> Num(1), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 10),\n  Ev(\"issue_refund\", \"request\", [account |-> Num(1), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 20),\n  Ev(\"issue_refund\", \"request\", [account |-> Num(1), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 30),\n  Ev(\"issue_refund\", \"request\", [account |-> Num(2), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 40)\n>>, Policies, 5, AllValues)\n>>",
+  "module": "---------------------------- MODULE RefundRateLimit ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE x\nInit == x = 1\nNext == UNCHANGED x\nSpec == Init /\\ [][Next]_x\n\nDummy == TRUE\n============================================================================="
 }
 ```
 
 <details><summary>tool result (success)</summary>
 
 ```
-                                   field |-> "systemNowTime",
-                                      cmp |-> ">=",
-                                      value |-> [k |-> "n", v |-> 32400000],
-                                      other |-> "",
-                                      pattern |-> <<>>,
-                                      net |-> <<>>,
-                                      prefix |-> 0 ],
-                                leftNeg |-> FALSE,
-                                keys |-> <<"principal">> ] ],
-                        [ op |-> "term",
-                          args |-> <<>>,
-                          term |->
-                              [ op |-> "at",
-                                window |-> 0,
-                                atom |->
-                                    [ op |-> "cmp",
-                                      args |-> <<>>,
-                                      pred |->
-                                          [ action |-> "",
-                                            kind |-> "",
-                                            binds |-> <<>> ],
-                                      var |-> "",
-                                      field |-> "systemNowTime",
-                                      cmp |-> "<=",
-                                      value |-> [k |-> "n", v |-> 61200000],
-                                      other |-> "",
-                                      pattern |-> <<>>,
-                                      net |-> <<>>,
+<<
+D!Decide(<<
+  Ev("verify_identity", "response", NoFields, [verified |-> Bool(TRUE)], 1),
+  Ev("issue_refund", "request", [account |-> Num(1), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 10),
+  Ev("issue_refund", "request", [account |-> Num(1), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 20),
+  Ev("issue_refund", "request", [account |-> Num(1), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 30),
+  Ev("issue_refund", "request", [account |-> Num(2), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 40)
+>>, Policies, 5, AllValues)
+>>
+
+      <<TRUE>>
 ```
 
 </details>
@@ -851,231 +760,43 @@ ime",
 ```json
 {
   "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
-  "expression": "<<Policies[1], Policies[2], Policies[4], Policies[5], Policies[6]>>",
-  "module": "---------------------------- MODULE RefundRateLimit ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE dummy\nInit == dummy = 0\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\nDummy == TRUE\n============================================================================="
+  "expression": "<<\n\\* 3 refunds within 1 hour on account 1 (2 prior + current):\nD!Decide(<<\n  Ev(\"verify_identity\", \"response\", NoFields, [verified |-> Bool(TRUE)], 1),\n  Ev(\"issue_refund\", \"request\", [account |-> Num(1), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 10),\n  Ev(\"issue_refund\", \"request\", [account |-> Num(1), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 20),\n  Ev(\"issue_refund\", \"request\", [account |-> Num(1), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 3610)\n>>, Policies, 4, AllValues),\n\\* 4 refunds within 1 hour on account 1 (3 prior + current at 3610):\nD!Decide(<<\n  Ev(\"verify_identity\", \"response\", NoFields, [verified |-> Bool(TRUE)], 1),\n  Ev(\"issue_refund\", \"request\", [account |-> Num(1), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 10),\n  Ev(\"issue_refund\", \"request\", [account |-> Num(1), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 20),\n  Ev(\"issue_refund\", \"request\", [account |-> Num(1), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 30),\n  Ev(\"issue_refund\", \"request\", [account |-> Num(1), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 3610)\n>>, Policies, 5, AllValues)\n>>",
+  "module": "---------------------------- MODULE RefundRateLimit ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE x\nInit == x = 1\nNext == UNCHANGED x\nSpec == Init /\\ [][Next]_x\n\nDummy == TRUE\n============================================================================="
 }
 ```
 
 <details><summary>tool result (success)</summary>
 
 ```
-ld |-> "",
-                             cmp |-> "",
-                             value |-> [k |-> "s", v |-> ""],
-                             other |-> "",
-                             pattern |-> <<>>,
-                             net |-> <<>>,
-                             prefix |-> 0 ],
-                       leftNeg |-> FALSE,
-                       keys |-> <<>> ] ] ],
-         [ effect |-> "permit",
-           actions |-> {"request_approval"},
-           cond |->
-               [ op |-> "true",
-                 args |-> <<>>,
-                 term |->
-                     [ op |-> "formerly",
-                       window |-> 0,
-                       atom |->
-                           [ op |-> "pred",
-                             args |-> <<>>,
-                             pred |-> [action |-> "", kind |-> "", binds |-> <<>>],
-                             var |-> "",
-                             field |-> "",
-                             cmp |-> "",
-                             value |-> [k |-> "s", v |-> ""],
-                             other |-> "",
-                             pattern |-> <<>>,
-                             net |-> <<>>,
-                             prefix |-> 0 ],
-                       left |->
-                           [ op |-> "pred",
-                             args |-> <<>>,
-                             pred |-> [action |-> "", kind |-> "", binds |-> <<>>],
-                             var |-> "",
-                             field |-> "",
+<<
+\* 3 refunds within 1 hour on account 1 (2 prior + current):
+D!Decide(<<
+  Ev("verify_identity", "response", NoFields, [verified |-> Bool(TRUE)], 1),
+  Ev("issue_refund", "request", [account |-> Num(1), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 10),
+  Ev("issue_refund", "request", [account |-> Num(1), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 20),
+  Ev("issue_refund", "request", [account |-> Num(1), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 3610)
+>>, Policies, 4, AllValues),
+\* 4 refunds within 1 hour on account 1 (3 prior + current at 3610):
+D!Decide(<<
+  Ev("verify_identity", "response", NoFields, [verified |-> Bool(TRUE)], 1),
+  Ev("issue_refund", "request", [account |-> Num(1), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 10),
+  Ev("issue_refund", "request", [account |-> Num(1), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 20),
+  Ev("issue_refund", "request", [account |-> Num(1), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 30),
+  Ev("issue_refund", "request", [account |-> Num(1), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, 3610)
+>>, Policies, 5, AllValues)
+>>
+
+      <<TRUE, FALSE>>
 ```
 
 </details>
 
-**Tool call 7** — `evaluate`
+**Tool call 7** — `check_module`
 
 ```json
 {
-  "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
-  "expression": "Policies[6]",
-  "module": "---------------------------- MODULE RefundRateLimit ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE dummy\nInit == dummy = 0\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\nDummy == TRUE\n============================================================================="
-}
-```
-
-<details><summary>tool result (success)</summary>
-
-```
-      leftNeg |-> FALSE,
-                    keys |-> <<>> ],
-              cmp |-> ">",
-              value |-> 3,
-              agg |->
-                  [ kind |-> "count",
-                    cond |->
-                        [ op |-> "term",
-                          args |-> <<>>,
-                          term |->
-                              [ op |-> "formerly",
-                                window |-> 3600,
-                                atom |->
-                                    [ op |-> "and",
-                                      args |->
-                                          << [ op |-> "pred",
-                                               args |-> <<>>,
-                                               pred |->
-                                                   [ action |-> "issue_refund",
-                                                     kind |-> "request",
-                                                     binds |->
-                                                         << [ kind |-> "ctx",
-                                                              field |-> "account",
-                                                              value |->
-                                                                  [ k |-> "s",
-                                                                    v |-> "" ],
-                                                              side |-> "input",
-                                                              name |->
-```
-
-</details>
-
-**Tool call 8** — `evaluate`
-
-```json
-{
-  "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
-  "expression": "<<Policies[6].actions, Policies[6].effect, Policies[7].actions, Policies[7].effect>>",
-  "module": "---------------------------- MODULE RefundRateLimit ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE dummy\nInit == dummy = 0\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\nDummy == TRUE\n============================================================================="
-}
-```
-
-<details><summary>tool result (success)</summary>
-
-```
-<<Policies[6].actions, Policies[6].effect, Policies[7].actions, Policies[7].effect>>
-
-      <<{"issue_refund"}, "forbid", {"issue_refund"}, "forbid">>
-```
-
-</details>
-
-**Tool call 9** — `evaluate`
-
-```json
-{
-  "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
-  "expression": "<<Policies[6].cond.agg, Policies[7].cond.agg>>",
-  "module": "---------------------------- MODULE RefundRateLimit ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE dummy\nInit == dummy = 0\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\nDummy == TRUE\n============================================================================="
-}
-```
-
-<details><summary>tool result (success)</summary>
-
-```
-p |-> "term",
-                 args |-> <<>>,
-                 term |->
-                     [ op |-> "at",
-                       window |-> 0,
-                       atom |->
-                           [ op |-> "cmp",
-                             args |-> <<>>,
-                             pred |-> [action |-> "", kind |-> "", binds |-> <<>>],
-                             var |-> "",
-                             field |-> "amount",
-                             cmp |-> ">",
-                             value |-> [k |-> "n", v |-> 500],
-                             other |-> "",
-                             pattern |-> <<>>,
-                             net |-> <<>>,
-                             prefix |-> 0 ],
-                       left |->
-                           [ op |-> "cmp",
-                             args |-> <<>>,
-                             pred |-> [action |-> "", kind |-> "", binds |-> <<>>],
-                             var |-> "",
-                             field |-> "amount",
-                             cmp |-> ">",
-                             value |-> [k |-> "n", v |-> 500],
-                             other |-> "",
-                             pattern |-> <<>>,
-                             net |-> <<>>,
-                             prefix |-> 0 ],
-                       leftNeg |-> FALSE,
-                       keys |-> <<"principal">> ] ],
-               [ op |-> "not",
-
-The expression did not evaluate. TLC's output is above; nothing was checked.
-```
-
-</details>
-
-**Tool call 10** — `evaluate`
-
-```json
-{
-  "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
-  "expression": "LET\n  R(t, acc) == Ev(\"issue_refund\", \"request\", [account |-> Num(acc), amount |-> Num(499), systemNowTime |-> Num(32400000)], NoFields, t)\n  s1 == << R(10, 1) >>\n  s2 == << R(10, 1), R(20, 1), R(30, 1), R(40, 1) >>\n  s3 == << R(10, 1), R(20, 1), R(30, 1), R(4000, 1) >>\n  s4 == << R(10, 2), R(20, 2), R(30, 2), R(40, 1) >>\nIN << D!Decide(s1, Policies, 1, AllValues),\n      D!Decide(s2, Policies, 4, AllValues),\n      D!Decide(s3, Policies, 4, AllValues),\n      D!Decide(s4, Policies, 4, AllValues) >>\n",
-  "module": "---------------------------- MODULE RefundRateLimit ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE dummy\nInit == dummy = 0\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\nDummy == TRUE\n============================================================================="
-}
-```
-
-<details><summary>tool result (success)</summary>
-
-```
-LET
-  R(t, acc) == Ev("issue_refund", "request", [account |-> Num(acc), amount |-> Num(499), systemNowTime |-> Num(32400000)], NoFields, t)
-  s1 == << R(10, 1) >>
-  s2 == << R(10, 1), R(20, 1), R(30, 1), R(40, 1) >>
-  s3 == << R(10, 1), R(20, 1), R(30, 1), R(4000, 1) >>
-  s4 == << R(10, 2), R(20, 2), R(30, 2), R(40, 1) >>
-IN << D!Decide(s1, Policies, 1, AllValues),
-      D!Decide(s2, Policies, 4, AllValues),
-      D!Decide(s3, Policies, 4, AllValues),
-      D!Decide(s4, Policies, 4, AllValues) >>
-
-
-      <<TRUE, FALSE, TRUE, TRUE>>
-```
-
-</details>
-
-**Tool call 11** — `evaluate`
-
-```json
-{
-  "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
-  "expression": "LET\n  R(t, acc) == Ev(\"issue_refund\", \"request\", [account |-> Num(acc), amount |-> Num(499), systemNowTime |-> Num(32400000)], NoFields, t)\n  sAt3600 == << R(100, 1), R(200, 1), R(300, 1), R(3700, 1) >>\n  sAt3701 == << R(100, 1), R(200, 1), R(300, 1), R(3701, 1) >>\nIN << D!Decide(sAt3600, Policies, 4, AllValues),\n      D!Decide(sAt3701, Policies, 4, AllValues) >>\n",
-  "module": "---------------------------- MODULE RefundRateLimit ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE dummy\nInit == dummy = 0\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\nDummy == TRUE\n============================================================================="
-}
-```
-
-<details><summary>tool result (success)</summary>
-
-```
-LET
-  R(t, acc) == Ev("issue_refund", "request", [account |-> Num(acc), amount |-> Num(499), systemNowTime |-> Num(32400000)], NoFields, t)
-  sAt3600 == << R(100, 1), R(200, 1), R(300, 1), R(3700, 1) >>
-  sAt3701 == << R(100, 1), R(200, 1), R(300, 1), R(3701, 1) >>
-IN << D!Decide(sAt3600, Policies, 4, AllValues),
-      D!Decide(sAt3701, Policies, 4, AllValues) >>
-
-
-      <<FALSE, TRUE>>
-```
-
-</details>
-
-**Tool call 12** — `check_module`
-
-```json
-{
-  "config": "SPECIFICATION Spec\nINVARIANT FourthRefundWithinHourRefused\nINVARIANT CompliantRefundAllowed\n",
-  "module": "---------------------------- MODULE RefundRateLimit ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nHour == 3600\n\nRefundReq(t, acc) ==\n    Ev(\"issue_refund\", \"request\",\n       [account |-> Num(acc), amount |-> Num(499), systemNowTime |-> Num(32400000)],\n       NoFields, t)\n\nTrace(priorCount, priorAcc, targetAcc, gap) ==\n    IF priorCount = 0 THEN\n        << RefundReq(100 + gap, targetAcc) >>\n    ELSE IF priorCount = 1 THEN\n        << RefundReq(100, priorAcc),\n           RefundReq(100 + gap, targetAcc) >>\n    ELSE IF priorCount = 2 THEN\n        << RefundReq(100, priorAcc),\n           RefundReq(110, priorAcc),\n           RefundReq(100 + gap, targetAcc) >>\n    ELSE\n        << RefundReq(100, priorAcc),\n           RefundReq(110, priorAcc),\n           RefundReq(120, priorAcc),\n           RefundReq(100 + gap, targetAcc) >>\n\nDecisionIndex(priorCount) ==\n    IF priorCount = 0 THEN 1\n    ELSE IF priorCount = 1 THEN 2\n    ELSE IF priorCount = 2 THEN 3\n    ELSE 4\n\nRefundAllowed(priorCount, priorAcc, targetAcc, gap) ==\n    D!Decide(Trace(priorCount, priorAcc, targetAcc, gap), Policies, DecisionIndex(priorCount), AllValues)\n\nVARIABLES priorCount, priorAcc, targetAcc, gap\n\nPriorCounts == {0, 1, 2, 3}\nAccounts    == {1, 2}\nGaps        == {600, 1800, Hour, Hour + 1, 2 * Hour}\n\nInit ==\n    /\\ priorCount \\in PriorCounts\n    /\\ priorAcc \\in Accounts\n    /\\ targetAcc \\in Accounts\n    /\\ gap \\in Gaps\n\nNext == UNCHANGED <<priorCount, priorAcc, targetAcc, gap>>\n\nSpec == Init /\\ [][Next]_<<priorCount, priorAcc, targetAcc, gap>>\n\nFourthRefundWithinHourRefused ==\n    (priorCount = 3 /\\ priorAcc = targetAcc /\\ gap <= Hour)\n        => ~RefundAllowed(priorCount, priorAcc, targetAcc, gap)\n\nCompliantRefundAllowed ==\n    (priorCount = 0 /\\ targetAcc = 1 /\\ gap = 600)\n        => RefundAllowed(priorCount, priorAcc, targetAcc, gap)\n\n============================================================================="
+  "config": "SPECIFICATION Spec\nINVARIANT ExceedingRateLimitRefused\nINVARIANT CompliantRefundAllowed\n",
+  "module": "---------------------------- MODULE RefundRateLimit ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVerify == Ev(\"verify_identity\", \"response\", NoFields, [verified |-> Bool(TRUE)], 1)\nRefund(acct, t) == Ev(\"issue_refund\", \"request\", [account |-> Num(acct), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, t)\n\nSession(pCount, acct, g) ==\n    IF pCount = 2\n    THEN << Verify, Refund(1, 10), Refund(1, 20), Refund(acct, 10 + g) >>\n    ELSE << Verify, Refund(1, 10), Refund(1, 20), Refund(1, 30), Refund(acct, 10 + g) >>\n\nRefundAllowed(pCount, acct, g) ==\n    D!Decide(Session(pCount, acct, g), Policies, pCount + 2, AllValues)\n\nVARIABLES priorCount, targetAccount, gap\n\nInit ==\n    /\\ priorCount    \\in {2, 3}\n    /\\ targetAccount \\in {1, 2}\n    /\\ gap           \\in {3600, 3601}\n\nNext == UNCHANGED <<priorCount, targetAccount, gap>>\nSpec == Init /\\ [][Next]_<<priorCount, targetAccount, gap>>\n\n\\* The agent might attempt no more than three refunds against the same account within one hour (3600s).\n\\* If there are already 3 refunds on the same account within 1 hour (gap <= 3600s), the 4th refund is refused.\nExceedingRateLimitRefused ==\n    (priorCount = 3 /\\ targetAccount = 1 /\\ gap <= 3600) => ~RefundAllowed(priorCount, targetAccount, gap)\n\n\\* At most 3 refunds on the same account within 1 hour is allowed when prerequisites are met.\nCompliantRefundAllowed ==\n    (priorCount = 2 /\\ targetAccount = 1 /\\ gap <= 3600) => RefundAllowed(priorCount, targetAccount, gap)\n\n============================================================================="
 }
 ```
 
@@ -1087,12 +808,12 @@ Compiles, evaluates, and holds on this policy. Either answer is acceptable -- a 
 
 </details>
 
-**Tool call 13** — `what_it_forbids`
+**Tool call 8** — `what_it_forbids`
 
 ```json
 {
-  "config": "SPECIFICATION Spec\nINVARIANT FourthRefundWithinHourRefused\nINVARIANT CompliantRefundAllowed\n",
-  "module": "---------------------------- MODULE RefundRateLimit ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nHour == 3600\n\nRefundReq(t, acc) ==\n    Ev(\"issue_refund\", \"request\",\n       [account |-> Num(acc), amount |-> Num(499), systemNowTime |-> Num(32400000)],\n       NoFields, t)\n\nTrace(priorCount, priorAcc, targetAcc, gap) ==\n    IF priorCount = 0 THEN\n        << RefundReq(100 + gap, targetAcc) >>\n    ELSE IF priorCount = 1 THEN\n        << RefundReq(100, priorAcc),\n           RefundReq(100 + gap, targetAcc) >>\n    ELSE IF priorCount = 2 THEN\n        << RefundReq(100, priorAcc),\n           RefundReq(110, priorAcc),\n           RefundReq(100 + gap, targetAcc) >>\n    ELSE\n        << RefundReq(100, priorAcc),\n           RefundReq(110, priorAcc),\n           RefundReq(120, priorAcc),\n           RefundReq(100 + gap, targetAcc) >>\n\nDecisionIndex(priorCount) ==\n    IF priorCount = 0 THEN 1\n    ELSE IF priorCount = 1 THEN 2\n    ELSE IF priorCount = 2 THEN 3\n    ELSE 4\n\nRefundAllowed(priorCount, priorAcc, targetAcc, gap) ==\n    D!Decide(Trace(priorCount, priorAcc, targetAcc, gap), Policies, DecisionIndex(priorCount), AllValues)\n\nVARIABLES priorCount, priorAcc, targetAcc, gap\n\nPriorCounts == {0, 1, 2, 3}\nAccounts    == {1, 2}\nGaps        == {600, 1800, Hour, Hour + 1, 2 * Hour}\n\nInit ==\n    /\\ priorCount \\in PriorCounts\n    /\\ priorAcc \\in Accounts\n    /\\ targetAcc \\in Accounts\n    /\\ gap \\in Gaps\n\nNext == UNCHANGED <<priorCount, priorAcc, targetAcc, gap>>\n\nSpec == Init /\\ [][Next]_<<priorCount, priorAcc, targetAcc, gap>>\n\nFourthRefundWithinHourRefused ==\n    (priorCount = 3 /\\ priorAcc = targetAcc /\\ gap <= Hour)\n        => ~RefundAllowed(priorCount, priorAcc, targetAcc, gap)\n\nCompliantRefundAllowed ==\n    (priorCount = 0 /\\ targetAcc = 1 /\\ gap = 600)\n        => RefundAllowed(priorCount, priorAcc, targetAcc, gap)\n\n============================================================================="
+  "config": "SPECIFICATION Spec\nINVARIANT ExceedingRateLimitRefused\nINVARIANT CompliantRefundAllowed\n",
+  "module": "---------------------------- MODULE RefundRateLimit ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVerify == Ev(\"verify_identity\", \"response\", NoFields, [verified |-> Bool(TRUE)], 1)\nRefund(acct, t) == Ev(\"issue_refund\", \"request\", [account |-> Num(acct), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, t)\n\nSession(pCount, acct, g) ==\n    IF pCount = 2\n    THEN << Verify, Refund(1, 10), Refund(1, 20), Refund(acct, 10 + g) >>\n    ELSE << Verify, Refund(1, 10), Refund(1, 20), Refund(1, 30), Refund(acct, 10 + g) >>\n\nRefundAllowed(pCount, acct, g) ==\n    D!Decide(Session(pCount, acct, g), Policies, pCount + 2, AllValues)\n\nVARIABLES priorCount, targetAccount, gap\n\nInit ==\n    /\\ priorCount    \\in {2, 3}\n    /\\ targetAccount \\in {1, 2}\n    /\\ gap           \\in {3600, 3601}\n\nNext == UNCHANGED <<priorCount, targetAccount, gap>>\nSpec == Init /\\ [][Next]_<<priorCount, targetAccount, gap>>\n\n\\* The agent might attempt no more than three refunds against the same account within one hour (3600s).\n\\* If there are already 3 refunds on the same account within 1 hour (gap <= 3600s), the 4th refund is refused.\nExceedingRateLimitRefused ==\n    (priorCount = 3 /\\ targetAccount = 1 /\\ gap <= 3600) => ~RefundAllowed(priorCount, targetAccount, gap)\n\n\\* At most 3 refunds on the same account within 1 hour is allowed when prerequisites are met.\nCompliantRefundAllowed ==\n    (priorCount = 2 /\\ targetAccount = 1 /\\ gap <= 3600) => RefundAllowed(priorCount, targetAccount, gap)\n\n============================================================================="
 }
 ```
 
@@ -1101,34 +822,35 @@ Compiles, evaluates, and holds on this policy. Either answer is acceptable -- a 
 ```
 RefundRateLimit
 
-  2 claims will be checked, over 80 states:
+  Every value each variable takes -- nothing else is checked:
+      priorCount     2, 3
+      targetAccount  1, 2
+      gap            3600, 3601
 
-  FourthRefundWithinHourRefused
-      says:     whenever priorCount is 3 and priorAcc is targetAcc and gap is at most
-                Hour,
-                then the policy REFUSES it (RefundAllowed(priorCount, priorAcc,
-                targetAcc, gap))
-      forbids:  priorCount is 3 and priorAcc is targetAcc and gap is at most Hour,
-                and yet the policy GRANTS it (RefundAllowed(priorCount, priorAcc,
-                targetAcc, gap))
-      applies:  to 6 of the 80 states:
-                  priorCount = 3, priorAcc = 1, targetAcc = 1, gap = 600
-                  priorCount = 3, priorAcc = 1, targetAcc = 1, gap = 1800
-                  priorCount = 3, priorAcc = 1, targetAcc = 1, gap = 3600
-                  priorCount = 3, priorAcc = 2, targetAcc = 2, gap = 600
-                  priorCount = 3, priorAcc = 2, targetAcc = 2, gap = 1800
-                  priorCount = 3, priorAcc = 2, targetAcc = 2, gap = 3600
+  2 claims will be checked, over 8 states:
+
+  ExceedingRateLimitRefused
+      \* The agent might attempt no more than three refunds against the same account within one hour (3600s).
+      \* If there are already 3 refunds on the same account within 1 hour (gap <= 3600s), the 4th refund is refused.
+      says:     whenever priorCount is 3 and targetAccount is 1 and gap is at most 3600,
+                then the policy REFUSES it (RefundAllowed(priorCount, targetAccount,
+                gap))
+      forbids:  priorCount is 3 and targetAccount is 1 and gap is at most 3600,
+                and yet the policy GRANTS it (RefundAllowed(priorCount, targetAccount,
+                gap))
+      applies:  to 1 of the 8 states:
+                  priorCount = 3, targetAccount = 1, gap = 3600
 
   CompliantRefundAllowed
-      says:     whenever priorCount is 0 and targetAcc is 1 and gap is 600,
-                then the policy GRANTS it (RefundAllowed(priorCount, priorAcc,
-                targetAcc, gap))
-      forbids:  priorCount is 0 and targetAcc is 1 and gap is 600,
-                and yet the policy REFUSES it (RefundAllowed(priorCount, priorAcc,
-                targetAcc, gap))
-      applies:  to 2 of the 80 states:
-                  priorCount = 0, priorAcc = 1, targetAcc = 1, gap = 600
-                  priorCount = 0, priorAcc = 2, targetAcc = 1, gap = 600
+      \* At most 3 refunds on the same account within 1 hour is allowed when prerequisites are met.
+      says:     whenever priorCount is 2 and targetAccount is 1 and gap is at most 3600,
+                then the policy GRANTS it (RefundAllowed(priorCount, targetAccount,
+                gap))
+      forbids:  priorCount is 2 and targetAccount is 1 and gap is at most 3600,
+                and yet the policy REFUSES it (RefundAllowed(priorCount, targetAccount,
+                gap))
+      applies:  to 1 of the 8 states:
+                  priorCount = 2, targetAccount = 1, gap = 3600
 
   Read the `forbids` lines before the run, not after it. Each one is the only
   thing its claim can catch; if none of them describes something you would
@@ -1137,12 +859,12 @@ RefundRateLimit
 
 </details>
 
-**Tool call 14** — `check_module`
+**Tool call 9** — `check_module`
 
 ```json
 {
-  "config": "SPECIFICATION Spec\nINVARIANT FourthRefundWithinHourRefused\nINVARIANT CompliantRefundAllowed\n",
-  "module": "---------------------------- MODULE RefundRateLimit ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nHour == 3600\n\nRefundReq(t, acc) ==\n    Ev(\"issue_refund\", \"request\",\n       [account |-> Num(acc), amount |-> Num(499), systemNowTime |-> Num(32400000)],\n       NoFields, t)\n\nTrace(priorCount, priorAcc, targetAcc, gap) ==\n    IF priorCount = 0 THEN\n        << RefundReq(100 + gap, targetAcc) >>\n    ELSE IF priorCount = 1 THEN\n        << RefundReq(100, priorAcc),\n           RefundReq(100 + gap, targetAcc) >>\n    ELSE IF priorCount = 2 THEN\n        << RefundReq(100, priorAcc),\n           RefundReq(110, priorAcc),\n           RefundReq(100 + gap, targetAcc) >>\n    ELSE\n        << RefundReq(100, priorAcc),\n           RefundReq(110, priorAcc),\n           RefundReq(120, priorAcc),\n           RefundReq(100 + gap, targetAcc) >>\n\nDecisionIndex(priorCount) ==\n    IF priorCount = 0 THEN 1\n    ELSE IF priorCount = 1 THEN 2\n    ELSE IF priorCount = 2 THEN 3\n    ELSE 4\n\nRefundAllowed(priorCount, priorAcc, targetAcc, gap) ==\n    D!Decide(Trace(priorCount, priorAcc, targetAcc, gap), Policies, DecisionIndex(priorCount), AllValues)\n\nVARIABLES priorCount, priorAcc, targetAcc, gap\n\nPriorCounts == {0, 1, 2, 3}\nAccounts    == {1, 2}\nGaps        == {600, 1800, Hour, Hour + 1, 2 * Hour}\n\nInit ==\n    /\\ priorCount \\in PriorCounts\n    /\\ priorAcc \\in Accounts\n    /\\ targetAcc \\in Accounts\n    /\\ gap \\in Gaps\n\nNext == UNCHANGED <<priorCount, priorAcc, targetAcc, gap>>\n\nSpec == Init /\\ [][Next]_<<priorCount, priorAcc, targetAcc, gap>>\n\nFourthRefundWithinHourRefused ==\n    (priorCount = 3 /\\ priorAcc = targetAcc /\\ gap <= Hour)\n        => ~RefundAllowed(priorCount, priorAcc, targetAcc, gap)\n\nCompliantRefundAllowed ==\n    (priorCount = 0 /\\ priorAcc = 1 /\\ targetAcc = 1 /\\ gap = 600)\n        => RefundAllowed(priorCount, priorAcc, targetAcc, gap)\n\n============================================================================="
+  "config": "SPECIFICATION Spec\nINVARIANT ExceedingRateLimitRefused\nINVARIANT CompliantRefundAllowed\n",
+  "module": "---------------------------- MODULE RefundRateLimit ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVerify == Ev(\"verify_identity\", \"response\", NoFields, [verified |-> Bool(TRUE)], 1)\nRefund(acct, t) == Ev(\"issue_refund\", \"request\", [account |-> Num(acct), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, t)\n\nSession(pCount, acct, g) ==\n    IF pCount = 2\n    THEN << Verify, Refund(1, 10), Refund(1, 20), Refund(acct, 10 + g) >>\n    ELSE << Verify, Refund(1, 10), Refund(1, 20), Refund(1, 30), Refund(acct, 10 + g) >>\n\nRefundAllowed(pCount, acct, g) ==\n    D!Decide(Session(pCount, acct, g), Policies, pCount + 2, AllValues)\n\nVARIABLES priorCount, targetAccount, gap\n\nInit ==\n    /\\ priorCount    \\in {2, 3}\n    /\\ targetAccount \\in {1, 2}\n    /\\ gap           \\in {3600, 3601}\n\nNext == UNCHANGED <<priorCount, targetAccount, gap>>\nSpec == Init /\\ [][Next]_<<priorCount, targetAccount, gap>>\n\n\\* The agent might attempt no more than three refunds against the same account within one hour (3600s).\n\\* If there are already 3 refunds on the same account within 1 hour (gap <= 3600s), the 4th refund is refused.\nExceedingRateLimitRefused ==\n    (priorCount = 3 /\\ targetAccount = 1 /\\ gap <= 3600) => ~RefundAllowed(priorCount, targetAccount, gap)\n\n\\* At most 3 refunds on the same account within 1 hour is allowed when prerequisites are met.\nCompliantRefundAllowed ==\n    (priorCount = 2 /\\ targetAccount = 1 /\\ gap <= 3600) => RefundAllowed(priorCount, targetAccount, gap)\n\n============================================================================="
 }
 ```
 
@@ -1160,66 +882,40 @@ EXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest
 
 D == INSTANCE DogwoodSemantics WITH Cases <- << >>
 
-Hour == 3600
+Verify == Ev("verify_identity", "response", NoFields, [verified |-> Bool(TRUE)], 1)
+Refund(acct, t) == Ev("issue_refund", "request", [account |-> Num(acct), amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000)], NoFields, t)
 
-RefundReq(t, acc) ==
-    Ev("issue_refund", "request",
-       [account |-> Num(acc), amount |-> Num(499), systemNowTime |-> Num(32400000)],
-       NoFields, t)
+Session(pCount, acct, g) ==
+    IF pCount = 2
+    THEN << Verify, Refund(1, 10), Refund(1, 20), Refund(acct, 10 + g) >>
+    ELSE << Verify, Refund(1, 10), Refund(1, 20), Refund(1, 30), Refund(acct, 10 + g) >>
 
-Trace(priorCount, priorAcc, targetAcc, gap) ==
-    IF priorCount = 0 THEN
-        << RefundReq(100 + gap, targetAcc) >>
-    ELSE IF priorCount = 1 THEN
-        << RefundReq(100, priorAcc),
-           RefundReq(100 + gap, targetAcc) >>
-    ELSE IF priorCount = 2 THEN
-        << RefundReq(100, priorAcc),
-           RefundReq(110, priorAcc),
-           RefundReq(100 + gap, targetAcc) >>
-    ELSE
-        << RefundReq(100, priorAcc),
-           RefundReq(110, priorAcc),
-           RefundReq(120, priorAcc),
-           RefundReq(100 + gap, targetAcc) >>
+RefundAllowed(pCount, acct, g) ==
+    D!Decide(Session(pCount, acct, g), Policies, pCount + 2, AllValues)
 
-DecisionIndex(priorCount) ==
-    IF priorCount = 0 THEN 1
-    ELSE IF priorCount = 1 THEN 2
-    ELSE IF priorCount = 2 THEN 3
-    ELSE 4
-
-RefundAllowed(priorCount, priorAcc, targetAcc, gap) ==
-    D!Decide(Trace(priorCount, priorAcc, targetAcc, gap), Policies, DecisionIndex(priorCount), AllValues)
-
-VARIABLES priorCount, priorAcc, targetAcc, gap
-
-PriorCounts == {0, 1, 2, 3}
-Accounts    == {1, 2}
-Gaps        == {600, 1800, Hour, Hour + 1, 2 * Hour}
+VARIABLES priorCount, targetAccount, gap
 
 Init ==
-    /\ priorCount \in PriorCounts
-    /\ priorAcc \in Accounts
-    /\ targetAcc \in Accounts
-    /\ gap \in Gaps
+    /\ priorCount    \in {2, 3}
+    /\ targetAccount \in {1, 2}
+    /\ gap           \in {3600, 3601}
 
-Next == UNCHANGED <<priorCount, priorAcc, targetAcc, gap>>
+Next == UNCHANGED <<priorCount, targetAccount, gap>>
+Spec == Init /\ [][Next]_<<priorCount, targetAccount, gap>>
 
-Spec == Init /\ [][Next]_<<priorCount, priorAcc, targetAcc, gap>>
+\* The agent might attempt no more than three refunds against the same account within one hour (3600s).
+\* If there are already 3 refunds on the same account within 1 hour (gap <= 3600s), the 4th refund is refused.
+ExceedingRateLimitRefused ==
+    (priorCount = 3 /\ targetAccount = 1 /\ gap <= 3600) => ~RefundAllowed(priorCount, targetAccount, gap)
 
-FourthRefundWithinHourRefused ==
-    (priorCount = 3 /\ priorAcc = targetAcc /\ gap <= Hour)
-        => ~RefundAllowed(priorCount, priorAcc, targetAcc, gap)
-
+\* At most 3 refunds on the same account within 1 hour is allowed when prerequisites are met.
 CompliantRefundAllowed ==
-    (priorCount = 0 /\ priorAcc = 1 /\ targetAcc = 1 /\ gap = 600)
-        => RefundAllowed(priorCount, priorAcc, targetAcc, gap)
+    (priorCount = 2 /\ targetAccount = 1 /\ gap <= 3600) => RefundAllowed(priorCount, targetAccount, gap)
 
 =============================================================================
 ===CONFIG===
 SPECIFICATION Spec
-INVARIANT FourthRefundWithinHourRefused
+INVARIANT ExceedingRateLimitRefused
 INVARIANT CompliantRefundAllowed
 
 ## the review
@@ -1234,43 +930,43 @@ INVARIANT CompliantRefundAllowed
 > 
 > RefundRateLimit
 > 
->   2 claims will be checked, over 80 states:
->       priorCount = 0, priorAcc = 1, targetAcc = 1, gap = 600
->       priorCount = 0, priorAcc = 1, targetAcc = 1, gap = 1800
->       priorCount = 0, priorAcc = 1, targetAcc = 1, gap = 3600
->       priorCount = 0, priorAcc = 1, targetAcc = 1, gap = 3601
->       priorCount = 0, priorAcc = 1, targetAcc = 1, gap = 7200
->       priorCount = 0, priorAcc = 1, targetAcc = 2, gap = 600
->       priorCount = 0, priorAcc = 1, targetAcc = 2, gap = 1800
->       priorCount = 0, priorAcc = 1, targetAcc = 2, gap = 3600
->       and 72 more
+>   Every value each variable takes -- nothing else is checked:
+>       priorCount     2, 3
+>       targetAccount  1, 2
+>       gap            3600, 3601
 > 
->   FourthRefundWithinHourRefused
->       says:     whenever priorCount is 3 and priorAcc is targetAcc and gap is at most
->                 Hour,
->                 then the policy REFUSES it (RefundAllowed(priorCount, priorAcc,
->                 targetAcc, gap))
->       forbids:  priorCount is 3 and priorAcc is targetAcc and gap is at most Hour,
->                 and yet the policy GRANTS it (RefundAllowed(priorCount, priorAcc,
->                 targetAcc, gap))
->       applies:  to 6 of the 80 states:
->                   priorCount = 3, priorAcc = 1, targetAcc = 1, gap = 600
->                   priorCount = 3, priorAcc = 1, targetAcc = 1, gap = 1800
->                   priorCount = 3, priorAcc = 1, targetAcc = 1, gap = 3600
->                   priorCount = 3, priorAcc = 2, targetAcc = 2, gap = 600
->                   priorCount = 3, priorAcc = 2, targetAcc = 2, gap = 1800
->                   priorCount = 3, priorAcc = 2, targetAcc = 2, gap = 3600
+>   2 claims will be checked, over 8 states:
+>       priorCount = 2, targetAccount = 1, gap = 3600
+>       priorCount = 2, targetAccount = 1, gap = 3601
+>       priorCount = 2, targetAccount = 2, gap = 3600
+>       priorCount = 2, targetAccount = 2, gap = 3601
+>       priorCount = 3, targetAccount = 1, gap = 3600
+>       priorCount = 3, targetAccount = 1, gap = 3601
+>       priorCount = 3, targetAccount = 2, gap = 3600
+>       priorCount = 3, targetAccount = 2, gap = 3601
+> 
+>   ExceedingRateLimitRefused
+>       \* The agent might attempt no more than three refunds against the same account within one hour (3600s).
+>       \* If there are already 3 refunds on the same account within 1 hour (gap <= 3600s), the 4th refund is refused.
+>       says:     whenever priorCount is 3 and targetAccount is 1 and gap is at most 3600,
+>                 then the policy REFUSES it (RefundAllowed(priorCount, targetAccount,
+>                 gap))
+>       forbids:  priorCount is 3 and targetAccount is 1 and gap is at most 3600,
+>                 and yet the policy GRANTS it (RefundAllowed(priorCount, targetAccount,
+>                 gap))
+>       applies:  to 1 of the 8 states:
+>                   priorCount = 3, targetAccount = 1, gap = 3600
 > 
 >   CompliantRefundAllowed
->       says:     whenever priorCount is 0 and priorAcc is 1 and targetAcc is 1 and gap is
->                 600,
->                 then the policy GRANTS it (RefundAllowed(priorCount, priorAcc,
->                 targetAcc, gap))
->       forbids:  priorCount is 0 and priorAcc is 1 and targetAcc is 1 and gap is 600,
->                 and yet the policy REFUSES it (RefundAllowed(priorCount, priorAcc,
->                 targetAcc, gap))
->       applies:  to 1 of the 80 states:
->                   priorCount = 0, priorAcc = 1, targetAcc = 1, gap = 600
+>       \* At most 3 refunds on the same account within 1 hour is allowed when prerequisites are met.
+>       says:     whenever priorCount is 2 and targetAccount is 1 and gap is at most 3600,
+>                 then the policy GRANTS it (RefundAllowed(priorCount, targetAccount,
+>                 gap))
+>       forbids:  priorCount is 2 and targetAccount is 1 and gap is at most 3600,
+>                 and yet the policy REFUSES it (RefundAllowed(priorCount, targetAccount,
+>                 gap))
+>       applies:  to 1 of the 8 states:
+>                   priorCount = 2, targetAccount = 1, gap = 3600
 > 
 >   Read the `forbids` lines before the run, not after it. Each one is the only
 >   thing its claim can catch; if none of them describes something you would
@@ -1279,12 +975,12 @@ INVARIANT CompliantRefundAllowed
 | | |
 |---|---|
 | model | gemini-3.7-flash |
-| tokens | 1,374 |
-| seconds | 4.6 |
+| tokens | 1,419 |
+| seconds | 5.3 |
 
 VERDICT: MATCH
 
-The formal claims ensure that when three refunds have already been made to the same account within an hour, any subsequent refund attempt within that hour is refused, while allowed attempts (under the limit) can be granted. The thresholds, account matching conditions, and time window directly capture the requirement.
+The reading correctly limits refunds to at most three within a one-hour window (3600 seconds) against the same account. It properly checks the threshold boundaries, including the allowed 3rd attempt (`priorCount = 2`), the disallowed 4th attempt (`priorCount = 3`), and the boundary time values (3600s and the value just past it, 3601s).
 
 ## the report
 
@@ -1299,43 +995,43 @@ The formal claims ensure that when three refunds have already been made to the s
 > 
 > RefundRateLimit
 > 
->   2 claims will be checked, over 80 states:
->   priorCount = 0, priorAcc = 1, targetAcc = 1, gap = 600
->   priorCount = 0, priorAcc = 1, targetAcc = 1, gap = 1800
->   priorCount = 0, priorAcc = 1, targetAcc = 1, gap = 3600
->   priorCount = 0, priorAcc = 1, targetAcc = 1, gap = 3601
->   priorCount = 0, priorAcc = 1, targetAcc = 1, gap = 7200
->   priorCount = 0, priorAcc = 1, targetAcc = 2, gap = 600
->   priorCount = 0, priorAcc = 1, targetAcc = 2, gap = 1800
->   priorCount = 0, priorAcc = 1, targetAcc = 2, gap = 3600
->   and 72 more
+>   Every value each variable takes -- nothing else is checked:
+>   priorCount     2, 3
+>   targetAccount  1, 2
+>   gap            3600, 3601
 > 
->   FourthRefundWithinHourRefused
->   says:     whenever priorCount is 3 and priorAcc is targetAcc and gap is at most
->             Hour,
->             then the policy REFUSES it (RefundAllowed(priorCount, priorAcc,
->             targetAcc, gap))
->   forbids:  priorCount is 3 and priorAcc is targetAcc and gap is at most Hour,
->             and yet the policy GRANTS it (RefundAllowed(priorCount, priorAcc,
->             targetAcc, gap))
->   applies:  to 6 of the 80 states:
->               priorCount = 3, priorAcc = 1, targetAcc = 1, gap = 600
->               priorCount = 3, priorAcc = 1, targetAcc = 1, gap = 1800
->               priorCount = 3, priorAcc = 1, targetAcc = 1, gap = 3600
->               priorCount = 3, priorAcc = 2, targetAcc = 2, gap = 600
->               priorCount = 3, priorAcc = 2, targetAcc = 2, gap = 1800
->               priorCount = 3, priorAcc = 2, targetAcc = 2, gap = 3600
+>   2 claims will be checked, over 8 states:
+>   priorCount = 2, targetAccount = 1, gap = 3600
+>   priorCount = 2, targetAccount = 1, gap = 3601
+>   priorCount = 2, targetAccount = 2, gap = 3600
+>   priorCount = 2, targetAccount = 2, gap = 3601
+>   priorCount = 3, targetAccount = 1, gap = 3600
+>   priorCount = 3, targetAccount = 1, gap = 3601
+>   priorCount = 3, targetAccount = 2, gap = 3600
+>   priorCount = 3, targetAccount = 2, gap = 3601
+> 
+>   ExceedingRateLimitRefused
+>   \* The agent might attempt no more than three refunds against the same account within one hour (3600s).
+>   \* If there are already 3 refunds on the same account within 1 hour (gap <= 3600s), the 4th refund is refused.
+>   says:     whenever priorCount is 3 and targetAccount is 1 and gap is at most 3600,
+>             then the policy REFUSES it (RefundAllowed(priorCount, targetAccount,
+>             gap))
+>   forbids:  priorCount is 3 and targetAccount is 1 and gap is at most 3600,
+>             and yet the policy GRANTS it (RefundAllowed(priorCount, targetAccount,
+>             gap))
+>   applies:  to 1 of the 8 states:
+>               priorCount = 3, targetAccount = 1, gap = 3600
 > 
 >   CompliantRefundAllowed
->   says:     whenever priorCount is 0 and priorAcc is 1 and targetAcc is 1 and gap is
->             600,
->             then the policy GRANTS it (RefundAllowed(priorCount, priorAcc,
->             targetAcc, gap))
->   forbids:  priorCount is 0 and priorAcc is 1 and targetAcc is 1 and gap is 600,
->             and yet the policy REFUSES it (RefundAllowed(priorCount, priorAcc,
->             targetAcc, gap))
->   applies:  to 1 of the 80 states:
->               priorCount = 0, priorAcc = 1, targetAcc = 1, gap = 600
+>   \* At most 3 refunds on the same account within 1 hour is allowed when prerequisites are met.
+>   says:     whenever priorCount is 2 and targetAccount is 1 and gap is at most 3600,
+>             then the policy GRANTS it (RefundAllowed(priorCount, targetAccount,
+>             gap))
+>   forbids:  priorCount is 2 and targetAccount is 1 and gap is at most 3600,
+>             and yet the policy REFUSES it (RefundAllowed(priorCount, targetAccount,
+>             gap))
+>   applies:  to 1 of the 8 states:
+>               priorCount = 2, targetAccount = 1, gap = 3600
 > 
 >   Read the `forbids` lines before the run, not after it. Each one is the only
 >   thing its claim can catch; if none of them describes something you would
@@ -1351,45 +1047,54 @@ The formal claims ensure that when three refunds have already been made to the s
 | | |
 |---|---|
 | model | gemini-3.7-flash |
-| tokens | 2,839 |
-| seconds | 11.4 |
-
-Here is the formal verification report for **`agent-policy.dw`** against the **`RefundRateLimit.tla`** property module.
-
----
+| tokens | 2,712 |
+| seconds | 12.3 |
 
 ### Verification Summary
-* **Result:** **HELD** across all evaluated states.
-* **Scope Tested:** A discrete state space of **80 specific configurations** combining select values of `priorCount`, `priorAcc`, `targetAcc`, and `gap` (including gaps of 600s, 1800s, 3600s, 3601s, 7200s, and account IDs 1 and 2).
+
+The model checker evaluated the property module **`RefundRateLimit.tla`** against **`agent-policy.dw`**. All claims defined in the property module **held** across the specific states evaluated. 
+
+No counterexamples were found within the checked bounds. However, the scope of what was checked is very narrow.
 
 ---
 
-### What Was Checked and What Held
+### What Was Checked and the Bounds
 
-1. **`FourthRefundWithinHourRefused` — HELD**
-   * **Rule Checked:** If a user already has 3 prior refunds on the same target account within an hour (`gap <= 3600`), the policy must refuse the refund request.
-   * **Exact Scope Tested:** This condition applied to and held across **6 specific states** out of the 80:
-     * `priorCount = 3`, `priorAcc = 1`, `targetAcc = 1`, with `gap` $\in$ {600, 1800, 3600}
-     * `priorCount = 3`, `priorAcc = 2`, `targetAcc = 2`, with `gap` $\in$ {600, 1800, 3600}
+The check evaluated **8 specific states** formed by the combinations of the following values:
+* **`priorCount`**: 2, 3
+* **`targetAccount`**: 1, 2
+* **`gap`**: 3600, 3601
 
-2. **`CompliantRefundAllowed` — HELD**
-   * **Rule Checked:** A clean refund request (`priorCount = 0`, `gap = 600`) on account 1 is granted.
-   * **Exact Scope Tested:** This claim applies to and held across **exactly 1 state** out of the 80:
-     * `priorCount = 0`, `priorAcc = 1`, `targetAcc = 1`, `gap = 600`
+Nothing outside these exact values was checked.
 
 ---
 
-### Findings on Property Design and Verification Limits
+### Claim Results
 
-* **Narrow Positive Verification (`CompliantRefundAllowed`):**
-  The property module only checks that a refund is granted in **one exact scenario** (`priorCount = 0`, `priorAcc = 1`, `targetAcc = 1`, `gap = 600`). It does not test whether requests are permitted when:
-  * `priorCount` is 1 or 2.
-  * The account ID is 2.
-  * The time gap exceeds 1 hour (`gap = 3601` or `7200`) after prior refunds.
-  * The target account differs from the prior account (`priorAcc != targetAcc`).
+1. **`ExceedingRateLimitRefused`** — **HELD**
+   * **What was checked:** When `priorCount` is 3, `targetAccount` is 1, and `gap` is 3600, the policy refuses the refund.
+   * **Coverage:** This claim applied to and verified **1 of the 8 states** (`priorCount = 3`, `targetAccount = 1`, `gap = 3600`).
 
-* **Explicit Boundaries of the Check:**
-  Verification was strictly limited to the **80 combinations** generated from the property's discrete inputs (accounts 1 and 2; counts 0 through 3; gaps 600, 1800, 3600, 3601, 7200). It did not evaluate any other account identifiers, timestamps/gaps, or prior counts above 3.
+2. **`CompliantRefundAllowed`** — **HELD**
+   * **What was checked:** When `priorCount` is 2, `targetAccount` is 1, and `gap` is 3600, the policy grants the refund.
+   * **Coverage:** This claim applied to and verified **1 of the 8 states** (`priorCount = 2`, `targetAccount = 1`, `gap = 3600`).
 
-* **Derived Questions Not Attempted:**
-  Broader derived automated checks were not executed because the policy reads 6 input/output fields, which exceeded the checker's current threshold of 4 fields (`--max-fields`). This is a tool exploration limit, not a policy failure.
+---
+
+### Property Specification Findings
+
+While the checks passed, the properties are substantially narrower than the general rate-limiting rules described in their comments:
+
+* **Account specificity:** Both claims explicitly hardcode `targetAccount` to `1`. Neither claim tests behavior for `targetAccount = 2` (or any other account).
+* **Limited counts:** Prior refund counts of 0, 1, 4, or higher were not checked.
+* **Limited time gaps:** Only exact boundary values of 3600s and 3601s were checked; other intervals (e.g., shorter gaps under an hour) were not tested.
+* **Uncovered states:** Out of the 8 generated states, 6 states were not asserted on by either claim (e.g., states where `targetAccount = 2` or where `gap = 3601`).
+
+---
+
+### What Was Not Checked
+
+* Any request where `targetAccount` is not 1.
+* Any request where `priorCount` is not 2 or 3.
+* Any request where `gap` is not 3600 or 3601.
+* **Derived questions:** These were **NOT attempted**. The policy reads 6 input/output fields, exceeding the tool's default field limit of 4. This is a limit of the automated derived question generator, not a defect verdict on the policy itself.

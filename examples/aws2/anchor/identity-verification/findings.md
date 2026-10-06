@@ -22,59 +22,114 @@ WHAT WAS ACTUALLY CHECKED -- each claim, what it forbids, and how many of the st
 
 IdentityVerification
 
-  2 claims will be checked, over 64 states:
-      hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1, transferAccount =
-        1, gap = 60
-      hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1, transferAccount =
-        1, gap = 900
-      hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1, transferAccount =
-        1, gap = 901
-      hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1, transferAccount =
-        1, gap = 1800
-      hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1, transferAccount =
-        2, gap = 60
-      hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1, transferAccount =
-        2, gap = 900
-      hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1, transferAccount =
-        2, gap = 901
-      hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1, transferAccount =
-        2, gap = 1800
+  Every value each variable takes -- nothing else is checked:
+      hasVerification  FALSE, TRUE
+      vAccount         1, 2
+      tAccount         1, 2
+      verified         FALSE, TRUE
+      gap              60, 900, 901, 1800
+
+  5 claims will be checked, over 64 states:
+      hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = FALSE, gap = 60
+      hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = FALSE, gap = 900
+      hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = FALSE, gap = 901
+      hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = FALSE, gap = 1800
+      hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = TRUE, gap = 60
+      hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = TRUE, gap = 900
+      hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = TRUE, gap = 901
+      hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = TRUE, gap = 1800
       and 56 more
 
-  CompliantTransferAllowed
-      says:     whenever hasVerifyEvent holds and isVerified holds and verifiedAccount
-                is 1 and transferAccount is 1 and gap is 60,
+  CompliantTransferIsAllowed
+      says:     whenever hasVerification holds and verified holds and vAccount is 1 and
+                tAccount is 1 and gap is 60,
                 then the policy GRANTS it (TransferAllowed)
-      forbids:  hasVerifyEvent holds and isVerified holds and verifiedAccount is 1 and
-                transferAccount is 1 and gap is 60,
+      forbids:  hasVerification holds and verified holds and vAccount is 1 and tAccount
+                is 1 and gap is 60,
                 and yet the policy REFUSES it (TransferAllowed)
       applies:  to 1 of the 64 states:
-                  hasVerifyEvent = TRUE, isVerified = TRUE, verifiedAccount = 1,
-                    transferAccount = 1, gap = 60
+                  hasVerification = TRUE, vAccount = 1, tAccount = 1, verified = TRUE,
+                    gap = 60
 
-  UnverifiedTransferRefused
-      says:     whenever hasVerifyEvent does not hold or isVerified does not hold or
-                verifiedAccount is not transferAccount or gap is greater than 15 *
-                Minute (= 900),
+  NoVerificationIsRefused
+      says:     whenever hasVerification does not hold,
                 then the policy REFUSES it (TransferAllowed)
-      forbids:  hasVerifyEvent does not hold or isVerified does not hold or
-                verifiedAccount is not transferAccount or gap is greater than 15 *
-                Minute (= 900),
+      forbids:  hasVerification does not hold,
                 and yet the policy GRANTS it (TransferAllowed)
-      applies:  to 60 of the 64 states:
-                  hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1,
-                    transferAccount = 1, gap = 60
-                  hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1,
-                    transferAccount = 1, gap = 900
-                  hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1,
-                    transferAccount = 1, gap = 901
-                  hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1,
-                    transferAccount = 1, gap = 1800
-                  hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1,
-                    transferAccount = 2, gap = 60
-                  hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1,
-                    transferAccount = 2, gap = 900
-                  and 54 more
+      applies:  to 32 of the 64 states:
+                  hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = FALSE,
+                    gap = 60
+                  hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = FALSE,
+                    gap = 900
+                  hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = FALSE,
+                    gap = 901
+                  hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = FALSE,
+                    gap = 1800
+                  hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = TRUE,
+                    gap = 60
+                  hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = TRUE,
+                    gap = 900
+                  and 26 more
+
+  FailedVerificationIsRefused
+      says:     whenever hasVerification holds and verified does not hold,
+                then the policy REFUSES it (TransferAllowed)
+      forbids:  hasVerification holds and verified does not hold,
+                and yet the policy GRANTS it (TransferAllowed)
+      applies:  to 16 of the 64 states:
+                  hasVerification = TRUE, vAccount = 1, tAccount = 1, verified = FALSE,
+                    gap = 60
+                  hasVerification = TRUE, vAccount = 1, tAccount = 1, verified = FALSE,
+                    gap = 900
+                  hasVerification = TRUE, vAccount = 1, tAccount = 1, verified = FALSE,
+                    gap = 901
+                  hasVerification = TRUE, vAccount = 1, tAccount = 1, verified = FALSE,
+                    gap = 1800
+                  hasVerification = TRUE, vAccount = 1, tAccount = 2, verified = FALSE,
+                    gap = 60
+                  hasVerification = TRUE, vAccount = 1, tAccount = 2, verified = FALSE,
+                    gap = 900
+                  and 10 more
+
+  MismatchedAccountIsRefused
+      says:     whenever hasVerification holds and vAccount is not tAccount,
+                then the policy REFUSES it (TransferAllowed)
+      forbids:  hasVerification holds and vAccount is not tAccount,
+                and yet the policy GRANTS it (TransferAllowed)
+      applies:  to 16 of the 64 states:
+                  hasVerification = TRUE, vAccount = 1, tAccount = 2, verified = FALSE,
+                    gap = 60
+                  hasVerification = TRUE, vAccount = 1, tAccount = 2, verified = FALSE,
+                    gap = 900
+                  hasVerification = TRUE, vAccount = 1, tAccount = 2, verified = FALSE,
+                    gap = 901
+                  hasVerification = TRUE, vAccount = 1, tAccount = 2, verified = FALSE,
+                    gap = 1800
+                  hasVerification = TRUE, vAccount = 1, tAccount = 2, verified = TRUE,
+                    gap = 60
+                  hasVerification = TRUE, vAccount = 1, tAccount = 2, verified = TRUE,
+                    gap = 900
+                  and 10 more
+
+  ExpiredVerificationIsRefused
+      says:     whenever hasVerification holds and gap is greater than FifteenMinutes,
+                then the policy REFUSES it (TransferAllowed)
+      forbids:  hasVerification holds and gap is greater than FifteenMinutes,
+                and yet the policy GRANTS it (TransferAllowed)
+      applies:  to 16 of the 64 states:
+                  hasVerification = TRUE, vAccount = 1, tAccount = 1, verified = FALSE,
+                    gap = 901
+                  hasVerification = TRUE, vAccount = 1, tAccount = 1, verified = FALSE,
+                    gap = 1800
+                  hasVerification = TRUE, vAccount = 1, tAccount = 1, verified = TRUE,
+                    gap = 901
+                  hasVerification = TRUE, vAccount = 1, tAccount = 1, verified = TRUE,
+                    gap = 1800
+                  hasVerification = TRUE, vAccount = 1, tAccount = 2, verified = FALSE,
+                    gap = 901
+                  hasVerification = TRUE, vAccount = 1, tAccount = 2, verified = FALSE,
+                    gap = 1800
+                  and 10 more
 
   Read the `forbids` lines before the run, not after it. Each one is the only
   thing its claim can catch; if none of them describes something you would
@@ -96,45 +151,51 @@ anchor check examples\aws2\agent-policy.dw --full --property examples\aws2\ancho
 
 ## Reported
 
-### Summary of Results
+### Verification Summary
 
-The property module **`IdentityVerification.tla` held** across all **64 evaluated states**. No counterexamples were found within this tested scope.
-
----
-
-### Scope and Bounds Checked
-
-The verification ran over a bounded grid of **64 discrete states** formed by combinations of the following values:
-* **`hasVerifyEvent`**: `TRUE`, `FALSE`
-* **`isVerified`**: `TRUE`, `FALSE`
-* **`verifiedAccount`**: `1`, `2`
-* **`transferAccount`**: `1`, `2`
-* **`gap`**: `60`, `900`, `901`, `1800` (seconds)
-
-Requests involving other account IDs, time intervals outside these four values, or additional context fields were **not checked**.
+All 5 claims in `IdentityVerification.tla` **held** across the **64 states** evaluated for `agent-policy.dw`. No counterexamples were found within these bounds.
 
 ---
 
-### Claim Breakdown
+### What Was Checked (The Exact Bounds)
 
-1. **`CompliantTransferAllowed` — HELD**
-   * **Applies to:** Exactly **1 of the 64 states** (`hasVerifyEvent = TRUE`, `isVerified = TRUE`, `verifiedAccount = 1`, `transferAccount = 1`, `gap = 60`).
-   * **Result:** The policy permitted `TransferAllowed` for this specific compliant state.
+The verification tested combinations of only the following variable values (a total of $2 \times 2 \times 2 \times 2 \times 4 = 64$ states):
 
-2. **`UnverifiedTransferRefused` — HELD**
-   * **Applies to:** **60 of the 64 states** where verification was missing, failed, accounts did not match (1 vs 2), or `gap` was greater than 900 seconds (specifically evaluated at 901 and 1800 seconds).
-   * **Result:** The policy refused `TransferAllowed` across all 60 of these states.
+*   **`hasVerification`**: `FALSE`, `TRUE`
+*   **`vAccount`**: `1`, `2`
+*   **`tAccount`**: `1`, `2`
+*   **`verified`**: `FALSE`, `TRUE`
+*   **`gap`**: `60`, `900`, `901`, `1800` (representing elapsed seconds)
+
+**What was not checked:**
+*   Any account identifiers other than `1` and `2`.
+*   Any time gap values other than `60`, `900`, `901`, and `1800`.
+*   Derived/automated exploratory properties were **not run** because the policy reads 6 fields, exceeding the tool's 4-field automated exploration threshold.
 
 ---
 
-### Findings Regarding the Properties
+### Claim-by-Claim Results
 
-* **Gap in Coverage (3 unasserted states):** Out of the 64 states, the two claims only cover 61 ($1 + 60$). There are **3 valid states** that neither claim tests:
-  * `verifiedAccount = 1`, `transferAccount = 1`, `gap = 900` (valid 15-minute boundary)
-  * `verifiedAccount = 2`, `transferAccount = 2`, `gap = 60`
-  * `verifiedAccount = 2`, `transferAccount = 2`, `gap = 900`
-* **Overly Specific Positive Test:** `CompliantTransferAllowed` is hardcoded strictly to Account `1` and a `60`-second gap. It does not verify that transfers are allowed for other accounts (like Account `2`) or at other valid time gaps (like `900` seconds).
-* **Automated Derived Analysis Skipped:** General automated analysis was not run because the policy reads 6 input/output fields, exceeding the tool's default 4-field threshold.
+1.  **`CompliantTransferIsAllowed`** — **HELD**
+    *   **Rule:** Grants `TransferAllowed` when verification exists, `verified` is true, accounts match on `1`, and `gap` is `60`.
+    *   **Scope:** Evaluated on **1 state** out of 64.
+    *   **Finding on the property:** This claim only checks a single specific scenario (account `1` with a `60`-second gap). It does not test whether compliant transfers succeed for account `2`, nor does it check whether a `gap` of `900` seconds is permitted.
+
+2.  **`NoVerificationIsRefused`** — **HELD**
+    *   **Rule:** Refuses `TransferAllowed` whenever `hasVerification` is `FALSE`.
+    *   **Scope:** Evaluated across **32 states** where `hasVerification` is `FALSE`.
+
+3.  **`FailedVerificationIsRefused`** — **HELD**
+    *   **Rule:** Refuses `TransferAllowed` whenever `hasVerification` is `TRUE` but `verified` is `FALSE`.
+    *   **Scope:** Evaluated across **16 states** where `hasVerification` is `TRUE` and `verified` is `FALSE`.
+
+4.  **`MismatchedAccountIsRefused`** — **HELD**
+    *   **Rule:** Refuses `TransferAllowed` whenever `hasVerification` is `TRUE` and `vAccount` does not equal `tAccount` (i.e., `vAccount = 1, tAccount = 2` or `vAccount = 2, tAccount = 1`).
+    *   **Scope:** Evaluated across **16 states**.
+
+5.  **`ExpiredVerificationIsRefused`** — **HELD**
+    *   **Rule:** Refuses `TransferAllowed` whenever `hasVerification` is `TRUE` and `gap` exceeds 15 minutes (tested at `901` and `1800` seconds).
+    *   **Scope:** Evaluated across **16 states**.
 
 Every LLM call this run made, with each tool call and its reply, is in `transcript.md` beside this file.
 
@@ -146,23 +207,23 @@ Every LLM call this run made, with each tool call and its reply, is in `transcri
 
 | | tokens in | of which cached | out | total | seconds |
 |---|---:|---:|---:|---:|---:|
-| draft round 1 | 71,228 | 44,117 | 4,812 | 76,040 | 52.4 |
-| the review | 1,075 | 0 | 879 | 1,954 | 7.9 |
-| the report | 1,236 | 0 | 1,859 | 3,095 | 13.2 |
-| **3 model call(s)** | **73,539** | **44,117** | **7,550** | **81,089** | **73.5** |
+| draft round 1 | 118,406 | 68,075 | 6,366 | 124,772 | 81.6 |
+| the review | 1,955 | 0 | 294 | 2,249 | 3.7 |
+| the report | 2,027 | 0 | 1,961 | 3,988 | 14.2 |
+| **3 model call(s)** | **122,388** | **68,075** | **8,621** | **131,009** | **99.5** |
 
 Time per stage, model calls and verification together:
 
 ```
   describe          0.0s
-  draft            60.4s
+  draft            92.5s
   preflight         0.0s
-  score            20.0s
-  review            7.9s
+  score            40.5s
+  review            3.7s
   check             0.0s
-  answer           13.2s
+  answer           14.2s
   report            0.0s
-  total           101.5s
+  total           150.9s
 ```
 
-Of which 73.5s was model calls; the rest is verification -- TLC runs in `score` and `check`, which cost no tokens.
+Of which 99.5s was model calls; the rest is verification -- TLC runs in `score` and `check`, which cost no tokens.

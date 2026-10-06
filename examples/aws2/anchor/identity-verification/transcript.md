@@ -2,7 +2,7 @@
 
 `agent-policy.dw`: every LLM call this run made, in order -- the drafter with its tool calls, the reviewer and the reporter.
 
-*Generated 2026-10-04 17:16 UTC by `src/agent/pipeline.py`. Tool calls and their full replies are included: the prose is a claim, and the tool output is the evidence for it.*
+*Generated 2026-10-06 05:43 UTC by `src/agent/pipeline.py`. Tool calls and their full replies are included: the prose is a claim, and the tool output is the evidence for it.*
 
 ## draft round 1
 
@@ -605,9 +605,10 @@
 >     "Decide the allowed and denied cases from the requirement BEFORE evaluating the policy. A claim written from the policy's own behaviour restates it.",
 >     "Include a claim that one specific, fully compliant session is ALLOWED. A module of refusal claims alone cannot be broken by removing a permission. 'X requires Y' means 'without Y, refused', not 'with Y, always allowed'.",
 >     "Put every prerequisite event in the session, and each value where the policy reads it: inputFields in an event's input record, outputFields in its output record.",
+>     "For every threshold and window the REQUIREMENT states, range over the value at it and the value just past it ('over $500': 500 and 501). Take them from the requirement, not from these domains: a policy with the wrong threshold supplies its own wrong edge.",
 >     "The .cfg must name SPECIFICATION Spec and every INVARIANT. A claim nobody listed is a claim nobody checked."
 >   ],
->   "skeleton": "---------------------------- MODULE agent_policy ----------------------------\n\\* What agent-policy.dw is SUPPOSED to mean, stated by its author. The three built-in findings\n\\* (VACUOUS, REDUNDANT/DEAD, diff) are the claims statable WITHOUT knowing intent; this is the\n\\* other kind, and only the author can write it.\n\\*\n\\* SAVE THIS AS agent_policy.tla -- TLA+ requires the file name to match the module name, and a\n\\* module name may not contain `-` or `.` or begin with a digit, so it is not always the policy's\n\\* own name.\n\\*\n\\* Check it with:  python src/checker/properties.py agent-policy.dw --property agent_policy.tla\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\n\\* The verdict for one request. No session: \"what does this policy decide for this request\" is\n\\* not a temporal question, so there is no state machine beyond holding one request still.\nGrants(input) == D!Decide(<<Request(\"initiate_transfer\", input)>>, Policies, 1, AllValues)\n\n(***************************************************************************)\n(* THE REQUESTS THIS CLAIM IS ABOUT.                                       *)\n(*                                                                         *)\n(* Written out rather than derived from InputDomain, and that is the       *)\n(* point. A space derived from the policy's own literals cannot test a     *)\n(* claim about a value the policy never mentions: delete the rule that     *)\n(* names a value and it vanishes from the vocabulary, so the claim ranges  *)\n(* over nothing and PASSES having looked at nothing.                       *)\n(*                                                                         *)\n(* Add the values your claim is about, including ones this policy never    *)\n(* mentions.                                                               *)\n(***************************************************************************)\naccountValues == {Num(1), Num(2)}\namountValues == {Num(499), Num(500), Num(2500), Num(2501)}\ncharge_idValues == {Num(1), Num(2)}\nsystemNowTimeValues == {Num(32399999), Num(32400000), Num(61200000), Num(61200001)}\n\nRequests == {[account |-> account, amount |-> amount, charge_id |-> charge_id, systemNowTime |-> systemNowTime] : account \\in accountValues, amount \\in amountValues, charge_id \\in charge_idValues, systemNowTime \\in systemNowTimeValues}\n\n\\* One request, chosen nondeterministically and held, so a violation's counterexample NAMES the\n\\* request that breaks the claim rather than merely reporting that one exists.\nVARIABLE req\nInit == req \\in Requests\nNext == UNCHANGED req\nSpec == Init /\\ [][Nex
+>   "skeleton": "---------------------------- MODULE agent_policy ----------------------------\n\\* What agent-policy.dw is SUPPOSED to mean, stated by its author. The three built-in findings\n\\* (VACUOUS, REDUNDANT/DEAD, diff) are the claims statable WITHOUT knowing intent; this is the\n\\* other kind, and only the author can write it.\n\\*\n\\* SAVE THIS AS agent_policy.tla -- TLA+ requires the file name to match the module name, and a\n\\* module name may not contain `-` or `.` or begin with a digit, so it is not always the policy's\n\\* own name.\n\\*\n\\* Check it with:  python src/checker/properties.py agent-policy.dw --property agent_policy.tla\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\n\\* The verdict for one request. No session: \"what does this policy decide for this request\" is\n\\* not a temporal question, so there is no state machine beyond holding one request still.\nGrants(input) == D!Decide(<<Request(\"initiate_transfer\", input)>>, Policies, 1, AllValues)\n\n(***************************************************************************)\n(* THE REQUESTS THIS CLAIM IS ABOUT.                                       *)\n(*                                                                         *)\n(* Written out rather than derived from InputDomain, and that is the       *)\n(* point. A space derived from the policy's own literals cannot test a     *)\n(* claim about a value the policy never mentions: delete the rule that     *)\n(* names a value and it vanishes from the vocabulary, so the claim ranges  *)\n(* over nothing and PASSES having looked at nothing.                       *)\n(*                                                                         *)\n(* Add the values your claim is about, including ones this policy never    *)\n(* mentions.                                                               *)\n(***************************************************************************)\naccountValues == {Num(1), Num(2)}\namountValues == {Num(499), Num(500), Num(2500), Num(2501)}\ncharge_idValues == {Num(1), Num(2)}\nsystemNowTimeValues == {Num(32399999), Num(32400000), Num(61200000), Num(61200001)}\n\nRequests == {[account |-> account, amount |-> amount, charge_id |-> charge_id, systemNowTime |-> systemNowTime] : account \\in accountValues, amount \\in amountValues, charge_id \\in charge_idValues, systemNowTime \\in systemNowTimeValues}\n\n\\*
 > ```
 > 
 > The intention to state formally:
@@ -617,25 +618,61 @@
 | | |
 |---|---|
 | model | gemini-3.7-flash |
-| tokens | 76,040 |
-| seconds | 52.4 |
+| tokens | 124,772 |
+| seconds | 81.6 |
 
 **Tool call 1** — `evaluate`
 
 ```json
 {
   "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
-  "expression": "D!Decide(<<Ev(\"verify_identity\", \"response\", [account |-> Num(1)], [verified |-> Bool(TRUE)], 1), Ev(\"initiate_transfer\", \"request\", [account |-> Num(1), amount |-> Num(499), systemNowTime |-> Num(32400000)], NoFields, 100)>>, Policies, 2, AllValues)",
-  "module": "---------------------------- MODULE IdentityVerification ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE dummy\nInit == dummy = 1\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\nDummy == TRUE\n============================================================================="
+  "expression": "Policies",
+  "module": "---------------------------- MODULE IdentityVerification ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE dummy\nInit == dummy = 0\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\nDummy == TRUE\n============================================================================="
 }
 ```
 
 <details><summary>tool result (success)</summary>
 
 ```
-D!Decide(<<Ev("verify_identity", "response", [account |-> Num(1)], [verified |-> Bool(TRUE)], 1), Ev("initiate_transfer", "request", [account |-> Num(1), amount |-> Num(499), systemNowTime |-> Num(32400000)], NoFields, 100)>>, Policies, 2, AllValues)
+Policies
 
-      TRUE
+      << [ effect |-> "permit",
+           actions |-> {"verify_identity"},
+           cond |->
+               [ op |-> "true",
+                 args |-> <<>>,
+                 term |->
+                     [ op |-> "formerly",
+                       window |-> 0,
+                       atom |->
+                           [ op |-> "pred",
+                             args |-> <<>>,
+                             pred |-> [action |-> "", kind |-> "", binds |-> <<>>],
+                             var |-> "",
+                             field |-> "",
+                             cmp |-> "",
+                             value |-> [k |-> "s", v |-> ""],
+                             other |-> "",
+                             pattern |-> <<>>,
+                             net |-> <<>>,
+                             prefix |-> 0 ],
+                       left |->
+                           [ op |-> "pred",
+                             args |-> <<>>,
+                             pred |-> [action |-> "", kind |-> "", binds |-> <<>>],
+                             var |-> "",
+                             field |-> "",
+                             cmp |-> "",
+                             value |-> [k |-> "s", v |-> ""],
+                             other |-> "",
+                             pattern |-> <<>>,
+                             net |-> <<>>,
+                             prefix |-> 0 ],
+                       leftNeg |-> FALSE,
+                       keys |-> <<>> ] ] ],
+ 
+
+[TRUNCATED: the first 1500 of 2703 characters, and 725 more line(s) the checker did not print. Evaluate a smaller part -- one element or one field -- to see the rest.]
 ```
 
 </details>
@@ -645,22 +682,48 @@ D!Decide(<<Ev("verify_identity", "response", [account |-> Num(1)], [verified |->
 ```json
 {
   "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
-  "expression": "<<\n  D!Decide(<<Ev(\"verify_identity\", \"response\", [account |-> Num(1)], [verified |-> Bool(TRUE)], 1), Ev(\"initiate_transfer\", \"request\", [account |-> Num(1), amount |-> Num(499), systemNowTime |-> Num(32400000)], NoFields, 901)>>, Policies, 2, AllValues),\n  D!Decide(<<Ev(\"verify_identity\", \"response\", [account |-> Num(1)], [verified |-> Bool(FALSE)], 1), Ev(\"initiate_transfer\", \"request\", [account |-> Num(1), amount |-> Num(499), systemNowTime |-> Num(32400000)], NoFields, 100)>>, Policies, 2, AllValues),\n  D!Decide(<<Ev(\"verify_identity\", \"response\", [account |-> Num(2)], [verified |-> Bool(TRUE)], 1), Ev(\"initiate_transfer\", \"request\", [account |-> Num(1), amount |-> Num(499), systemNowTime |-> Num(32400000)], NoFields, 100)>>, Policies, 2, AllValues),\n  D!Decide(<<Ev(\"initiate_transfer\", \"request\", [account |-> Num(1), amount |-> Num(499), systemNowTime |-> Num(32400000)], NoFields, 100)>>, Policies, 1, AllValues)\n>>",
-  "module": "---------------------------- MODULE IdentityVerification ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE dummy\nInit == dummy = 1\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\nDummy == TRUE\n============================================================================="
+  "expression": "<<Policies[4], Policies[5]>>",
+  "module": "---------------------------- MODULE IdentityVerification ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE dummy\nInit == dummy = 0\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\nDummy == TRUE\n============================================================================="
 }
 ```
 
 <details><summary>tool result (success)</summary>
 
 ```
-<<
-  D!Decide(<<Ev("verify_identity", "response", [account |-> Num(1)], [verified |-> Bool(TRUE)], 1), Ev("initiate_transfer", "request", [account |-> Num(1), amount |-> Num(499), systemNowTime |-> Num(32400000)], NoFields, 901)>>, Policies, 2, AllValues),
-  D!Decide(<<Ev("verify_identity", "response", [account |-> Num(1)], [verified |-> Bool(FALSE)], 1), Ev("initiate_transfer", "request", [account |-> Num(1), amount |-> Num(499), systemNowTime |-> Num(32400000)], NoFields, 100)>>, Policies, 2, AllValues),
-  D!Decide(<<Ev("verify_identity", "response", [account |-> Num(2)], [verified |-> Bool(TRUE)], 1), Ev("initiate_transfer", "request", [account |-> Num(1), amount |-> Num(499), systemNowTime |-> Num(32400000)], NoFields, 100)>>, Policies, 2, AllValues),
-  D!Decide(<<Ev("initiate_transfer", "request", [account |-> Num(1), amount |-> Num(499), systemNowTime |-> Num(32400000)], NoFields, 100)>>, Policies, 1, AllValues)
->>
+<<Policies[4], Policies[5]>>
 
-      <<TRUE, FALSE, FALSE, FALSE>>
+      << [ effect |-> "permit",
+           actions |-> {"initiate_transfer"},
+           cond |->
+               [ op |-> "term",
+                 args |-> <<>>,
+                 term |->
+                     [ op |-> "formerly",
+                       window |-> 900,
+                       atom |->
+                           [ op |-> "pred",
+                             args |-> <<>>,
+                             pred |->
+                                 [ action |-> "verify_identity",
+                                   kind |-> "response",
+                                   binds |->
+                                       << [ kind |-> "ctx",
+                                            field |-> "account",
+                                            value |-> [k |-> "s", v |-> ""],
+                                            side |-> "input",
+                                            name |-> "account" ],
+                                          [ kind |-> "lit",
+                                            field |-> "verified",
+                                            value |-> [k |-> "b", v |-> TRUE],
+                                            side |-> "output",
+                                            name |-> "" ] >> ],
+                             var |-> "",
+                             field |-> "",
+                             cmp |-> "",
+                             value |-> [k |-> "s", v |-> ""],
+                            
+
+[TRUNCATED: the first 1500 of 3179 characters, and 152 more line(s) the checker did not print. Evaluate a smaller part -- one element or one field -- to see the rest.]
 ```
 
 </details>
@@ -670,31 +733,126 @@ D!Decide(<<Ev("verify_identity", "response", [account |-> Num(1)], [verified |->
 ```json
 {
   "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
-  "expression": "<<\n  D!Decide(<<Ev(\"verify_identity\", \"response\", [account |-> Num(1)], [verified |-> Bool(TRUE)], 1), Ev(\"initiate_transfer\", \"request\", [account |-> Num(1), amount |-> Num(499), systemNowTime |-> Num(32400000)], NoFields, 901)>>, Policies, 2, AllValues),\n  D!Decide(<<Ev(\"verify_identity\", \"response\", [account |-> Num(1)], [verified |-> Bool(TRUE)], 1), Ev(\"initiate_transfer\", \"request\", [account |-> Num(1), amount |-> Num(499), systemNowTime |-> Num(32400000)], NoFields, 902)>>, Policies, 2, AllValues),\n  D!Decide(<<Ev(\"verify_identity\", \"response\", [account |-> Num(1)], [verified |-> Bool(TRUE)], 1), Ev(\"initiate_transfer\", \"request\", [account |-> Num(1), amount |-> Num(499), systemNowTime |-> Num(32400000)], NoFields, 1000)>>, Policies, 2, AllValues)\n>>",
-  "module": "---------------------------- MODULE IdentityVerification ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE dummy\nInit == dummy = 1\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\nDummy == TRUE\n============================================================================="
+  "expression": "Policies[5]",
+  "module": "---------------------------- MODULE IdentityVerification ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE dummy\nInit == dummy = 0\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\nDummy == TRUE\n============================================================================="
 }
 ```
 
 <details><summary>tool result (success)</summary>
 
 ```
-<<
-  D!Decide(<<Ev("verify_identity", "response", [account |-> Num(1)], [verified |-> Bool(TRUE)], 1), Ev("initiate_transfer", "request", [account |-> Num(1), amount |-> Num(499), systemNowTime |-> Num(32400000)], NoFields, 901)>>, Policies, 2, AllValues),
-  D!Decide(<<Ev("verify_identity", "response", [account |-> Num(1)], [verified |-> Bool(TRUE)], 1), Ev("initiate_transfer", "request", [account |-> Num(1), amount |-> Num(499), systemNowTime |-> Num(32400000)], NoFields, 902)>>, Policies, 2, AllValues),
-  D!Decide(<<Ev("verify_identity", "response", [account |-> Num(1)], [verified |-> Bool(TRUE)], 1), Ev("initiate_transfer", "request", [account |-> Num(1), amount |-> Num(499), systemNowTime |-> Num(32400000)], NoFields, 1000)>>, Policies, 2, AllValues)
->>
+Policies[5]
 
-      <<TRUE, FALSE, FALSE>>
+      [ effect |-> "forbid",
+        actions |-> {"initiate_transfer"},
+        cond |->
+            [ op |-> "agg",
+              args |-> <<>>,
+              term |->
+                  [ op |-> "formerly",
+                    window |-> 0,
+                    atom |->
+                        [ op |-> "pred",
+                          args |-> <<>>,
+                          pred |-> [action |-> "", kind |-> "", binds |-> <<>>],
+                          var |-> "",
+                          field |-> "",
+                          cmp |-> "",
+                          value |-> [k |-> "s", v |-> ""],
+                          other |-> "",
+                          pattern |-> <<>>,
+                          net |-> <<>>,
+                          prefix |-> 0 ],
+                    left |->
+                        [ op |-> "pred",
+                          args |-> <<>>,
+                          pred |-> [action |-> "", kind |-> "", binds |-> <<>>],
+                          var |-> "",
+                          field |-> "",
+                          cmp |-> "",
+                          value |-> [k |-> "s", v |-> ""],
+                          other |-> "",
+                          pattern |-> <<>>,
+                          net |-> <<>>,
+                          prefix |-> 0 ],
+                    leftNeg |-> FALSE,
+                    keys |-> <<>> ],
+              cmp |-> ">",
+              value |-> 50000,
+              agg |->
+                  [ kin
+
+[TRUNCATED: the first 1500 of 2935 characters, and 90 more line(s) the checker did not print. Evaluate a smaller part -- one element or one field -- to see the rest.]
 ```
 
 </details>
 
-**Tool call 4** — `check_module`
+**Tool call 4** — `evaluate`
 
 ```json
 {
-  "config": "SPECIFICATION Spec\nINVARIANT CompliantTransferAllowed\nINVARIANT UnverifiedTransferRefused\n",
-  "module": "---------------------------- MODULE IdentityVerification ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nMinute == 60\n\nVARIABLES hasVerifyEvent, isVerified, verifiedAccount, transferAccount, gap\n\nInit ==\n  /\\ hasVerifyEvent \\in {TRUE, FALSE}\n  /\\ isVerified \\in {TRUE, FALSE}\n  /\\ verifiedAccount \\in {1, 2}\n  /\\ transferAccount \\in {1, 2}\n  /\\ gap \\in {60, 15 * Minute, 15 * Minute + 1, 30 * Minute}\n\nNext == UNCHANGED <<hasVerifyEvent, isVerified, verifiedAccount, transferAccount, gap>>\n\nSpec == Init /\\ [][Next]_<<hasVerifyEvent, isVerified, verifiedAccount, transferAccount, gap>>\n\nVerifyEv ==\n  Ev(\"verify_identity\", \"response\", [account |-> Num(verifiedAccount)], [verified |-> Bool(isVerified)], 1)\n\nTransferEv ==\n  Ev(\"initiate_transfer\", \"request\", [account |-> Num(transferAccount), amount |-> Num(499), systemNowTime |-> Num(32400000)], NoFields, 1 + gap)\n\nSession ==\n  IF hasVerifyEvent\n  THEN <<VerifyEv, TransferEv>>\n  ELSE <<TransferEv>>\n\nDecideIndex == IF hasVerifyEvent THEN 2 ELSE 1\n\nTransferAllowed == D!Decide(Session, Policies, DecideIndex, AllValues)\n\nCompliantTransferAllowed ==\n  (hasVerifyEvent /\\ isVerified /\\ verifiedAccount = 1 /\\ transferAccount = 1 /\\ gap = 60) => TransferAllowed\n\nUnverifiedTransferRefused ==\n  (~hasVerifyEvent \\/ ~isVerified \\/ (verifiedAccount # transferAccount) \\/ (gap > 15 * Minute)) => ~TransferAllowed\n\n============================================================================="
+  "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
+  "expression": "LET\n  Verify(acc, ver, t) == Ev(\"verify_identity\", \"response\", [account |-> Num(acc)], [verified |-> Bool(ver)], t)\n  Transfer(acc, t) == Ev(\"initiate_transfer\", \"request\", [account |-> Num(acc), amount |-> Num(500)], NoFields, t)\n  S1 == << Verify(1, TRUE, 1), Transfer(1, 901) >>\n  S2 == << Verify(1, TRUE, 1), Transfer(1, 900) >>\n  S3 == << Verify(1, TRUE, 1), Transfer(1, 901) >>\n  S4 == << Verify(1, TRUE, 1), Transfer(2, 60) >>\n  S5 == << Verify(1, FALSE, 1), Transfer(1, 60) >>\n  S6 == << Transfer(1, 1) >>\nIN << D!Decide(S1, Policies, 2, AllValues),\n      D!Decide(S2, Policies, 2, AllValues),\n      D!Decide(S3, Policies, 2, AllValues),\n      D!Decide(S4, Policies, 2, AllValues),\n      D!Decide(S5, Policies, 2, AllValues),\n      D!Decide(S6, Policies, 1, AllValues) >>",
+  "module": "---------------------------- MODULE IdentityVerification ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE dummy\nInit == dummy = 0\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\nDummy == TRUE\n============================================================================="
+}
+```
+
+<details><summary>tool result (success)</summary>
+
+```
+LET
+  Verify(acc, ver, t) == Ev("verify_identity", "response", [account |-> Num(acc)], [verified |-> Bool(ver)], t)
+  Transfer(acc, t) == Ev("initiate_transfer", "request", [account |-> Num(acc), amount |-> Num(500)], NoFields, t)
+  S1 == << Verify(1, TRUE, 1), Transfer(1, 901) >>
+  S2 == << Verify(1, TRUE, 1), Transfer(1, 900) >>
+  S3 == << Verify(1, TRUE, 1), Transfer(1, 901) >>
+  S4 == << Verify(1, TRUE, 1), Transfer(2, 60) >>
+  S5 == << Verify(1, FALSE, 1), Transfer(1, 60) >>
+  S6 == << Transfer(1, 1) >>
+IN << D!Decide(S1, Policies, 2, AllValues),
+      D!Decide(S2, Policies, 2, AllValues),
+      D!Decide(S3, Policies, 2, AllValues),
+      D!Decide(S4, Policies, 2, AllValues),
+      D!Decide(S5, Policies, 2, AllValues),
+      D!Decide(S6, Policies, 1, AllValues) >>
+
+      <<TRUE, TRUE, TRUE, FALSE, FALSE, FALSE>>
+```
+
+</details>
+
+**Tool call 5** — `evaluate`
+
+```json
+{
+  "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
+  "expression": "LET\n  Verify(acc, ver, t) == Ev(\"verify_identity\", \"response\", [account |-> Num(acc)], [verified |-> Bool(ver)], t)\n  Transfer(acc, t) == Ev(\"initiate_transfer\", \"request\", [account |-> Num(acc), amount |-> Num(500)], NoFields, t)\n  S_900 == << Verify(1, TRUE, 1), Transfer(1, 1 + 900) >>\n  S_901 == << Verify(1, TRUE, 1), Transfer(1, 1 + 901) >>\nIN << D!Decide(S_900, Policies, 2, AllValues),\n      D!Decide(S_901, Policies, 2, AllValues) >>",
+  "module": "---------------------------- MODULE IdentityVerification ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE dummy\nInit == dummy = 0\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\nDummy == TRUE\n============================================================================="
+}
+```
+
+<details><summary>tool result (success)</summary>
+
+```
+LET
+  Verify(acc, ver, t) == Ev("verify_identity", "response", [account |-> Num(acc)], [verified |-> Bool(ver)], t)
+  Transfer(acc, t) == Ev("initiate_transfer", "request", [account |-> Num(acc), amount |-> Num(500)], NoFields, t)
+  S_900 == << Verify(1, TRUE, 1), Transfer(1, 1 + 900) >>
+  S_901 == << Verify(1, TRUE, 1), Transfer(1, 1 + 901) >>
+IN << D!Decide(S_900, Policies, 2, AllValues),
+      D!Decide(S_901, Policies, 2, AllValues) >>
+
+      <<TRUE, FALSE>>
+```
+
+</details>
+
+**Tool call 6** — `check_module`
+
+```json
+{
+  "config": "SPECIFICATION Spec\nINVARIANT CompliantTransferIsAllowed\nINVARIANT NoVerificationIsRefused\nINVARIANT FailedVerificationIsRefused\nINVARIANT MismatchedAccountIsRefused\nINVARIANT ExpiredVerificationIsRefused\n",
+  "module": "---------------------------- MODULE IdentityVerification ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nMinute == 60\nFifteenMinutes == 15 * Minute\n\nAccounts == {1, 2}\nGaps == {60, FifteenMinutes, FifteenMinutes + 1, 1800}\n\nVARIABLES hasVerification, vAccount, tAccount, verified, gap\n\nInit ==\n  /\\ hasVerification \\in {TRUE, FALSE}\n  /\\ vAccount \\in Accounts\n  /\\ tAccount \\in Accounts\n  /\\ verified \\in {TRUE, FALSE}\n  /\\ gap \\in Gaps\n\nNext == UNCHANGED <<hasVerification, vAccount, tAccount, verified, gap>>\n\nSpec == Init /\\ [][Next]_<<hasVerification, vAccount, tAccount, verified, gap>>\n\nVerify(acc, ver, t) ==\n  Ev(\"verify_identity\", \"response\", [account |-> Num(acc)], [verified |-> Bool(ver)], t)\n\nTransfer(acc, t) ==\n  Ev(\"initiate_transfer\", \"request\", [account |-> Num(acc), amount |-> Num(500)], NoFields, t)\n\nSession ==\n  IF hasVerification\n  THEN << Verify(vAccount, verified, 1), Transfer(tAccount, 1 + gap) >>\n  ELSE << Transfer(tAccount, 1) >>\n\nDecisionIndex == IF hasVerification THEN 2 ELSE 1\n\nTransferAllowed == D!Decide(Session, Policies, DecisionIndex, AllValues)\n\nCompliantTransferIsAllowed ==\n  (hasVerification /\\ verified /\\ vAccount = 1 /\\ tAccount = 1 /\\ gap = 60) => TransferAllowed\n\nNoVerificationIsRefused ==\n  (~hasVerification) => ~TransferAllowed\n\nFailedVerificationIsRefused ==\n  (hasVerification /\\ ~verified) => ~TransferAllowed\n\nMismatchedAccountIsRefused ==\n  (hasVerification /\\ vAccount # tAccount) => ~TransferAllowed\n\nExpiredVerificationIsRefused ==\n  (hasVerification /\\ gap > FifteenMinutes) => ~TransferAllowed\n\n============================================================================="
 }
 ```
 
@@ -706,12 +864,12 @@ Compiles, evaluates, and holds on this policy. Either answer is acceptable -- a 
 
 </details>
 
-**Tool call 5** — `what_it_forbids`
+**Tool call 7** — `what_it_forbids`
 
 ```json
 {
-  "config": "SPECIFICATION Spec\nINVARIANT CompliantTransferAllowed\nINVARIANT UnverifiedTransferRefused\n",
-  "module": "---------------------------- MODULE IdentityVerification ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nMinute == 60\n\nVARIABLES hasVerifyEvent, isVerified, verifiedAccount, transferAccount, gap\n\nInit ==\n  /\\ hasVerifyEvent \\in {TRUE, FALSE}\n  /\\ isVerified \\in {TRUE, FALSE}\n  /\\ verifiedAccount \\in {1, 2}\n  /\\ transferAccount \\in {1, 2}\n  /\\ gap \\in {60, 15 * Minute, 15 * Minute + 1, 30 * Minute}\n\nNext == UNCHANGED <<hasVerifyEvent, isVerified, verifiedAccount, transferAccount, gap>>\n\nSpec == Init /\\ [][Next]_<<hasVerifyEvent, isVerified, verifiedAccount, transferAccount, gap>>\n\nVerifyEv ==\n  Ev(\"verify_identity\", \"response\", [account |-> Num(verifiedAccount)], [verified |-> Bool(isVerified)], 1)\n\nTransferEv ==\n  Ev(\"initiate_transfer\", \"request\", [account |-> Num(transferAccount), amount |-> Num(499), systemNowTime |-> Num(32400000)], NoFields, 1 + gap)\n\nSession ==\n  IF hasVerifyEvent\n  THEN <<VerifyEv, TransferEv>>\n  ELSE <<TransferEv>>\n\nDecideIndex == IF hasVerifyEvent THEN 2 ELSE 1\n\nTransferAllowed == D!Decide(Session, Policies, DecideIndex, AllValues)\n\nCompliantTransferAllowed ==\n  (hasVerifyEvent /\\ isVerified /\\ verifiedAccount = 1 /\\ transferAccount = 1 /\\ gap = 60) => TransferAllowed\n\nUnverifiedTransferRefused ==\n  (~hasVerifyEvent \\/ ~isVerified \\/ (verifiedAccount # transferAccount) \\/ (gap > 15 * Minute)) => ~TransferAllowed\n\n============================================================================="
+  "config": "SPECIFICATION Spec\nINVARIANT CompliantTransferIsAllowed\nINVARIANT NoVerificationIsRefused\nINVARIANT FailedVerificationIsRefused\nINVARIANT MismatchedAccountIsRefused\nINVARIANT ExpiredVerificationIsRefused\n",
+  "module": "---------------------------- MODULE IdentityVerification ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nMinute == 60\nFifteenMinutes == 15 * Minute\n\nAccounts == {1, 2}\nGaps == {60, FifteenMinutes, FifteenMinutes + 1, 1800}\n\nVARIABLES hasVerification, vAccount, tAccount, verified, gap\n\nInit ==\n  /\\ hasVerification \\in {TRUE, FALSE}\n  /\\ vAccount \\in Accounts\n  /\\ tAccount \\in Accounts\n  /\\ verified \\in {TRUE, FALSE}\n  /\\ gap \\in Gaps\n\nNext == UNCHANGED <<hasVerification, vAccount, tAccount, verified, gap>>\n\nSpec == Init /\\ [][Next]_<<hasVerification, vAccount, tAccount, verified, gap>>\n\nVerify(acc, ver, t) ==\n  Ev(\"verify_identity\", \"response\", [account |-> Num(acc)], [verified |-> Bool(ver)], t)\n\nTransfer(acc, t) ==\n  Ev(\"initiate_transfer\", \"request\", [account |-> Num(acc), amount |-> Num(500)], NoFields, t)\n\nSession ==\n  IF hasVerification\n  THEN << Verify(vAccount, verified, 1), Transfer(tAccount, 1 + gap) >>\n  ELSE << Transfer(tAccount, 1) >>\n\nDecisionIndex == IF hasVerification THEN 2 ELSE 1\n\nTransferAllowed == D!Decide(Session, Policies, DecisionIndex, AllValues)\n\nCompliantTransferIsAllowed ==\n  (hasVerification /\\ verified /\\ vAccount = 1 /\\ tAccount = 1 /\\ gap = 60) => TransferAllowed\n\nNoVerificationIsRefused ==\n  (~hasVerification) => ~TransferAllowed\n\nFailedVerificationIsRefused ==\n  (hasVerification /\\ ~verified) => ~TransferAllowed\n\nMismatchedAccountIsRefused ==\n  (hasVerification /\\ vAccount # tAccount) => ~TransferAllowed\n\nExpiredVerificationIsRefused ==\n  (hasVerification /\\ gap > FifteenMinutes) => ~TransferAllowed\n\n============================================================================="
 }
 ```
 
@@ -720,46 +878,126 @@ Compiles, evaluates, and holds on this policy. Either answer is acceptable -- a 
 ```
 IdentityVerification
 
-  2 claims will be checked, over 64 states:
+  Every value each variable takes -- nothing else is checked:
+      hasVerification  FALSE, TRUE
+      vAccount         1, 2
+      tAccount         1, 2
+      verified         FALSE, TRUE
+      gap              60, 900, 901, 1800
 
-  CompliantTransferAllowed
-      says:     whenever hasVerifyEvent holds and isVerified holds and verifiedAccount
-                is 1 and transferAccount is 1 and gap is 60,
+  5 claims will be checked, over 64 states:
+
+  CompliantTransferIsAllowed
+      says:     whenever hasVerification holds and verified holds and vAccount is 1 and
+                tAccount is 1 and gap is 60,
                 then the policy GRANTS it (TransferAllowed)
-      forbids:  hasVerifyEvent holds and isVerified holds and verifiedAccount is 1 and
-                transferAccount is 1 and gap is 60,
+      forbids:  hasVerification holds and verified holds and vAccount is 1 and tAccount
+                is 1 and gap is 60,
                 and yet the policy REFUSES it (TransferAllowed)
       applies:  to 1 of the 64 states:
-                  hasVerifyEvent = TRUE, isVerified = TRUE, verifiedAccount = 1,
-                    transferAccount = 1, gap = 60
+                  hasVerification = TRUE, vAccount = 1, tAccount = 1, verified = TRUE,
+                    gap = 60
 
-  UnverifiedTransferRefused
-      says:     whenever hasVerifyEvent does not hold or isVerified does not hold or
-                verifiedAccount is not transferAccount or gap is greater than 15 *
-                Minute (= 900),
+  NoVerificationIsRefused
+      says:     whenever hasVerification does not hold,
                 then the policy REFUSES it (TransferAllowed)
-      forbids:  hasVerifyEvent does not hold or isVerified does not hold or
-                verifiedAccount is not transferAccount or gap is greater than 15 *
-                Minute (= 900),
+      forbids:  hasVerification does not hold,
                 and yet the policy GRANTS it (TransferAllowed)
-      applies:  to 60 of the 64 states:
-                  hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1,
-                    transferAccount = 1, gap = 60
-                  hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1,
-                    transferAccount = 1, gap = 900
-                  hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1,
-                    transferAccount = 1, gap = 901
-                  hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1,
-                    transferAccount = 1, gap = 1800
-                  hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1,
-                    transferAccount = 2, gap = 60
-                  hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1,
-                    transferAccount = 2, gap = 900
-                  and 54 more
+      applies:  to 32 of the 64 states:
+                  hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = FALSE,
+                    gap = 60
+                  hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = FALSE,
+                    gap = 900
+                  hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = FALSE,
+                    gap = 901
+                  hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = FALSE,
+                    gap = 1800
+                  hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = TRUE,
+                    gap = 60
+                  hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = TRUE,
+                    gap = 900
+                  and 26 more
+
+  FailedVerificationIsRefused
+      says:     whenever hasVerification holds and verified does not hold,
+                then the policy REFUSES it (TransferAllowed)
+      forbids:  hasVerification holds and verified does not hold,
+                and yet the policy GRANTS it (TransferAllowed)
+      applies:  to 16 of the 64 states:
+                  hasVerification = TRUE, vAccount = 1, tAccount = 1, verified = FALSE,
+                    gap = 60
+                  hasVerification = TRUE, vAccount = 1, tAccount = 1, verified = FALSE,
+                    gap = 900
+                  hasVerification = TRUE, vAccount = 1, tAccount = 1, verified = FALSE,
+                    gap = 901
+                  hasVerification = TRUE, vAccount = 1, tAccount = 1, verified = FALSE,
+                    gap = 1800
+                  hasVerification = TRUE, vAccount = 1, tAccount = 2, verified = FALSE,
+                    gap = 60
+                  hasVerification = TRUE, vAccount = 1, tAccount = 2, verified = FALSE,
+                    gap = 900
+                  and 10 more
+
+  MismatchedAccountIsRefused
+      says:     whenever hasVerification holds and vAccount is not tAccount,
+                then the policy REFUSES it (TransferAllowed)
+      forbids:  hasVerification holds and vAccount is not tAccount,
+                and yet the policy GRANTS it (TransferAllowed)
+      applies:  to 16 of the 64 states:
+                  hasVerification = TRUE, vAccount = 1, tAccount = 2, verified = FALSE,
+                    gap = 60
+                  hasVerification = TRUE, vAccount = 1, tAccount = 2, verified = FALSE,
+                    gap = 900
+                  hasVerification = TRUE, vAccount = 1, tAccount = 2, verified = FALSE,
+                    gap = 901
+                  hasVerification = TRUE, vAccount = 1, tAccount = 2, verified = FALSE,
+                    gap = 1800
+                  hasVerification = TRUE, vAccount = 1, tAccount = 2, verified = TRUE,
+                    gap = 60
+                  hasVerification = TRUE, vAccount = 1, tAccount = 2, verified = TRUE,
+                    gap = 900
+                  and 10 more
+
+  ExpiredVerificationIsRefused
+      says:     whenever hasVerification holds and gap is greater than FifteenMinutes,
+                then the policy REFUSES it (TransferAllowed)
+      forbids:  hasVerification holds and gap is greater than FifteenMinutes,
+                and yet the policy GRANTS it (TransferAllowed)
+      applies:  to 16 of the 64 states:
+                  hasVerification = TRUE, vAccount = 1, tAccount = 1, verified = FALSE,
+                    gap = 901
+                  hasVerification = TRUE, vAccount = 1, tAccount = 1, verified = FALSE,
+                    gap = 1800
+                  hasVerification = TRUE, vAccount = 1, tAccount = 1, verified = TRUE,
+                    gap = 901
+                  hasVerification = TRUE, vAccount = 1, tAccount = 1, verified = TRUE,
+                    gap = 1800
+                  hasVerification = TRUE, vAccount = 1, tAccount = 2, verified = FALSE,
+                    gap = 901
+                  hasVerification = TRUE, vAccount = 1, tAccount = 2, verified = FALSE,
+                    gap = 1800
+                  and 10 more
 
   Read the `forbids` lines before the run, not after it. Each one is the only
   thing its claim can catch; if none of them describes something you would
   object to, the check will pass without having tested what you meant.
+```
+
+</details>
+
+**Tool call 8** — `check_module`
+
+```json
+{
+  "config": "SPECIFICATION Spec\nINVARIANT CompliantTransferIsAllowed\nINVARIANT NoVerificationIsRefused\nINVARIANT FailedVerificationIsRefused\nINVARIANT MismatchedAccountIsRefused\nINVARIANT ExpiredVerificationIsRefused\n",
+  "module": "---------------------------- MODULE IdentityVerification ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nMinute == 60\nFifteenMinutes == 15 * Minute\n\nAccounts == {1, 2}\nGaps == {60, FifteenMinutes, FifteenMinutes + 1, 1800}\n\nVARIABLES hasVerification, vAccount, tAccount, verified, gap\n\nInit ==\n  /\\ hasVerification \\in {TRUE, FALSE}\n  /\\ vAccount \\in Accounts\n  /\\ tAccount \\in Accounts\n  /\\ verified \\in {TRUE, FALSE}\n  /\\ gap \\in Gaps\n\nNext == UNCHANGED <<hasVerification, vAccount, tAccount, verified, gap>>\n\nSpec == Init /\\ [][Next]_<<hasVerification, vAccount, tAccount, verified, gap>>\n\nVerify(acc, ver, t) ==\n  Ev(\"verify_identity\", \"response\", [account |-> Num(acc)], [verified |-> Bool(ver)], t)\n\nTransfer(acc, t) ==\n  Ev(\"initiate_transfer\", \"request\", [account |-> Num(acc), amount |-> Num(500)], NoFields, t)\n\nSession ==\n  IF hasVerification\n  THEN << Verify(vAccount, verified, 1), Transfer(tAccount, 1 + gap) >>\n  ELSE << Transfer(tAccount, 1) >>\n\nDecisionIndex == IF hasVerification THEN 2 ELSE 1\n\nTransferAllowed == D!Decide(Session, Policies, DecisionIndex, AllValues)\n\nCompliantTransferIsAllowed ==\n  (hasVerification /\\ verified /\\ vAccount = 1 /\\ tAccount = 1 /\\ gap = 60) => TransferAllowed\n\nNoVerificationIsRefused ==\n  (~hasVerification) => ~TransferAllowed\n\nFailedVerificationIsRefused ==\n  (hasVerification /\\ ~verified) => ~TransferAllowed\n\nMismatchedAccountIsRefused ==\n  (hasVerification /\\ vAccount # tAccount) => ~TransferAllowed\n\nExpiredVerificationIsRefused ==\n  (hasVerification /\\ gap > FifteenMinutes) => ~TransferAllowed\n\n============================================================================="
+}
+```
+
+<details><summary>tool result (success)</summary>
+
+```
+Compiles, evaluates, and holds on this policy. Either answer is acceptable -- a property that fails has already shown it discriminates. Do NOT weaken the claim to make it hold.
 ```
 
 </details>
@@ -771,46 +1009,62 @@ EXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest
 D == INSTANCE DogwoodSemantics WITH Cases <- << >>
 
 Minute == 60
+FifteenMinutes == 15 * Minute
 
-VARIABLES hasVerifyEvent, isVerified, verifiedAccount, transferAccount, gap
+Accounts == {1, 2}
+Gaps == {60, FifteenMinutes, FifteenMinutes + 1, 1800}
+
+VARIABLES hasVerification, vAccount, tAccount, verified, gap
 
 Init ==
-  /\ hasVerifyEvent \in {TRUE, FALSE}
-  /\ isVerified \in {TRUE, FALSE}
-  /\ verifiedAccount \in {1, 2}
-  /\ transferAccount \in {1, 2}
-  /\ gap \in {60, 15 * Minute, 15 * Minute + 1, 30 * Minute}
+  /\ hasVerification \in {TRUE, FALSE}
+  /\ vAccount \in Accounts
+  /\ tAccount \in Accounts
+  /\ verified \in {TRUE, FALSE}
+  /\ gap \in Gaps
 
-Next == UNCHANGED <<hasVerifyEvent, isVerified, verifiedAccount, transferAccount, gap>>
+Next == UNCHANGED <<hasVerification, vAccount, tAccount, verified, gap>>
 
-Spec == Init /\ [][Next]_<<hasVerifyEvent, isVerified, verifiedAccount, transferAccount, gap>>
+Spec == Init /\ [][Next]_<<hasVerification, vAccount, tAccount, verified, gap>>
 
-VerifyEv ==
-  Ev("verify_identity", "response", [account |-> Num(verifiedAccount)], [verified |-> Bool(isVerified)], 1)
+Verify(acc, ver, t) ==
+  Ev("verify_identity", "response", [account |-> Num(acc)], [verified |-> Bool(ver)], t)
 
-TransferEv ==
-  Ev("initiate_transfer", "request", [account |-> Num(transferAccount), amount |-> Num(499), systemNowTime |-> Num(32400000)], NoFields, 1 + gap)
+Transfer(acc, t) ==
+  Ev("initiate_transfer", "request", [account |-> Num(acc), amount |-> Num(500)], NoFields, t)
 
 Session ==
-  IF hasVerifyEvent
-  THEN <<VerifyEv, TransferEv>>
-  ELSE <<TransferEv>>
+  IF hasVerification
+  THEN << Verify(vAccount, verified, 1), Transfer(tAccount, 1 + gap) >>
+  ELSE << Transfer(tAccount, 1) >>
 
-DecideIndex == IF hasVerifyEvent THEN 2 ELSE 1
+DecisionIndex == IF hasVerification THEN 2 ELSE 1
 
-TransferAllowed == D!Decide(Session, Policies, DecideIndex, AllValues)
+TransferAllowed == D!Decide(Session, Policies, DecisionIndex, AllValues)
 
-CompliantTransferAllowed ==
-  (hasVerifyEvent /\ isVerified /\ verifiedAccount = 1 /\ transferAccount = 1 /\ gap = 60) => TransferAllowed
+CompliantTransferIsAllowed ==
+  (hasVerification /\ verified /\ vAccount = 1 /\ tAccount = 1 /\ gap = 60) => TransferAllowed
 
-UnverifiedTransferRefused ==
-  (~hasVerifyEvent \/ ~isVerified \/ (verifiedAccount # transferAccount) \/ (gap > 15 * Minute)) => ~TransferAllowed
+NoVerificationIsRefused ==
+  (~hasVerification) => ~TransferAllowed
+
+FailedVerificationIsRefused ==
+  (hasVerification /\ ~verified) => ~TransferAllowed
+
+MismatchedAccountIsRefused ==
+  (hasVerification /\ vAccount # tAccount) => ~TransferAllowed
+
+ExpiredVerificationIsRefused ==
+  (hasVerification /\ gap > FifteenMinutes) => ~TransferAllowed
 
 =============================================================================
 ===CONFIG===
 SPECIFICATION Spec
-INVARIANT CompliantTransferAllowed
-INVARIANT UnverifiedTransferRefused
+INVARIANT CompliantTransferIsAllowed
+INVARIANT NoVerificationIsRefused
+INVARIANT FailedVerificationIsRefused
+INVARIANT MismatchedAccountIsRefused
+INVARIANT ExpiredVerificationIsRefused
 
 ## the review
 
@@ -824,59 +1078,114 @@ INVARIANT UnverifiedTransferRefused
 > 
 > IdentityVerification
 > 
->   2 claims will be checked, over 64 states:
->       hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1, transferAccount =
->         1, gap = 60
->       hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1, transferAccount =
->         1, gap = 900
->       hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1, transferAccount =
->         1, gap = 901
->       hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1, transferAccount =
->         1, gap = 1800
->       hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1, transferAccount =
->         2, gap = 60
->       hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1, transferAccount =
->         2, gap = 900
->       hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1, transferAccount =
->         2, gap = 901
->       hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1, transferAccount =
->         2, gap = 1800
+>   Every value each variable takes -- nothing else is checked:
+>       hasVerification  FALSE, TRUE
+>       vAccount         1, 2
+>       tAccount         1, 2
+>       verified         FALSE, TRUE
+>       gap              60, 900, 901, 1800
+> 
+>   5 claims will be checked, over 64 states:
+>       hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = FALSE, gap = 60
+>       hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = FALSE, gap = 900
+>       hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = FALSE, gap = 901
+>       hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = FALSE, gap = 1800
+>       hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = TRUE, gap = 60
+>       hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = TRUE, gap = 900
+>       hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = TRUE, gap = 901
+>       hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = TRUE, gap = 1800
 >       and 56 more
 > 
->   CompliantTransferAllowed
->       says:     whenever hasVerifyEvent holds and isVerified holds and verifiedAccount
->                 is 1 and transferAccount is 1 and gap is 60,
+>   CompliantTransferIsAllowed
+>       says:     whenever hasVerification holds and verified holds and vAccount is 1 and
+>                 tAccount is 1 and gap is 60,
 >                 then the policy GRANTS it (TransferAllowed)
->       forbids:  hasVerifyEvent holds and isVerified holds and verifiedAccount is 1 and
->                 transferAccount is 1 and gap is 60,
+>       forbids:  hasVerification holds and verified holds and vAccount is 1 and tAccount
+>                 is 1 and gap is 60,
 >                 and yet the policy REFUSES it (TransferAllowed)
 >       applies:  to 1 of the 64 states:
->                   hasVerifyEvent = TRUE, isVerified = TRUE, verifiedAccount = 1,
->                     transferAccount = 1, gap = 60
+>                   hasVerification = TRUE, vAccount = 1, tAccount = 1, verified = TRUE,
+>                     gap = 60
 > 
->   UnverifiedTransferRefused
->       says:     whenever hasVerifyEvent does not hold or isVerified does not hold or
->                 verifiedAccount is not transferAccount or gap is greater than 15 *
->                 Minute (= 900),
+>   NoVerificationIsRefused
+>       says:     whenever hasVerification does not hold,
 >                 then the policy REFUSES it (TransferAllowed)
->       forbids:  hasVerifyEvent does not hold or isVerified does not hold or
->                 verifiedAccount is not transferAccount or gap is greater than 15 *
->                 Minute (= 900),
+>       forbids:  hasVerification does not hold,
 >                 and yet the policy GRANTS it (TransferAllowed)
->       applies:  to 60 of the 64 states:
->                   hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1,
->                     transferAccount = 1, gap = 60
->                   hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1,
->                     transferAccount = 1, gap = 900
->                   hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1,
->                     transferAccount = 1, gap = 901
->                   hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1,
->                     transferAccount = 1, gap = 1800
->                   hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1,
->                     transferAccount = 2, gap = 60
->                   hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1,
->                     transferAccount = 2, gap = 900
->                   and 54 more
+>       applies:  to 32 of the 64 states:
+>                   hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = FALSE,
+>                     gap = 60
+>                   hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = FALSE,
+>                     gap = 900
+>                   hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = FALSE,
+>                     gap = 901
+>                   hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = FALSE,
+>                     gap = 1800
+>                   hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = TRUE,
+>                     gap = 60
+>                   hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = TRUE,
+>                     gap = 900
+>                   and 26 more
+> 
+>   FailedVerificationIsRefused
+>       says:     whenever hasVerification holds and verified does not hold,
+>                 then the policy REFUSES it (TransferAllowed)
+>       forbids:  hasVerification holds and verified does not hold,
+>                 and yet the policy GRANTS it (TransferAllowed)
+>       applies:  to 16 of the 64 states:
+>                   hasVerification = TRUE, vAccount = 1, tAccount = 1, verified = FALSE,
+>                     gap = 60
+>                   hasVerification = TRUE, vAccount = 1, tAccount = 1, verified = FALSE,
+>                     gap = 900
+>                   hasVerification = TRUE, vAccount = 1, tAccount = 1, verified = FALSE,
+>                     gap = 901
+>                   hasVerification = TRUE, vAccount = 1, tAccount = 1, verified = FALSE,
+>                     gap = 1800
+>                   hasVerification = TRUE, vAccount = 1, tAccount = 2, verified = FALSE,
+>                     gap = 60
+>                   hasVerification = TRUE, vAccount = 1, tAccount = 2, verified = FALSE,
+>                     gap = 900
+>                   and 10 more
+> 
+>   MismatchedAccountIsRefused
+>       says:     whenever hasVerification holds and vAccount is not tAccount,
+>                 then the policy REFUSES it (TransferAllowed)
+>       forbids:  hasVerification holds and vAccount is not tAccount,
+>                 and yet the policy GRANTS it (TransferAllowed)
+>       applies:  to 16 of the 64 states:
+>                   hasVerification = TRUE, vAccount = 1, tAccount = 2, verified = FALSE,
+>                     gap = 60
+>                   hasVerification = TRUE, vAccount = 1, tAccount = 2, verified = FALSE,
+>                     gap = 900
+>                   hasVerification = TRUE, vAccount = 1, tAccount = 2, verified = FALSE,
+>                     gap = 901
+>                   hasVerification = TRUE, vAccount = 1, tAccount = 2, verified = FALSE,
+>                     gap = 1800
+>                   hasVerification = TRUE, vAccount = 1, tAccount = 2, verified = TRUE,
+>                     gap = 60
+>                   hasVerification = TRUE, vAccount = 1, tAccount = 2, verified = TRUE,
+>                     gap = 900
+>                   and 10 more
+> 
+>   ExpiredVerificationIsRefused
+>       says:     whenever hasVerification holds and gap is greater than FifteenMinutes,
+>                 then the policy REFUSES it (TransferAllowed)
+>       forbids:  hasVerification holds and gap is greater than FifteenMinutes,
+>                 and yet the policy GRANTS it (TransferAllowed)
+>       applies:  to 16 of the 64 states:
+>                   hasVerification = TRUE, vAccount = 1, tAccount = 1, verified = FALSE,
+>                     gap = 901
+>                   hasVerification = TRUE, vAccount = 1, tAccount = 1, verified = FALSE,
+>                     gap = 1800
+>                   hasVerification = TRUE, vAccount = 1, tAccount = 1, verified = TRUE,
+>                     gap = 901
+>                   hasVerification = TRUE, vAccount = 1, tAccount = 1, verified = TRUE,
+>                     gap = 1800
+>                   hasVerification = TRUE, vAccount = 1, tAccount = 2, verified = FALSE,
+>                     gap = 901
+>                   hasVerification = TRUE, vAccount = 1, tAccount = 2, verified = FALSE,
+>                     gap = 1800
+>                   and 10 more
 > 
 >   Read the `forbids` lines before the run, not after it. Each one is the only
 >   thing its claim can catch; if none of them describes something you would
@@ -885,12 +1194,12 @@ INVARIANT UnverifiedTransferRefused
 | | |
 |---|---|
 | model | gemini-3.7-flash |
-| tokens | 1,954 |
-| seconds | 7.9 |
+| tokens | 2,249 |
+| seconds | 3.7 |
 
 VERDICT: MATCH
 
-The formal claims accurately capture the requirement by ensuring that transfers are refused whenever identity verification is absent, failed, performed for a different account, or older than 15 minutes (900 seconds). A complementary sanity check also confirms that a valid, verified transfer within the time window is permitted.
+The reading correctly enforces that transfers are refused if there is no verification, if the verification failed, if the accounts do not match, or if the time elapsed exceeds 15 minutes (900 seconds). It tests the exact 15-minute boundary as well as the immediate next second (901 seconds) to ensure expired verifications are properly rejected.
 
 ## the report
 
@@ -905,59 +1214,114 @@ The formal claims accurately capture the requirement by ensuring that transfers 
 > 
 > IdentityVerification
 > 
->   2 claims will be checked, over 64 states:
->   hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1, transferAccount =
->     1, gap = 60
->   hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1, transferAccount =
->     1, gap = 900
->   hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1, transferAccount =
->     1, gap = 901
->   hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1, transferAccount =
->     1, gap = 1800
->   hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1, transferAccount =
->     2, gap = 60
->   hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1, transferAccount =
->     2, gap = 900
->   hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1, transferAccount =
->     2, gap = 901
->   hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1, transferAccount =
->     2, gap = 1800
+>   Every value each variable takes -- nothing else is checked:
+>   hasVerification  FALSE, TRUE
+>   vAccount         1, 2
+>   tAccount         1, 2
+>   verified         FALSE, TRUE
+>   gap              60, 900, 901, 1800
+> 
+>   5 claims will be checked, over 64 states:
+>   hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = FALSE, gap = 60
+>   hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = FALSE, gap = 900
+>   hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = FALSE, gap = 901
+>   hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = FALSE, gap = 1800
+>   hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = TRUE, gap = 60
+>   hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = TRUE, gap = 900
+>   hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = TRUE, gap = 901
+>   hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = TRUE, gap = 1800
 >   and 56 more
 > 
->   CompliantTransferAllowed
->   says:     whenever hasVerifyEvent holds and isVerified holds and verifiedAccount
->             is 1 and transferAccount is 1 and gap is 60,
+>   CompliantTransferIsAllowed
+>   says:     whenever hasVerification holds and verified holds and vAccount is 1 and
+>             tAccount is 1 and gap is 60,
 >             then the policy GRANTS it (TransferAllowed)
->   forbids:  hasVerifyEvent holds and isVerified holds and verifiedAccount is 1 and
->             transferAccount is 1 and gap is 60,
+>   forbids:  hasVerification holds and verified holds and vAccount is 1 and tAccount
+>             is 1 and gap is 60,
 >             and yet the policy REFUSES it (TransferAllowed)
 >   applies:  to 1 of the 64 states:
->               hasVerifyEvent = TRUE, isVerified = TRUE, verifiedAccount = 1,
->                 transferAccount = 1, gap = 60
+>               hasVerification = TRUE, vAccount = 1, tAccount = 1, verified = TRUE,
+>                 gap = 60
 > 
->   UnverifiedTransferRefused
->   says:     whenever hasVerifyEvent does not hold or isVerified does not hold or
->             verifiedAccount is not transferAccount or gap is greater than 15 *
->             Minute (= 900),
+>   NoVerificationIsRefused
+>   says:     whenever hasVerification does not hold,
 >             then the policy REFUSES it (TransferAllowed)
->   forbids:  hasVerifyEvent does not hold or isVerified does not hold or
->             verifiedAccount is not transferAccount or gap is greater than 15 *
->             Minute (= 900),
+>   forbids:  hasVerification does not hold,
 >             and yet the policy GRANTS it (TransferAllowed)
->   applies:  to 60 of the 64 states:
->               hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1,
->                 transferAccount = 1, gap = 60
->               hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1,
->                 transferAccount = 1, gap = 900
->               hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1,
->                 transferAccount = 1, gap = 901
->               hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1,
->                 transferAccount = 1, gap = 1800
->               hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1,
->                 transferAccount = 2, gap = 60
->               hasVerifyEvent = FALSE, isVerified = FALSE, verifiedAccount = 1,
->                 transferAccount = 2, gap = 900
->               and 54 more
+>   applies:  to 32 of the 64 states:
+>               hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = FALSE,
+>                 gap = 60
+>               hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = FALSE,
+>                 gap = 900
+>               hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = FALSE,
+>                 gap = 901
+>               hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = FALSE,
+>                 gap = 1800
+>               hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = TRUE,
+>                 gap = 60
+>               hasVerification = FALSE, vAccount = 1, tAccount = 1, verified = TRUE,
+>                 gap = 900
+>               and 26 more
+> 
+>   FailedVerificationIsRefused
+>   says:     whenever hasVerification holds and verified does not hold,
+>             then the policy REFUSES it (TransferAllowed)
+>   forbids:  hasVerification holds and verified does not hold,
+>             and yet the policy GRANTS it (TransferAllowed)
+>   applies:  to 16 of the 64 states:
+>               hasVerification = TRUE, vAccount = 1, tAccount = 1, verified = FALSE,
+>                 gap = 60
+>               hasVerification = TRUE, vAccount = 1, tAccount = 1, verified = FALSE,
+>                 gap = 900
+>               hasVerification = TRUE, vAccount = 1, tAccount = 1, verified = FALSE,
+>                 gap = 901
+>               hasVerification = TRUE, vAccount = 1, tAccount = 1, verified = FALSE,
+>                 gap = 1800
+>               hasVerification = TRUE, vAccount = 1, tAccount = 2, verified = FALSE,
+>                 gap = 60
+>               hasVerification = TRUE, vAccount = 1, tAccount = 2, verified = FALSE,
+>                 gap = 900
+>               and 10 more
+> 
+>   MismatchedAccountIsRefused
+>   says:     whenever hasVerification holds and vAccount is not tAccount,
+>             then the policy REFUSES it (TransferAllowed)
+>   forbids:  hasVerification holds and vAccount is not tAccount,
+>             and yet the policy GRANTS it (TransferAllowed)
+>   applies:  to 16 of the 64 states:
+>               hasVerification = TRUE, vAccount = 1, tAccount = 2, verified = FALSE,
+>                 gap = 60
+>               hasVerification = TRUE, vAccount = 1, tAccount = 2, verified = FALSE,
+>                 gap = 900
+>               hasVerification = TRUE, vAccount = 1, tAccount = 2, verified = FALSE,
+>                 gap = 901
+>               hasVerification = TRUE, vAccount = 1, tAccount = 2, verified = FALSE,
+>                 gap = 1800
+>               hasVerification = TRUE, vAccount = 1, tAccount = 2, verified = TRUE,
+>                 gap = 60
+>               hasVerification = TRUE, vAccount = 1, tAccount = 2, verified = TRUE,
+>                 gap = 900
+>               and 10 more
+> 
+>   ExpiredVerificationIsRefused
+>   says:     whenever hasVerification holds and gap is greater than FifteenMinutes,
+>             then the policy REFUSES it (TransferAllowed)
+>   forbids:  hasVerification holds and gap is greater than FifteenMinutes,
+>             and yet the policy GRANTS it (TransferAllowed)
+>   applies:  to 16 of the 64 states:
+>               hasVerification = TRUE, vAccount = 1, tAccount = 1, verified = FALSE,
+>                 gap = 901
+>               hasVerification = TRUE, vAccount = 1, tAccount = 1, verified = FALSE,
+>                 gap = 1800
+>               hasVerification = TRUE, vAccount = 1, tAccount = 1, verified = TRUE,
+>                 gap = 901
+>               hasVerification = TRUE, vAccount = 1, tAccount = 1, verified = TRUE,
+>                 gap = 1800
+>               hasVerification = TRUE, vAccount = 1, tAccount = 2, verified = FALSE,
+>                 gap = 901
+>               hasVerification = TRUE, vAccount = 1, tAccount = 2, verified = FALSE,
+>                 gap = 1800
+>               and 10 more
 > 
 >   Read the `forbids` lines before the run, not after it. Each one is the only
 >   thing its claim can catch; if none of them describes something you would
@@ -973,45 +1337,51 @@ The formal claims accurately capture the requirement by ensuring that transfers 
 | | |
 |---|---|
 | model | gemini-3.7-flash |
-| tokens | 3,095 |
-| seconds | 13.2 |
+| tokens | 3,988 |
+| seconds | 14.2 |
 
-### Summary of Results
+### Verification Summary
 
-The property module **`IdentityVerification.tla` held** across all **64 evaluated states**. No counterexamples were found within this tested scope.
-
----
-
-### Scope and Bounds Checked
-
-The verification ran over a bounded grid of **64 discrete states** formed by combinations of the following values:
-* **`hasVerifyEvent`**: `TRUE`, `FALSE`
-* **`isVerified`**: `TRUE`, `FALSE`
-* **`verifiedAccount`**: `1`, `2`
-* **`transferAccount`**: `1`, `2`
-* **`gap`**: `60`, `900`, `901`, `1800` (seconds)
-
-Requests involving other account IDs, time intervals outside these four values, or additional context fields were **not checked**.
+All 5 claims in `IdentityVerification.tla` **held** across the **64 states** evaluated for `agent-policy.dw`. No counterexamples were found within these bounds.
 
 ---
 
-### Claim Breakdown
+### What Was Checked (The Exact Bounds)
 
-1. **`CompliantTransferAllowed` — HELD**
-   * **Applies to:** Exactly **1 of the 64 states** (`hasVerifyEvent = TRUE`, `isVerified = TRUE`, `verifiedAccount = 1`, `transferAccount = 1`, `gap = 60`).
-   * **Result:** The policy permitted `TransferAllowed` for this specific compliant state.
+The verification tested combinations of only the following variable values (a total of $2 \times 2 \times 2 \times 2 \times 4 = 64$ states):
 
-2. **`UnverifiedTransferRefused` — HELD**
-   * **Applies to:** **60 of the 64 states** where verification was missing, failed, accounts did not match (1 vs 2), or `gap` was greater than 900 seconds (specifically evaluated at 901 and 1800 seconds).
-   * **Result:** The policy refused `TransferAllowed` across all 60 of these states.
+*   **`hasVerification`**: `FALSE`, `TRUE`
+*   **`vAccount`**: `1`, `2`
+*   **`tAccount`**: `1`, `2`
+*   **`verified`**: `FALSE`, `TRUE`
+*   **`gap`**: `60`, `900`, `901`, `1800` (representing elapsed seconds)
+
+**What was not checked:**
+*   Any account identifiers other than `1` and `2`.
+*   Any time gap values other than `60`, `900`, `901`, and `1800`.
+*   Derived/automated exploratory properties were **not run** because the policy reads 6 fields, exceeding the tool's 4-field automated exploration threshold.
 
 ---
 
-### Findings Regarding the Properties
+### Claim-by-Claim Results
 
-* **Gap in Coverage (3 unasserted states):** Out of the 64 states, the two claims only cover 61 ($1 + 60$). There are **3 valid states** that neither claim tests:
-  * `verifiedAccount = 1`, `transferAccount = 1`, `gap = 900` (valid 15-minute boundary)
-  * `verifiedAccount = 2`, `transferAccount = 2`, `gap = 60`
-  * `verifiedAccount = 2`, `transferAccount = 2`, `gap = 900`
-* **Overly Specific Positive Test:** `CompliantTransferAllowed` is hardcoded strictly to Account `1` and a `60`-second gap. It does not verify that transfers are allowed for other accounts (like Account `2`) or at other valid time gaps (like `900` seconds).
-* **Automated Derived Analysis Skipped:** General automated analysis was not run because the policy reads 6 input/output fields, exceeding the tool's default 4-field threshold.
+1.  **`CompliantTransferIsAllowed`** — **HELD**
+    *   **Rule:** Grants `TransferAllowed` when verification exists, `verified` is true, accounts match on `1`, and `gap` is `60`.
+    *   **Scope:** Evaluated on **1 state** out of 64.
+    *   **Finding on the property:** This claim only checks a single specific scenario (account `1` with a `60`-second gap). It does not test whether compliant transfers succeed for account `2`, nor does it check whether a `gap` of `900` seconds is permitted.
+
+2.  **`NoVerificationIsRefused`** — **HELD**
+    *   **Rule:** Refuses `TransferAllowed` whenever `hasVerification` is `FALSE`.
+    *   **Scope:** Evaluated across **32 states** where `hasVerification` is `FALSE`.
+
+3.  **`FailedVerificationIsRefused`** — **HELD**
+    *   **Rule:** Refuses `TransferAllowed` whenever `hasVerification` is `TRUE` but `verified` is `FALSE`.
+    *   **Scope:** Evaluated across **16 states** where `hasVerification` is `TRUE` and `verified` is `FALSE`.
+
+4.  **`MismatchedAccountIsRefused`** — **HELD**
+    *   **Rule:** Refuses `TransferAllowed` whenever `hasVerification` is `TRUE` and `vAccount` does not equal `tAccount` (i.e., `vAccount = 1, tAccount = 2` or `vAccount = 2, tAccount = 1`).
+    *   **Scope:** Evaluated across **16 states**.
+
+5.  **`ExpiredVerificationIsRefused`** — **HELD**
+    *   **Rule:** Refuses `TransferAllowed` whenever `hasVerification` is `TRUE` and `gap` exceeds 15 minutes (tested at `901` and `1800` seconds).
+    *   **Scope:** Evaluated across **16 states**.

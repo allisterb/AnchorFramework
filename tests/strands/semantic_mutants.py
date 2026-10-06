@@ -20,8 +20,13 @@ account or charge left out. On the 2026-10-04 sweep every module was kept, and t
   - a refusal claim can be held up by a DIFFERENT rule -- `OverMaxAmountRefused` is refused by
     supervisor approval, never reaching the $2,500 cap.
 
+The second led to rule 7 in the drafter's prompt (range over the value just past each threshold the
+requirement states) and its twin in the reviewer's. The 2026-10-06 sweep, the one in
+examples/aws2/anchor, caught 14 of 17 and every bug that lets more through; the three it missed
+make a policy too strict.
+
 IT MEASURES THE DRAFTS, NOT THE CODE, so a low score is not a failure: another sweep could score
-9 or 14 with nothing broken. It fails only on its own errors -- a module missing, a module that
+higher or lower with nothing broken. It fails only on its own errors -- a module missing, a module that
 does not hold on the policy as written, a bug whose text no longer occurs exactly once in the
 policy, or a verdict it cannot read. Those mean the numbers below would be meaningless.
 

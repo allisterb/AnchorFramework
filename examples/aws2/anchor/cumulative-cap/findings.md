@@ -22,66 +22,46 @@ WHAT WAS ACTUALLY CHECKED -- each claim, what it forbids, and how many of the st
 
 CumulativeCap
 
-  4 claims will be checked, over 36 states:
-      priorAmount = 20000, currentAmount = 15000, gap = 3600
-      priorAmount = 20000, currentAmount = 15000, gap = 43200
-      priorAmount = 20000, currentAmount = 15000, gap = 43201
-      priorAmount = 20000, currentAmount = 15000, gap = 86400
-      priorAmount = 20000, currentAmount = 25000, gap = 3600
-      priorAmount = 20000, currentAmount = 25000, gap = 43200
-      priorAmount = 20000, currentAmount = 25000, gap = 43201
-      priorAmount = 20000, currentAmount = 25000, gap = 86400
-      and 28 more
+  Every value each variable takes -- nothing else is checked:
+      prevAmount     30000
+      currentAmount  20000, 20001, 50000, 50001
+      gap            300, 43200, 43201
 
-  ExceedingCapWithin12hIsRefused
-      says:     whenever gap is at most Window and priorAmount + currentAmount is
-                greater than 50000,
+  2 claims will be checked, over 12 states:
+      prevAmount = 30000, currentAmount = 20000, gap = 300
+      prevAmount = 30000, currentAmount = 20000, gap = 43200
+      prevAmount = 30000, currentAmount = 20000, gap = 43201
+      prevAmount = 30000, currentAmount = 20001, gap = 300
+      prevAmount = 30000, currentAmount = 20001, gap = 43200
+      prevAmount = 30000, currentAmount = 20001, gap = 43201
+      prevAmount = 30000, currentAmount = 50000, gap = 300
+      prevAmount = 30000, currentAmount = 50000, gap = 43200
+      and 4 more
+
+  ExceedingCapIsBlocked
+      says:     whenever gap is at most Window and prevAmount + currentAmount is greater
+                than Cap or gap is greater than Window and currentAmount is greater than
+                Cap,
                 then the policy REFUSES it (TransferAllowed)
-      forbids:  gap is at most Window and priorAmount + currentAmount is greater than
-                50000,
+      forbids:  gap is at most Window and prevAmount + currentAmount is greater than Cap
+                or gap is greater than Window and currentAmount is greater than Cap,
                 and yet the policy GRANTS it (TransferAllowed)
-      applies:  to 12 of the 36 states:
-                  priorAmount = 20000, currentAmount = 55000, gap = 3600
-                  priorAmount = 20000, currentAmount = 55000, gap = 43200
-                  priorAmount = 30000, currentAmount = 25000, gap = 3600
-                  priorAmount = 30000, currentAmount = 25000, gap = 43200
-                  priorAmount = 30000, currentAmount = 55000, gap = 3600
-                  priorAmount = 30000, currentAmount = 55000, gap = 43200
-                  and 6 more
+      applies:  to 7 of the 12 states:
+                  prevAmount = 30000, currentAmount = 20001, gap = 300
+                  prevAmount = 30000, currentAmount = 20001, gap = 43200
+                  prevAmount = 30000, currentAmount = 50000, gap = 300
+                  prevAmount = 30000, currentAmount = 50000, gap = 43200
+                  prevAmount = 30000, currentAmount = 50001, gap = 300
+                  prevAmount = 30000, currentAmount = 50001, gap = 43200
+                  and 1 more
 
-  ExceedingCapAfter12hIsRefused
-      says:     whenever gap is greater than Window and currentAmount is greater than
-                50000,
-                then the policy REFUSES it (TransferAllowed)
-      forbids:  gap is greater than Window and currentAmount is greater than 50000,
-                and yet the policy GRANTS it (TransferAllowed)
-      applies:  to 6 of the 36 states:
-                  priorAmount = 20000, currentAmount = 55000, gap = 43201
-                  priorAmount = 20000, currentAmount = 55000, gap = 86400
-                  priorAmount = 30000, currentAmount = 55000, gap = 43201
-                  priorAmount = 30000, currentAmount = 55000, gap = 86400
-                  priorAmount = 40000, currentAmount = 55000, gap = 43201
-                  priorAmount = 40000, currentAmount = 55000, gap = 86400
-
-  CompliantSessionUnderCapAllowed
-      says:     whenever priorAmount is 20000 and currentAmount is 15000 and gap is 1 *
-                Hour (= 3600),
+  CompliantTransferIsAllowed
+      says:     whenever gap is 300 and prevAmount is 30000 and currentAmount is 20000,
                 then the policy GRANTS it (TransferAllowed)
-      forbids:  priorAmount is 20000 and currentAmount is 15000 and gap is 1 * Hour (=
-                3600),
+      forbids:  gap is 300 and prevAmount is 30000 and currentAmount is 20000,
                 and yet the policy REFUSES it (TransferAllowed)
-      applies:  to 1 of the 36 states:
-                  priorAmount = 20000, currentAmount = 15000, gap = 3600
-
-  CompliantSessionAfter12hAllowed
-      says:     whenever priorAmount is 30000 and currentAmount is 25000 and gap is
-                Window + 1 (= 43201),
-                then the policy GRANTS it (TransferAllowed)
-      forbids:  priorAmount is 30000 and currentAmount is 25000 and gap is Window + 1 (=
-                43201),
-                and yet the policy REFUSES it (TransferAllowed)
-      applies:  to 1 of the 36 states:
-                  priorAmount = 30000, currentAmount = 25000, gap = 43201
+      applies:  to 1 of the 12 states:
+                  prevAmount = 30000, currentAmount = 20000, gap = 300
 
   Read the `forbids` lines before the run, not after it. Each one is the only
   thing its claim can catch; if none of them describes something you would
@@ -103,42 +83,49 @@ anchor check examples\aws2\agent-policy.dw --full --property examples\aws2\ancho
 
 ## Reported
 
-### Verification Summary: `CumulativeCap.tla` on `agent-policy.dw`
+### Verification Summary
 
-All 4 claims defined in `CumulativeCap.tla` **held** across the **36 concrete states** evaluated by the model checker.
-
----
-
-### What Was Checked and What Held
-
-The check evaluated combinations of discrete values:
-* **`priorAmount`**: `20000`, `30000`, `40000`
-* **`currentAmount`**: `15000`, `25000`, `55000`
-* **`gap`**: `3600` (1h), `43200` (12h window), `43201` (12h + 1s), `86400` (24h)
-
-Across these 36 states, the following specific claims held:
-
-1. **`ExceedingCapWithin12hIsRefused` (Held across 12 applicable states)**
-   * **Rule checked**: When `gap <= 43200` and `priorAmount + currentAmount > 50000`, `TransferAllowed` is refused.
-   * **Scope**: Verified for the 12 combinations where amounts exceeded 50,000 within the 12-hour window (e.g., prior 20,000 + current 55,000; prior 30,000 + current 25,000; prior 30,000 + current 55,000; at gaps of 3,600s and 43,200s).
-
-2. **`ExceedingCapAfter12hIsRefused` (Held across 6 applicable states)**
-   * **Rule checked**: When `gap > 43200` and `currentAmount > 50000`, `TransferAllowed` is refused.
-   * **Scope**: Verified for the 6 combinations where `currentAmount = 55000` with `gap` at 43,201s or 86,400s across prior amounts of 20,000, 30,000, and 40,000.
-
-3. **`CompliantSessionUnderCapAllowed` (Held across 1 applicable state)**
-   * **Rule checked**: A session with `priorAmount = 20000`, `currentAmount = 15000`, and `gap = 3600` results in `TransferAllowed` being granted.
-
-4. **`CompliantSessionAfter12hAllowed` (Held across 1 applicable state)**
-   * **Rule checked**: A session with `priorAmount = 30000`, `currentAmount = 25000`, and `gap = 43201` results in `TransferAllowed` being granted.
+The model checker evaluated the **`CumulativeCap.tla`** property module against **`agent-policy.dw`**. All claims defined in the module **held** across the specific states evaluated.
 
 ---
 
-### Concrete Bounds and Scope Limitations
+### Concrete Bounds Checked
 
-* **Exact Value Bounds**: The verification only establishes policy behavior for the **36 discrete states** generated from the specific amounts and gap timestamps listed above.
-* **Unchecked States**: This check does not evaluate other transfer amounts (e.g., exact boundary values like 50,000, amounts below 15,000, or intermediate amounts), other time gaps (e.g., gaps between 3,600s and 43,200s, or zero gap), or negative values.
-* **Derived Analysis Not Run**: Automated exhaustive property checks were not attempted because `agent-policy.dw` accesses 6 input/output fields, exceeding the default 4-field limit for model space exploration.
+The verification was strictly limited to **12 concrete states** formed by the combinations of the following variable values:
+
+* **`prevAmount`**: `30000` (only 1 value tested)
+* **`currentAmount`**: `20000`, `20001`, `50000`, `50001` (4 values tested)
+* **`gap`**: `300`, `43200`, `43201` (3 values tested)
+
+No other values, amounts, or time gaps were checked.
+
+---
+
+### Claim Results
+
+1. **`ExceedingCapIsBlocked`** — **HELD**
+   * **What it checked:** Ensures the policy refuses `TransferAllowed` whenever the transfer exceeds the cap (either within the window when `prevAmount + currentAmount > Cap`, or outside the window when `currentAmount > Cap`).
+   * **Scope:** Applied to and held across **7 of the 12 states**:
+     * `prevAmount = 30000, currentAmount = 20001, gap = 300`
+     * `prevAmount = 30000, currentAmount = 20001, gap = 43200`
+     * `prevAmount = 30000, currentAmount = 50000, gap = 300`
+     * `prevAmount = 30000, currentAmount = 50000, gap = 43200`
+     * `prevAmount = 30000, currentAmount = 50001, gap = 300`
+     * `prevAmount = 30000, currentAmount = 50001, gap = 43200`
+     * `prevAmount = 30000, currentAmount = 50001, gap = 43201`
+
+2. **`CompliantTransferIsAllowed`** — **HELD**
+   * **What it checked:** Ensures the policy grants `TransferAllowed` for a compliant request.
+   * **Scope:** Applied to and held across **1 of the 12 states**:
+     * `prevAmount = 30000, currentAmount = 20000, gap = 300`
+
+---
+
+### Observations on Property Coverage
+
+* **Narrow positive coverage:** The claim `CompliantTransferIsAllowed` is hardcoded to a single request state (`prevAmount = 30000, currentAmount = 20000, gap = 300`). It does not verify whether compliant transfers are granted in other scenarios (such as when the window expires with `gap = 43201` and `currentAmount = 50000`, or `gap = 43200/43201` with `currentAmount = 20000`).
+* **Fixed previous amount:** `prevAmount` was never tested at any value other than `30000`. Behavior with `prevAmount = 0`, values near the cap, or values exceeding the cap was not evaluated.
+* **Derived questions omitted:** Automated derived question checks were not run because the policy reads 6 fields, exceeding the tool's default limit of 4 fields. This is an analysis limit, not a policy failure.
 
 Every LLM call this run made, with each tool call and its reply, is in `transcript.md` beside this file.
 
@@ -150,23 +137,23 @@ Every LLM call this run made, with each tool call and its reply, is in `transcri
 
 | | tokens in | of which cached | out | total | seconds |
 |---|---:|---:|---:|---:|---:|
-| draft round 1 | 327,388 | 242,859 | 13,097 | 340,485 | 246.4 |
-| the review | 1,467 | 0 | 357 | 1,824 | 4.0 |
-| the report | 1,629 | 0 | 1,792 | 3,421 | 11.2 |
-| **3 model call(s)** | **330,484** | **242,859** | **15,246** | **345,730** | **261.5** |
+| draft round 1 | 262,899 | 175,366 | 10,475 | 273,374 | 147.3 |
+| the review | 1,170 | 0 | 517 | 1,687 | 10.8 |
+| the report | 1,243 | 0 | 1,950 | 3,193 | 16.5 |
+| **3 model call(s)** | **265,312** | **175,366** | **12,942** | **278,254** | **174.7** |
 
 Time per stage, model calls and verification together:
 
 ```
   describe          0.0s
-  draft           254.2s
+  draft           155.4s
   preflight         0.0s
-  score            17.9s
-  review            4.0s
+  score            23.6s
+  review           10.8s
   check             0.0s
-  answer           11.2s
+  answer           16.5s
   report            0.0s
-  total           287.3s
+  total           206.4s
 ```
 
-Of which 261.5s was model calls; the rest is verification -- TLC runs in `score` and `check`, which cost no tokens.
+Of which 174.7s was model calls; the rest is verification -- TLC runs in `score` and `check`, which cost no tokens.

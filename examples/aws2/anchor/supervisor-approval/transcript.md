@@ -2,7 +2,7 @@
 
 `agent-policy.dw`: every LLM call this run made, in order -- the drafter with its tool calls, the reviewer and the reporter.
 
-*Generated 2026-10-04 17:26 UTC by `src/agent/pipeline.py`. Tool calls and their full replies are included: the prose is a claim, and the tool output is the evidence for it.*
+*Generated 2026-10-06 05:54 UTC by `src/agent/pipeline.py`. Tool calls and their full replies are included: the prose is a claim, and the tool output is the evidence for it.*
 
 ## draft round 1
 
@@ -605,9 +605,10 @@
 >     "Decide the allowed and denied cases from the requirement BEFORE evaluating the policy. A claim written from the policy's own behaviour restates it.",
 >     "Include a claim that one specific, fully compliant session is ALLOWED. A module of refusal claims alone cannot be broken by removing a permission. 'X requires Y' means 'without Y, refused', not 'with Y, always allowed'.",
 >     "Put every prerequisite event in the session, and each value where the policy reads it: inputFields in an event's input record, outputFields in its output record.",
+>     "For every threshold and window the REQUIREMENT states, range over the value at it and the value just past it ('over $500': 500 and 501). Take them from the requirement, not from these domains: a policy with the wrong threshold supplies its own wrong edge.",
 >     "The .cfg must name SPECIFICATION Spec and every INVARIANT. A claim nobody listed is a claim nobody checked."
 >   ],
->   "skeleton": "---------------------------- MODULE agent_policy ----------------------------\n\\* What agent-policy.dw is SUPPOSED to mean, stated by its author. The three built-in findings\n\\* (VACUOUS, REDUNDANT/DEAD, diff) are the claims statable WITHOUT knowing intent; this is the\n\\* other kind, and only the author can write it.\n\\*\n\\* SAVE THIS AS agent_policy.tla -- TLA+ requires the file name to match the module name, and a\n\\* module name may not contain `-` or `.` or begin with a digit, so it is not always the policy's\n\\* own name.\n\\*\n\\* Check it with:  python src/checker/properties.py agent-policy.dw --property agent_policy.tla\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\n\\* The verdict for one request. No session: \"what does this policy decide for this request\" is\n\\* not a temporal question, so there is no state machine beyond holding one request still.\nGrants(input) == D!Decide(<<Request(\"initiate_transfer\", input)>>, Policies, 1, AllValues)\n\n(***************************************************************************)\n(* THE REQUESTS THIS CLAIM IS ABOUT.                                       *)\n(*                                                                         *)\n(* Written out rather than derived from InputDomain, and that is the       *)\n(* point. A space derived from the policy's own literals cannot test a     *)\n(* claim about a value the policy never mentions: delete the rule that     *)\n(* names a value and it vanishes from the vocabulary, so the claim ranges  *)\n(* over nothing and PASSES having looked at nothing.                       *)\n(*                                                                         *)\n(* Add the values your claim is about, including ones this policy never    *)\n(* mentions.                                                               *)\n(***************************************************************************)\naccountValues == {Num(1), Num(2)}\namountValues == {Num(499), Num(500), Num(2500), Num(2501)}\ncharge_idValues == {Num(1), Num(2)}\nsystemNowTimeValues == {Num(32399999), Num(32400000), Num(61200000), Num(61200001)}\n\nRequests == {[account |-> account, amount |-> amount, charge_id |-> charge_id, systemNowTime |-> systemNowTime] : account \\in accountValues, amount \\in amountValues, charge_id \\in charge_idValues, systemNowTime \\in systemNowTimeValues}\n\n\\* One request, chosen nondeterministically and held, so a violation's counterexample NAMES the\n\\* request that breaks the claim rather than merely reporting that one exists.\nVARIABLE req\nInit == req \\in Requests\nNext == UNCHANGED req\nSpec == Init /\\ [][Nex
+>   "skeleton": "---------------------------- MODULE agent_policy ----------------------------\n\\* What agent-policy.dw is SUPPOSED to mean, stated by its author. The three built-in findings\n\\* (VACUOUS, REDUNDANT/DEAD, diff) are the claims statable WITHOUT knowing intent; this is the\n\\* other kind, and only the author can write it.\n\\*\n\\* SAVE THIS AS agent_policy.tla -- TLA+ requires the file name to match the module name, and a\n\\* module name may not contain `-` or `.` or begin with a digit, so it is not always the policy's\n\\* own name.\n\\*\n\\* Check it with:  python src/checker/properties.py agent-policy.dw --property agent_policy.tla\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\n\\* The verdict for one request. No session: \"what does this policy decide for this request\" is\n\\* not a temporal question, so there is no state machine beyond holding one request still.\nGrants(input) == D!Decide(<<Request(\"initiate_transfer\", input)>>, Policies, 1, AllValues)\n\n(***************************************************************************)\n(* THE REQUESTS THIS CLAIM IS ABOUT.                                       *)\n(*                                                                         *)\n(* Written out rather than derived from InputDomain, and that is the       *)\n(* point. A space derived from the policy's own literals cannot test a     *)\n(* claim about a value the policy never mentions: delete the rule that     *)\n(* names a value and it vanishes from the vocabulary, so the claim ranges  *)\n(* over nothing and PASSES having looked at nothing.                       *)\n(*                                                                         *)\n(* Add the values your claim is about, including ones this policy never    *)\n(* mentions.                                                               *)\n(***************************************************************************)\naccountValues == {Num(1), Num(2)}\namountValues == {Num(499), Num(500), Num(2500), Num(2501)}\ncharge_idValues == {Num(1), Num(2)}\nsystemNowTimeValues == {Num(32399999), Num(32400000), Num(61200000), Num(61200001)}\n\nRequests == {[account |-> account, amount |-> amount, charge_id |-> charge_id, systemNowTime |-> systemNowTime] : account \\in accountValues, amount \\in amountValues, charge_id \\in charge_idValues, systemNowTime \\in systemNowTimeValues}\n\n\\*
 > ```
 > 
 > The intention to state formally:
@@ -617,33 +618,26 @@
 | | |
 |---|---|
 | model | gemini-3.7-flash |
-| tokens | 195,221 |
-| seconds | 97.8 |
+| tokens | 275,358 |
+| seconds | 161.7 |
 
 **Tool call 1** — `evaluate`
 
 ```json
 {
-  "config": "SPECIFICATION Spec\n",
+  "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
   "expression": "Policies",
-  "module": "---------------------------- MODULE SupervisorApproval ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\nVARIABLE dummy\nInit == dummy = 0\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\n============================================================================="
+  "module": "---------------------------- MODULE SupervisorApproval ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE dummy\nInit == dummy = 1\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\n\nDummy == TRUE\n============================================================================="
 }
 ```
 
 <details><summary>tool result (success)</summary>
 
 ```
-ld |-> "",
-                             cmp |-> "",
-                             value |-> [k |-> "s", v |-> ""],
-                             other |-> "",
-                             pattern |-> <<>>,
-                             net |-> <<>>,
-                             prefix |-> 0 ],
-                       leftNeg |-> FALSE,
-                       keys |-> <<>> ] ] ],
-         [ effect |-> "permit",
-           actions |-> {"request_approval"},
+Policies
+
+      << [ effect |-> "permit",
+           actions |-> {"verify_identity"},
            cond |->
                [ op |-> "true",
                  args |-> <<>>,
@@ -668,6 +662,17 @@ ld |-> "",
                              pred |-> [action |-> "", kind |-> "", binds |-> <<>>],
                              var |-> "",
                              field |-> "",
+                             cmp |-> "",
+                             value |-> [k |-> "s", v |-> ""],
+                             other |-> "",
+                             pattern |-> <<>>,
+                             net |-> <<>>,
+                             prefix |-> 0 ],
+                       leftNeg |-> FALSE,
+                       keys |-> <<>> ] ] ],
+ 
+
+[TRUNCATED: the first 1500 of 2703 characters, and 725 more line(s) the checker did not print. Evaluate a smaller part -- one element or one field -- to see the rest.]
 ```
 
 </details>
@@ -676,26 +681,25 @@ ld |-> "",
 
 ```json
 {
-  "config": "SPECIFICATION Spec",
+  "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
   "expression": "Policies[3]",
-  "module": "---------------------------- MODULE SupervisorApproval ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\nVARIABLE dummy\nInit == dummy = 0\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\n============================================================================="
+  "module": "---------------------------- MODULE SupervisorApproval ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE dummy\nInit == dummy = 1\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\n\nDummy == TRUE\n============================================================================="
 }
 ```
 
 <details><summary>tool result (success)</summary>
 
 ```
--> "",
-                                            field |-> "systemNowTime",
-                                            cmp |-> ">=",
-                                            value |-> [k |-> "n", v |-> 32400000],
-                                            other |-> "",
-                                            pattern |-> <<>>,
-                                            net |-> <<>>,
-                                            prefix |-> 0 ],
-                                      leftNeg |-> FALSE,
-                                      keys |-> <<"principal">> ] ],
-                              [ op |-> "term",
+Policies[3]
+
+      [ effect |-> "permit",
+        actions |-> {"issue_refund"},
+        cond |->
+            [ op |-> "and",
+              args |->
+                  << [ op |-> "and",
+                       args |->
+                           << [ op |-> "term",
                                 args |-> <<>>,
                                 term |->
                                     [ op |-> "at",
@@ -709,8 +713,17 @@ ld |-> "",
                                                   binds |-> <<>> ],
                                             var |-> "",
                                             field |-> "systemNowTime",
-                                            cmp |-> "<=",
-                                            value |-> [k |-> "n", v |-> 61200000],
+                                            cmp |-> ">=",
+                                            value |-> [k |-> "n", v |-> 32400000],
+                                            other |-> "",
+                                            pattern |-> <<>>,
+                                            net |-> <<>>,
+                                            prefix |-> 0 ],
+                                      left |->
+                                          [ op |-> "cmp",
+                     
+
+[TRUNCATED: the first 1500 of 3418 characters, and 114 more line(s) the checker did not print. Evaluate a smaller part -- one element or one field -- to see the rest.]
 ```
 
 </details>
@@ -719,41 +732,18 @@ ld |-> "",
 
 ```json
 {
-  "config": "SPECIFICATION Spec",
-  "expression": "<<Policies[6], Policies[7]>>",
-  "module": "---------------------------- MODULE SupervisorApproval ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\nVARIABLE dummy\nInit == dummy = 0\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\n============================================================================="
+  "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
+  "expression": "<<Policies[3].actions, Policies[6].actions, Policies[7].actions>>",
+  "module": "---------------------------- MODULE SupervisorApproval ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE dummy\nInit == dummy = 1\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\n\nDummy == TRUE\n============================================================================="
 }
 ```
 
 <details><summary>tool result (success)</summary>
 
 ```
- cmp |-> ">",
-                 value |-> 3,
-                 agg |->
-                     [ kind |-> "count",
-                       cond |->
-                           [ op |-> "term",
-                             args |-> <<>>,
-                             term |->
-                                 [ op |-> "formerly",
-                                   window |-> 3600,
-                                   atom |->
-                                       [ op |-> "and",
-                                         args |->
-                                             << [ op |-> "pred",
-                                                  args |-> <<>>,
-                                                  pred |->
-                                                      [ action |-> "issue_refund",
-                                                        kind |-> "request",
-                                                        binds |->
-                                                            << [ kind |-> "ctx",
-                                                                 field |-> "account",
-                                                                 value |->
-                                                                     [ k |-> "s",
-                                                                       v |-> "" ],
-                                                                 side |-> "input",
-                                                                 name |->
+<<Policies[3].actions, Policies[6].actions, Policies[7].actions>>
+
+      <<{"issue_refund"}, {"issue_refund"}, {"issue_refund"}>>
 ```
 
 </details>
@@ -762,40 +752,57 @@ ld |-> "",
 
 ```json
 {
-  "config": "SPECIFICATION Spec",
-  "expression": "Policies[7]",
-  "module": "---------------------------- MODULE SupervisorApproval ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\nVARIABLE dummy\nInit == dummy = 0\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\n============================================================================="
+  "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
+  "expression": "Policies[6]",
+  "module": "---------------------------- MODULE SupervisorApproval ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE dummy\nInit == dummy = 1\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\n\nDummy == TRUE\n============================================================================="
 }
 ```
 
 <details><summary>tool result (success)</summary>
 
 ```
-    prefix |-> 0 ],
-                             leftNeg |-> FALSE,
-                             keys |-> <<"principal">> ] ],
-                     [ op |-> "not",
-                       args |->
-                           << [ op |-> "term",
-                                args |-> <<>>,
-                                term |->
-                                    [ op |-> "formerly",
-                                      window |-> 1800,
-                                      atom |->
-                                          [ op |-> "pred",
-                                            args |-> <<>>,
-                                            pred |->
-                                                [ action |-> "request_approval",
-                                                  kind |-> "response",
-                                                  binds |->
-                                                      << [ kind |-> "ctx",
-                                                           field |-> "charge_id",
-                                                           value |->
-                                                               [k |-> "s", v |-> ""],
-                                                           side |-> "input",
-                                                           name |-> "charge_id" ],
-                                                         [ kind |-> "lit",
-                                                           field |-> "approved",
+Policies[6]
+
+      [ effect |-> "forbid",
+        actions |-> {"issue_refund"},
+        cond |->
+            [ op |-> "agg",
+              args |-> <<>>,
+              term |->
+                  [ op |-> "formerly",
+                    window |-> 0,
+                    atom |->
+                        [ op |-> "pred",
+                          args |-> <<>>,
+                          pred |-> [action |-> "", kind |-> "", binds |-> <<>>],
+                          var |-> "",
+                          field |-> "",
+                          cmp |-> "",
+                          value |-> [k |-> "s", v |-> ""],
+                          other |-> "",
+                          pattern |-> <<>>,
+                          net |-> <<>>,
+                          prefix |-> 0 ],
+                    left |->
+                        [ op |-> "pred",
+                          args |-> <<>>,
+                          pred |-> [action |-> "", kind |-> "", binds |-> <<>>],
+                          var |-> "",
+                          field |-> "",
+                          cmp |-> "",
+                          value |-> [k |-> "s", v |-> ""],
+                          other |-> "",
+                          pattern |-> <<>>,
+                          net |-> <<>>,
+                          prefix |-> 0 ],
+                    leftNeg |-> FALSE,
+                    keys |-> <<>> ],
+              cmp |-> ">",
+              value |-> 3,
+              agg |->
+                  [ kind |-> "co
+
+[TRUNCATED: the first 1500 of 2911 characters, and 90 more line(s) the checker did not print. Evaluate a smaller part -- one element or one field -- to see the rest.]
 ```
 
 </details>
@@ -804,25 +811,178 @@ ld |-> "",
 
 ```json
 {
-  "config": "SPECIFICATION Spec",
-  "expression": "Policies[3].cond",
-  "module": "---------------------------- MODULE SupervisorApproval ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\nVARIABLE dummy\nInit == dummy = 0\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\n============================================================================="
+  "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
+  "expression": "Policies[7]",
+  "module": "---------------------------- MODULE SupervisorApproval ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE dummy\nInit == dummy = 1\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\n\nDummy == TRUE\n============================================================================="
 }
 ```
 
 <details><summary>tool result (success)</summary>
 
 ```
-                                   field |-> "systemNowTime",
-                                      cmp |-> ">=",
-                                      value |-> [k |-> "n", v |-> 32400000],
-                                      other |-> "",
-                                      pattern |-> <<>>,
-                                      net |-> <<>>,
-                                      prefix |-> 0 ],
-                                leftNeg |-> FALSE,
-                                keys |-> <<"principal">> ] ],
-                        [ op |-> "term",
+Policies[7]
+
+      [ effect |-> "forbid",
+        actions |-> {"issue_refund"},
+        cond |->
+            [ op |-> "and",
+              args |->
+                  << [ op |-> "term",
+                       args |-> <<>>,
+                       term |->
+                           [ op |-> "at",
+                             window |-> 0,
+                             atom |->
+                                 [ op |-> "cmp",
+                                   args |-> <<>>,
+                                   pred |->
+                                       [action |-> "", kind |-> "", binds |-> <<>>],
+                                   var |-> "",
+                                   field |-> "amount",
+                                   cmp |-> ">",
+                                   value |-> [k |-> "n", v |-> 500],
+                                   other |-> "",
+                                   pattern |-> <<>>,
+                                   net |-> <<>>,
+                                   prefix |-> 0 ],
+                             left |->
+                                 [ op |-> "cmp",
+                                   args |-> <<>>,
+                                   pred |->
+                                       [action |-> "", kind |-> "", binds |-> <<>>],
+                                   var |-> "",
+                                   field |-> "amount",
+                                   cmp |-> ">",
+                                   value |-> [k |-> "n",
+
+[TRUNCATED: the first 1500 of 3277 characters, and 103 more line(s) the checker did not print. Evaluate a smaller part -- one element or one field -- to see the rest.]
+```
+
+</details>
+
+**Tool call 6** — `evaluate`
+
+```json
+{
+  "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
+  "expression": "Policies[3].cond.args",
+  "module": "---------------------------- MODULE SupervisorApproval ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE dummy\nInit == dummy = 1\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\n\nDummy == TRUE\n============================================================================="
+}
+```
+
+<details><summary>tool result (success)</summary>
+
+```
+Policies[3].cond.args
+
+      << [ args |->
+               << [ args |-> <<>>,
+                    op |-> "term",
+                    term |->
+                        [ op |-> "at",
+                          window |-> 0,
+                          atom |->
+                              [ args |-> <<>>,
+                                op |-> "cmp",
+                                pred |-> [action |-> "", kind |-> "", binds |-> <<>>],
+                                var |-> "",
+                                field |-> "systemNowTime",
+                                cmp |-> ">=",
+                                value |-> [k |-> "n", v |-> 32400000],
+                                other |-> "",
+                                pattern |-> <<>>,
+                                net |-> <<>>,
+                                prefix |-> 0 ],
+                          left |->
+                              [ args |-> <<>>,
+                                op |-> "cmp",
+                                pred |-> [action |-> "", kind |-> "", binds |-> <<>>],
+                                var |-> "",
+                                field |-> "systemNowTime",
+                                cmp |-> ">=",
+                                value |-> [k |-> "n", v |-> 32400000],
+                                other |-> "",
+                                pattern |-> <<>>,
+                                net |-> <<>>,
+                                prefix |-> 0 ],
+                          lef
+
+[TRUNCATED: the first 1500 of 3032 characters, and 64 more line(s) the checker did not print. Evaluate a smaller part -- one element or one field -- to see the rest.]
+```
+
+</details>
+
+**Tool call 7** — `evaluate`
+
+```json
+{
+  "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
+  "expression": "Policies[7].cond.args[2]",
+  "module": "---------------------------- MODULE SupervisorApproval ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE dummy\nInit == dummy = 1\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\n\nDummy == TRUE\n============================================================================="
+}
+```
+
+<details><summary>tool result (success)</summary>
+
+```
+Policies[7].cond.args[2]
+
+      [ args |->
+            << [ args |-> <<>>,
+                 op |-> "term",
+                 term |->
+                     [ op |-> "formerly",
+                       window |-> 1800,
+                       atom |->
+                           [ args |-> <<>>,
+                             op |-> "pred",
+                             pred |->
+                                 [ action |-> "request_approval",
+                                   kind |-> "response",
+                                   binds |->
+                                       << [ kind |-> "ctx",
+                                            field |-> "charge_id",
+                                            value |-> [k |-> "s", v |-> ""],
+                                            side |-> "input",
+                                            name |-> "charge_id" ],
+                                          [ kind |-> "lit",
+                                            field |-> "approved",
+                                            value |-> [k |-> "b", v |-> TRUE],
+                                            side |-> "output",
+                                            name |-> "" ] >> ],
+                             var |-> "",
+                             field |-> "",
+                             cmp |-> "",
+                             value |-> [k |-> "s", v |-> ""],
+                             other |-> "",
+                             pattern |-> <<>>,
+                 
+
+[TRUNCATED: the first 1500 of 3144 characters, and 28 more line(s) the checker did not print. Evaluate a smaller part -- one element or one field -- to see the rest.]
+```
+
+</details>
+
+**Tool call 8** — `evaluate`
+
+```json
+{
+  "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
+  "expression": "Policies[3].cond",
+  "module": "---------------------------- MODULE SupervisorApproval ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE dummy\nInit == dummy = 1\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\n\nDummy == TRUE\n============================================================================="
+}
+```
+
+<details><summary>tool result (success)</summary>
+
+```
+Policies[3].cond
+
+      [ op |-> "and",
+        args |->
+            << [ op |-> "and",
+                 args |->
+                     << [ op |-> "term",
                           args |-> <<>>,
                           term |->
                               [ op |-> "at",
@@ -836,73 +996,230 @@ ld |-> "",
                                             binds |-> <<>> ],
                                       var |-> "",
                                       field |-> "systemNowTime",
-                                      cmp |-> "<=",
-                                      value |-> [k |-> "n", v |-> 61200000],
+                                      cmp |-> ">=",
+                                      value |-> [k |-> "n", v |-> 32400000],
                                       other |-> "",
                                       pattern |-> <<>>,
                                       net |-> <<>>,
+                                      prefix |-> 0 ],
+                                left |->
+                                    [ op |-> "cmp",
+                                      args |-> <<>>,
+                                      pred |->
+                                          [ action |-> "",
+                                            kind |-> "",
+                                        
+
+[TRUNCATED: the first 1500 of 3157 characters, and 107 more line(s) the checker did not print. Evaluate a smaller part -- one element or one field -- to see the rest.]
 ```
 
 </details>
 
-**Tool call 6** — `evaluate`
+**Tool call 9** — `evaluate`
 
 ```json
 {
-  "config": "SPECIFICATION Spec",
-  "expression": "LET app == Ev(\"request_approval\", \"response\", [charge_id |-> Num(1), systemNowTime |-> Num(35000000)], [approved |-> Bool(TRUE), verified |-> Bool(TRUE)], 100)\n    ref == Ev(\"issue_refund\", \"request\", [account |-> Num(1), amount |-> Num(2500), charge_id |-> Num(1), systemNowTime |-> Num(35000000)], NoFields, 160)\nIN D!Decide(<<app, ref>>, Policies, 2, AllValues)",
-  "module": "---------------------------- MODULE SupervisorApproval ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\nVARIABLE dummy\nInit == dummy = 0\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\n============================================================================="
+  "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
+  "expression": "<<Policies[3].cond.args[1].args[1], Policies[3].cond.args[1].args[2], Policies[3].cond.args[2]>>",
+  "module": "---------------------------- MODULE SupervisorApproval ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE dummy\nInit == dummy = 1\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\n\nDummy == TRUE\n============================================================================="
 }
 ```
 
 <details><summary>tool result (success)</summary>
 
 ```
-LET app == Ev("request_approval", "response", [charge_id |-> Num(1), systemNowTime |-> Num(35000000)], [approved |-> Bool(TRUE), verified |-> Bool(TRUE)], 100)
-    ref == Ev("issue_refund", "request", [account |-> Num(1), amount |-> Num(2500), charge_id |-> Num(1), systemNowTime |-> Num(35000000)], NoFields, 160)
-IN D!Decide(<<app, ref>>, Policies, 2, AllValues)
+<<Policies[3].cond.args[1].args[1], Policies[3].cond.args[1].args[2], Policies[3].cond.args[2]>>
 
-      TRUE
+      << [ args |-> <<>>,
+           op |-> "term",
+           term |->
+               [ op |-> "at",
+                 window |-> 0,
+                 atom |->
+                     [ args |-> <<>>,
+                       op |-> "cmp",
+                       pred |-> [action |-> "", kind |-> "", binds |-> <<>>],
+                       var |-> "",
+                       field |-> "systemNowTime",
+                       cmp |-> ">=",
+                       value |-> [k |-> "n", v |-> 32400000],
+                       other |-> "",
+                       pattern |-> <<>>,
+                       net |-> <<>>,
+                       prefix |-> 0 ],
+                 left |->
+                     [ args |-> <<>>,
+                       op |-> "cmp",
+                       pred |-> [action |-> "", kind |-> "", binds |-> <<>>],
+                       var |-> "",
+                       field |-> "systemNowTime",
+                       cmp |-> ">=",
+                       value |-> [k |-> "n", v |-> 32400000],
+                       other |-> "",
+                       pattern |-> <<>>,
+                       net |-> <<>>,
+                       prefix |-> 0 ],
+                 leftNeg |-> FALSE,
+                 keys |-> <<"principal">> ] ],
+         [ args |-> <<>>,
+           op |-> "term",
+           term |->
+               [ op |-> "at",
+                 window |-> 0,
+                 at
+
+[TRUNCATED: the first 1500 of 2595 characters, and 33 more line(s) the checker did not print. Evaluate a smaller part -- one element or one field -- to see the rest.]
 ```
 
 </details>
 
-**Tool call 7** — `evaluate`
+**Tool call 10** — `evaluate`
 
 ```json
 {
-  "config": "SPECIFICATION Spec",
-  "expression": "LET app(cid, appr) == Ev(\"request_approval\", \"response\", [charge_id |-> Num(cid), systemNowTime |-> Num(35000000)], [approved |-> Bool(appr), verified |-> Bool(TRUE)], 100)\n    ref(amt, cid, t) == Ev(\"issue_refund\", \"request\", [account |-> Num(1), amount |-> Num(amt), charge_id |-> Num(cid), systemNowTime |-> Num(35000000)], NoFields, t)\nIN <<\n  D!Decide(<<app(1, TRUE), ref(2500, 1, 100 + 1800)>>, Policies, 2, AllValues), \\* 1800s gap: TRUE\n  D!Decide(<<app(1, TRUE), ref(2500, 1, 100 + 1801)>>, Policies, 2, AllValues), \\* 1801s gap: FALSE\n  D!Decide(<<app(2, TRUE), ref(2500, 1, 100 + 60)>>, Policies, 2, AllValues),   \\* mismatched charge: FALSE\n  D!Decide(<<app(1, FALSE), ref(2500, 1, 100 + 60)>>, Policies, 2, AllValues),  \\* not approved: FALSE\n  D!Decide(<<ref(2500, 1, 100)>>, Policies, 1, AllValues),                       \\* no approval: FALSE\n  D!Decide(<<ref(500, 1, 100)>>, Policies, 1, AllValues),                        \\* amount = 500 without approval: TRUE\n  D!Decide(<<ref(499, 1, 100)>>, Policies, 1, AllValues)                         \\* amount = 499 without approval: TRUE\n>>",
-  "module": "---------------------------- MODULE SupervisorApproval ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\nVARIABLE dummy\nInit == dummy = 0\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\n============================================================================="
+  "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
+  "expression": "<<Policies[3].cond.args[1].args[2].term.atom, Policies[3].cond.args[2].term.atom>>",
+  "module": "---------------------------- MODULE SupervisorApproval ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE dummy\nInit == dummy = 1\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\n\nDummy == TRUE\n============================================================================="
 }
 ```
 
 <details><summary>tool result (success)</summary>
 
 ```
-LET app(cid, appr) == Ev("request_approval", "response", [charge_id |-> Num(cid), systemNowTime |-> Num(35000000)], [approved |-> Bool(appr), verified |-> Bool(TRUE)], 100)
-    ref(amt, cid, t) == Ev("issue_refund", "request", [account |-> Num(1), amount |-> Num(amt), charge_id |-> Num(cid), systemNowTime |-> Num(35000000)], NoFields, t)
+<<Policies[3].cond.args[1].args[2].term.atom, Policies[3].cond.args[2].term.atom>>
+
+      << [ args |-> <<>>,
+           op |-> "cmp",
+           pred |-> [action |-> "", kind |-> "", binds |-> <<>>],
+           var |-> "",
+           field |-> "systemNowTime",
+           cmp |-> "<=",
+           value |-> [k |-> "n", v |-> 61200000],
+           other |-> "",
+           pattern |-> <<>>,
+           net |-> <<>>,
+           prefix |-> 0 ],
+         [ args |-> <<>>,
+           op |-> "cmp",
+           pred |-> [action |-> "", kind |-> "", binds |-> <<>>],
+           var |-> "",
+           field |-> "amount",
+           cmp |-> "<=",
+           value |-> [k |-> "n", v |-> 2500],
+           other |-> "",
+           pattern |-> <<>>,
+           net |-> <<>>,
+           prefix |-> 0 ] >>
+```
+
+</details>
+
+**Tool call 11** — `evaluate`
+
+```json
+{
+  "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
+  "expression": "Policies[6].cond",
+  "module": "---------------------------- MODULE SupervisorApproval ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE dummy\nInit == dummy = 1\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\n\nDummy == TRUE\n============================================================================="
+}
+```
+
+<details><summary>tool result (success)</summary>
+
+```
+Policies[6].cond
+
+      [ op |-> "agg",
+        args |-> <<>>,
+        term |->
+            [ op |-> "formerly",
+              window |-> 0,
+              atom |->
+                  [ op |-> "pred",
+                    args |-> <<>>,
+                    pred |-> [action |-> "", kind |-> "", binds |-> <<>>],
+                    var |-> "",
+                    field |-> "",
+                    cmp |-> "",
+                    value |-> [k |-> "s", v |-> ""],
+                    other |-> "",
+                    pattern |-> <<>>,
+                    net |-> <<>>,
+                    prefix |-> 0 ],
+              left |->
+                  [ op |-> "pred",
+                    args |-> <<>>,
+                    pred |-> [action |-> "", kind |-> "", binds |-> <<>>],
+                    var |-> "",
+                    field |-> "",
+                    cmp |-> "",
+                    value |-> [k |-> "s", v |-> ""],
+                    other |-> "",
+                    pattern |-> <<>>,
+                    net |-> <<>>,
+                    prefix |-> 0 ],
+              leftNeg |-> FALSE,
+              keys |-> <<>> ],
+        cmp |-> ">",
+        value |-> 3,
+        agg |->
+            [ cond |->
+                  [ op |-> "term",
+                    args |-> <<>>,
+                    term |->
+                        [ op |-> "formerly",
+                          window |-> 3600,
+                          atom |->
+                              [ op |-> "and",
+                        
+
+[TRUNCATED: the first 1500 of 2702 characters, and 77 more line(s) the checker did not print. Evaluate a smaller part -- one element or one field -- to see the rest.]
+```
+
+</details>
+
+**Tool call 12** — `evaluate`
+
+```json
+{
+  "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
+  "expression": "LET\n  Approval(charge, appr, t) == Ev(\"request_approval\", \"response\", [charge_id |-> Num(charge)], [approved |-> Bool(appr)], t)\n  Refund(charge, amt, t) == Ev(\"issue_refund\", \"request\", [charge_id |-> Num(charge), amount |-> Num(amt), systemNowTime |-> Num(32400000)], NoFields, t)\n  Trace1 == << Approval(1, TRUE, 100), Refund(1, 1000, 100 + 1800) >>\n  Trace2 == << Approval(1, TRUE, 100), Refund(1, 1000, 100 + 1801) >>\n  Trace3 == << Approval(1, FALSE, 100), Refund(1, 1000, 100 + 60) >>\n  Trace4 == << Approval(2, TRUE, 100), Refund(1, 1000, 100 + 60) >>\n  Trace5 == << Refund(1, 500, 100) >>\n  Trace6 == << Refund(1, 501, 100) >>\nIN <<\n  D!Decide(Trace1, Policies, 2, AllValues),\n  D!Decide(Trace2, Policies, 2, AllValues),\n  D!Decide(Trace3, Policies, 2, AllValues),\n  D!Decide(Trace4, Policies, 2, AllValues),\n  D!Decide(Trace5, Policies, 1, AllValues),\n  D!Decide(Trace6, Policies, 1, AllValues)\n>>",
+  "module": "---------------------------- MODULE SupervisorApproval ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE dummy\nInit == dummy = 1\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\n\nDummy == TRUE\n============================================================================="
+}
+```
+
+<details><summary>tool result (success)</summary>
+
+```
+LET
+  Approval(charge, appr, t) == Ev("request_approval", "response", [charge_id |-> Num(charge)], [approved |-> Bool(appr)], t)
+  Refund(charge, amt, t) == Ev("issue_refund", "request", [charge_id |-> Num(charge), amount |-> Num(amt), systemNowTime |-> Num(32400000)], NoFields, t)
+  Trace1 == << Approval(1, TRUE, 100), Refund(1, 1000, 100 + 1800) >>
+  Trace2 == << Approval(1, TRUE, 100), Refund(1, 1000, 100 + 1801) >>
+  Trace3 == << Approval(1, FALSE, 100), Refund(1, 1000, 100 + 60) >>
+  Trace4 == << Approval(2, TRUE, 100), Refund(1, 1000, 100 + 60) >>
+  Trace5 == << Refund(1, 500, 100) >>
+  Trace6 == << Refund(1, 501, 100) >>
 IN <<
-  D!Decide(<<app(1, TRUE), ref(2500, 1, 100 + 1800)>>, Policies, 2, AllValues), \* 1800s gap: TRUE
-  D!Decide(<<app(1, TRUE), ref(2500, 1, 100 + 1801)>>, Policies, 2, AllValues), \* 1801s gap: FALSE
-  D!Decide(<<app(2, TRUE), ref(2500, 1, 100 + 60)>>, Policies, 2, AllValues),   \* mismatched charge: FALSE
-  D!Decide(<<app(1, FALSE), ref(2500, 1, 100 + 60)>>, Policies, 2, AllValues),  \* not approved: FALSE
-  D!Decide(<<ref(2500, 1, 100)>>, Policies, 1, AllValues),                       \* no approval: FALSE
-  D!Decide(<<ref(500, 1, 100)>>, Policies, 1, AllValues),                        \* amount = 500 without approval: TRUE
-  D!Decide(<<ref(499, 1, 100)>>, Policies, 1, AllValues)                         \* amount = 499 without approval: TRUE
+  D!Decide(Trace1, Policies, 2, AllValues),
+  D!Decide(Trace2, Policies, 2, AllValues),
+  D!Decide(Trace3, Policies, 2, AllValues),
+  D!Decide(Trace4, Policies, 2, AllValues),
+  D!Decide(Trace5, Policies, 1, AllValues),
+  D!Decide(Trace6, Policies, 1, AllValues)
 >>
 
-      <<TRUE, FALSE, FALSE, FALSE, FALSE, TRUE, TRUE>>
+      <<TRUE, FALSE, FALSE, FALSE, TRUE, FALSE>>
 ```
 
 </details>
 
-**Tool call 8** — `check_module`
+**Tool call 13** — `check_module`
 
 ```json
 {
-  "config": "SPECIFICATION Spec\nINVARIANT Over500RequiresApproval\nINVARIANT ApprovedRefundIsAllowed\nINVARIANT SmallRefundWithoutApprovalIsAllowed\n",
-  "module": "---------------------------- MODULE SupervisorApproval ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nAmounts == {499, 500, 2500, 2501}\nBooleans == {TRUE, FALSE}\nChargeIds == {1, 2}\nGaps == {60, 1800, 1801}\n\nVARIABLES amount, has_approval, approved, approval_charge, refund_charge, gap\n\nInit ==\n    /\\ amount \\in Amounts\n    /\\ has_approval \\in Booleans\n    /\\ approved \\in Booleans\n    /\\ approval_charge \\in ChargeIds\n    /\\ refund_charge \\in ChargeIds\n    /\\ gap \\in Gaps\n\nNext == UNCHANGED << amount, has_approval, approved, approval_charge, refund_charge, gap >>\n\nSpec == Init /\\ [][Next]_<< amount, has_approval, approved, approval_charge, refund_charge, gap >>\n\nApprovalEv ==\n    Ev(\"request_approval\", \"response\",\n       [charge_id |-> Num(approval_charge), systemNowTime |-> Num(35000000)],\n       [approved |-> Bool(approved), verified |-> Bool(TRUE)],\n       100)\n\nRefundEv ==\n    Ev(\"issue_refund\", DecisionKind,\n       [account |-> Num(1), amount |-> Num(amount), charge_id |-> Num(refund_charge), systemNowTime |-> Num(35000000)],\n       NoFields,\n       IF has_approval THEN 100 + gap ELSE 100)\n\nSession ==\n    IF has_approval THEN << ApprovalEv, RefundEv >> ELSE << RefundEv >>\n\nDecisionIndex ==\n    IF has_approval THEN 2 ELSE 1\n\nRefundAllowed ==\n    D!Decide(Session, Policies, DecisionIndex, AllValues)\n\nHasValidApproval ==\n    /\\ has_approval\n    /\\ approved\n    /\\ approval_charge = refund_charge\n    /\\ gap <= 1800\n\nOver500RequiresApproval ==\n    (amount > 500 /\\ ~HasValidApproval) => ~RefundAllowed\n\nApprovedRefundIsAllowed ==\n    (amount = 2500 /\\ has_approval /\\ approved /\\ approval_charge = 1 /\\ refund_charge = 1 /\\ gap = 60) => RefundAllowed\n\nSmallRefundWithoutApprovalIsAllowed ==\n    (amount = 500 /\\ ~has_approval /\\ refund_charge = 1) => RefundAllowed\n\n============================================================================="
+  "config": "SPECIFICATION Spec\nINVARIANT Over500WithoutApprovalRefused\nINVARIANT CompliantApprovalAllowed\n",
+  "module": "---------------------------- MODULE SupervisorApproval ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nApproval(charge, appr, t) ==\n    Ev(\"request_approval\", \"response\",\n       [charge_id |-> Num(charge)],\n       [approved |-> Bool(appr)],\n       t)\n\nRefund(charge, amt, t) ==\n    Ev(\"issue_refund\", \"request\",\n       [charge_id |-> Num(charge),\n        amount |-> Num(amt),\n        systemNowTime |-> Num(32400000)],\n       NoFields,\n       t)\n\nVARIABLES hasApproval, approvalCharge, approved, gap, refundCharge, amount\n\nInit ==\n    /\\ hasApproval   \\in {TRUE, FALSE}\n    /\\ approvalCharge \\in {1, 2}\n    /\\ approved       \\in {TRUE, FALSE}\n    /\\ gap            \\in {60, 1800, 1801}\n    /\\ refundCharge   \\in {1, 2}\n    /\\ amount         \\in {499, 500, 501, 1000}\n\nNext == UNCHANGED <<hasApproval, approvalCharge, approved, gap, refundCharge, amount>>\nSpec == Init /\\ [][Next]_<<hasApproval, approvalCharge, approved, gap, refundCharge, amount>>\n\nSession ==\n    IF hasApproval\n    THEN << Approval(approvalCharge, approved, 1000), Refund(refundCharge, amount, 1000 + gap) >>\n    ELSE << Refund(refundCharge, amount, 1000) >>\n\nDecisionIndex == IF hasApproval THEN 2 ELSE 1\n\nRefundAllowed == D!Decide(Session, Policies, DecisionIndex, AllValues)\n\nValidApproval ==\n    /\\ hasApproval\n    /\\ approved\n    /\\ approvalCharge = refundCharge\n    /\\ gap <= 1800\n\nOver500WithoutApprovalRefused ==\n    (amount > 500 /\\ ~ValidApproval) => ~RefundAllowed\n\nCompliantApprovalAllowed ==\n    (hasApproval /\\ approved /\\ approvalCharge = 1 /\\ refundCharge = 1 /\\ gap = 60 /\\ amount = 501) => RefundAllowed\n\n============================================================================="
 }
 ```
 
@@ -914,12 +1231,12 @@ Compiles, evaluates, and holds on this policy. Either answer is acceptable -- a 
 
 </details>
 
-**Tool call 9** — `what_it_forbids`
+**Tool call 14** — `what_it_forbids`
 
 ```json
 {
-  "config": "SPECIFICATION Spec\nINVARIANT Over500RequiresApproval\nINVARIANT ApprovedRefundIsAllowed\nINVARIANT SmallRefundWithoutApprovalIsAllowed\n",
-  "module": "---------------------------- MODULE SupervisorApproval ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nAmounts == {499, 500, 2500, 2501}\nBooleans == {TRUE, FALSE}\nChargeIds == {1, 2}\nGaps == {60, 1800, 1801}\n\nVARIABLES amount, has_approval, approved, approval_charge, refund_charge, gap\n\nInit ==\n    /\\ amount \\in Amounts\n    /\\ has_approval \\in Booleans\n    /\\ approved \\in Booleans\n    /\\ approval_charge \\in ChargeIds\n    /\\ refund_charge \\in ChargeIds\n    /\\ gap \\in Gaps\n\nNext == UNCHANGED << amount, has_approval, approved, approval_charge, refund_charge, gap >>\n\nSpec == Init /\\ [][Next]_<< amount, has_approval, approved, approval_charge, refund_charge, gap >>\n\nApprovalEv ==\n    Ev(\"request_approval\", \"response\",\n       [charge_id |-> Num(approval_charge), systemNowTime |-> Num(35000000)],\n       [approved |-> Bool(approved), verified |-> Bool(TRUE)],\n       100)\n\nRefundEv ==\n    Ev(\"issue_refund\", DecisionKind,\n       [account |-> Num(1), amount |-> Num(amount), charge_id |-> Num(refund_charge), systemNowTime |-> Num(35000000)],\n       NoFields,\n       IF has_approval THEN 100 + gap ELSE 100)\n\nSession ==\n    IF has_approval THEN << ApprovalEv, RefundEv >> ELSE << RefundEv >>\n\nDecisionIndex ==\n    IF has_approval THEN 2 ELSE 1\n\nRefundAllowed ==\n    D!Decide(Session, Policies, DecisionIndex, AllValues)\n\nHasValidApproval ==\n    /\\ has_approval\n    /\\ approved\n    /\\ approval_charge = refund_charge\n    /\\ gap <= 1800\n\nOver500RequiresApproval ==\n    (amount > 500 /\\ ~HasValidApproval) => ~RefundAllowed\n\nApprovedRefundIsAllowed ==\n    (amount = 2500 /\\ has_approval /\\ approved /\\ approval_charge = 1 /\\ refund_charge = 1 /\\ gap = 60) => RefundAllowed\n\nSmallRefundWithoutApprovalIsAllowed ==\n    (amount = 500 /\\ ~has_approval /\\ refund_charge = 1) => RefundAllowed\n\n============================================================================="
+  "config": "SPECIFICATION Spec\nINVARIANT Over500WithoutApprovalRefused\nINVARIANT CompliantApprovalAllowed\n",
+  "module": "---------------------------- MODULE SupervisorApproval ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nApproval(charge, appr, t) ==\n    Ev(\"request_approval\", \"response\",\n       [charge_id |-> Num(charge)],\n       [approved |-> Bool(appr)],\n       t)\n\nRefund(charge, amt, t) ==\n    Ev(\"issue_refund\", \"request\",\n       [charge_id |-> Num(charge),\n        amount |-> Num(amt),\n        systemNowTime |-> Num(32400000)],\n       NoFields,\n       t)\n\nVARIABLES hasApproval, approvalCharge, approved, gap, refundCharge, amount\n\nInit ==\n    /\\ hasApproval    \\in {TRUE, FALSE}\n    /\\ approvalCharge \\in {1, 2}\n    /\\ approved       \\in {TRUE, FALSE}\n    /\\ gap            \\in {60, 1800, 1801}\n    /\\ refundCharge   \\in {1, 2}\n    /\\ amount         \\in {499, 500, 501, 1000}\n\nNext == UNCHANGED <<hasApproval, approvalCharge, approved, gap, refundCharge, amount>>\nSpec == Init /\\ [][Next]_<<hasApproval, approvalCharge, approved, gap, refundCharge, amount>>\n\nSession ==\n    IF hasApproval\n    THEN << Approval(approvalCharge, approved, 1000), Refund(refundCharge, amount, 1000 + gap) >>\n    ELSE << Refund(refundCharge, amount, 1000) >>\n\nDecisionIndex == IF hasApproval THEN 2 ELSE 1\n\nRefundAllowed == D!Decide(Session, Policies, DecisionIndex, AllValues)\n\nValidApproval ==\n    /\\ hasApproval\n    /\\ approved\n    /\\ approvalCharge = refundCharge\n    /\\ gap <= 1800\n\nOver500WithoutApprovalRefused ==\n    (amount > 500 /\\ ~ValidApproval) => ~RefundAllowed\n\nCompliantApprovalAllowed ==\n    (hasApproval /\\ approved /\\ approvalCharge = 1 /\\ refundCharge = 1 /\\ gap = 60 /\\ amount = 501) => RefundAllowed\n\n============================================================================="
 }
 ```
 
@@ -928,49 +1245,36 @@ Compiles, evaluates, and holds on this policy. Either answer is acceptable -- a 
 ```
 SupervisorApproval
 
-  3 claims will be checked, over 192 states:
+  Every value each variable takes -- nothing else is checked:
+      hasApproval     FALSE, TRUE
+      approvalCharge  1, 2
+      approved        FALSE, TRUE
+      gap             60, 1800, 1801
+      refundCharge    1, 2
+      amount          499, 500, 501, 1000
 
-  Over500RequiresApproval
-      says:     whenever amount is greater than 500 and HasValidApproval does not hold,
+  2 claims will be checked, over 192 states:
+
+  Over500WithoutApprovalRefused
+      says:     whenever amount is greater than 500 and ValidApproval does not hold,
                 then the policy REFUSES it (RefundAllowed)
-      forbids:  amount is greater than 500 and HasValidApproval does not hold,
+      forbids:  amount is greater than 500 and ValidApproval does not hold,
                 and yet the policy GRANTS it (RefundAllowed)
-      applies:  unknown -- `amount > 500 /\ ~HasValidApproval` could not be worked out
-                here for 96 of the 192 states
+      applies:  unknown -- `amount > 500 /\ ~ValidApproval` could not be worked out here
+                for 96 of the 192 states
 
-  ApprovedRefundIsAllowed
-      says:     whenever amount is 2500 and has_approval holds and approved holds and
-                approval_charge is 1 and refund_charge is 1 and gap is 60,
+  CompliantApprovalAllowed
+      says:     whenever hasApproval holds and approved holds and approvalCharge is 1
+                and refundCharge is 1 and gap is 60 and amount is 501,
                 then the policy GRANTS it (RefundAllowed)
-      forbids:  amount is 2500 and has_approval holds and approved holds and
-                approval_charge is 1 and refund_charge is 1 and gap is 60,
+      forbids:  hasApproval holds and approved holds and approvalCharge is 1 and
+                refundCharge is 1 and gap is 60 and amount is 501,
                 and yet the policy REFUSES it (RefundAllowed)
       applies:  to 1 of the 192 states:
-                  amount = 2500, has_approval = TRUE, approved = TRUE, approval_charge =
-                    1, refund_charge = 1, gap = 60
+                  hasApproval = TRUE, approvalCharge = 1, approved = TRUE, gap = 60,
+                    refundCharge = 1, amount = 501
 
-  SmallRefundWithoutApprovalIsAllowed
-      says:     whenever amount is 500 and has_approval does not hold and refund_charge
-                is 1,
-                then the policy GRANTS it (RefundAllowed)
-      forbids:  amount is 500 and has_approval does not hold and refund_charge is 1,
-                and yet the policy REFUSES it (RefundAllowed)
-      applies:  to 12 of the 192 states:
-                  amount = 500, has_approval = FALSE, approved = FALSE, approval_charge
-                    = 1, refund_charge = 1, gap = 60
-                  amount = 500, has_approval = FALSE, approved = FALSE, approval_charge
-                    = 1, refund_charge = 1, gap = 1800
-                  amount = 500, has_approval = FALSE, approved = FALSE, approval_charge
-                    = 1, refund_charge = 1, gap = 1801
-                  amount = 500, has_approval = FALSE, approved = FALSE, approval_charge
-                    = 2, refund_charge = 1, gap = 60
-                  amount = 500, has_approval = FALSE, approved = FALSE, approval_charge
-                    = 2, refund_charge = 1, gap = 1800
-                  amount = 500, has_approval = FALSE, approved = FALSE, approval_charge
-                    = 2, refund_charge = 1, gap = 1801
-                  and 6 more
-
-  !!        defined here but NOT named in the .cfg, so not checked: HasValidApproval. A
+  !!        defined here but NOT named in the .cfg, so not checked: ValidApproval. A
             claim nobody listed is a claim nobody checked
 
   Read the `forbids` lines before the run, not after it. Each one is the only
@@ -980,12 +1284,12 @@ SupervisorApproval
 
 </details>
 
-**Tool call 10** — `what_it_forbids`
+**Tool call 15** — `what_it_forbids`
 
 ```json
 {
-  "config": "SPECIFICATION Spec\nINVARIANT Over500RequiresApproval\nINVARIANT ApprovedRefundIsAllowed\nINVARIANT SmallRefundWithoutApprovalIsAllowed\n",
-  "module": "---------------------------- MODULE SupervisorApproval ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nAmounts == {499, 500, 2500, 2501}\nBooleans == {TRUE, FALSE}\nChargeIds == {1, 2}\nGaps == {60, 1800, 1801}\n\nVARIABLES amount, has_approval, approved, approval_charge, refund_charge, gap\n\nInit ==\n    /\\ amount \\in Amounts\n    /\\ has_approval \\in Booleans\n    /\\ approved \\in Booleans\n    /\\ approval_charge \\in ChargeIds\n    /\\ refund_charge \\in ChargeIds\n    /\\ gap \\in Gaps\n\nNext == UNCHANGED << amount, has_approval, approved, approval_charge, refund_charge, gap >>\n\nSpec == Init /\\ [][Next]_<< amount, has_approval, approved, approval_charge, refund_charge, gap >>\n\nApprovalEv ==\n    Ev(\"request_approval\", \"response\",\n       [charge_id |-> Num(approval_charge), systemNowTime |-> Num(35000000)],\n       [approved |-> Bool(approved), verified |-> Bool(TRUE)],\n       100)\n\nRefundEv ==\n    Ev(\"issue_refund\", DecisionKind,\n       [account |-> Num(1), amount |-> Num(amount), charge_id |-> Num(refund_charge), systemNowTime |-> Num(35000000)],\n       NoFields,\n       IF has_approval THEN 100 + gap ELSE 100)\n\nSession ==\n    IF has_approval THEN << ApprovalEv, RefundEv >> ELSE << RefundEv >>\n\nDecisionIndex ==\n    IF has_approval THEN 2 ELSE 1\n\nRefundAllowed ==\n    D!Decide(Session, Policies, DecisionIndex, AllValues)\n\nisValidApproval ==\n    /\\ has_approval\n    /\\ approved\n    /\\ approval_charge = refund_charge\n    /\\ gap <= 1800\n\nOver500RequiresApproval ==\n    (amount > 500 /\\ ~isValidApproval) => ~RefundAllowed\n\nApprovedRefundIsAllowed ==\n    (amount = 2500 /\\ has_approval /\\ approved /\\ approval_charge = 1 /\\ refund_charge = 1 /\\ gap = 60) => RefundAllowed\n\nSmallRefundWithoutApprovalIsAllowed ==\n    (amount = 500 /\\ ~has_approval /\\ refund_charge = 1 /\\ gap = 60 /\\ approval_charge = 1 /\\ ~approved) => RefundAllowed\n\n============================================================================="
+  "config": "SPECIFICATION Spec\nINVARIANT Over500WithoutApprovalRefused\nINVARIANT CompliantApprovalAllowed\n",
+  "module": "---------------------------- MODULE SupervisorApproval ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nApproval(charge, appr, t) ==\n    Ev(\"request_approval\", \"response\",\n       [charge_id |-> Num(charge)],\n       [approved |-> Bool(appr)],\n       t)\n\nRefund(charge, amt, t) ==\n    Ev(\"issue_refund\", \"request\",\n       [charge_id |-> Num(charge),\n        amount |-> Num(amt),\n        systemNowTime |-> Num(32400000)],\n       NoFields,\n       t)\n\nVARIABLES hasApproval, approvalCharge, approved, gap, refundCharge, amount\n\nInit ==\n    /\\ hasApproval    \\in {TRUE, FALSE}\n    /\\ approvalCharge \\in {1, 2}\n    /\\ approved       \\in {TRUE, FALSE}\n    /\\ gap            \\in {60, 1800, 1801}\n    /\\ refundCharge   \\in {1, 2}\n    /\\ amount         \\in {499, 500, 501, 1000}\n\nNext == UNCHANGED <<hasApproval, approvalCharge, approved, gap, refundCharge, amount>>\nSpec == Init /\\ [][Next]_<<hasApproval, approvalCharge, approved, gap, refundCharge, amount>>\n\nSession ==\n    IF hasApproval\n    THEN << Approval(approvalCharge, approved, 1000), Refund(refundCharge, amount, 1000 + gap) >>\n    ELSE << Refund(refundCharge, amount, 1000) >>\n\nDecisionIndex == IF hasApproval THEN 2 ELSE 1\n\nRefundAllowed == D!Decide(Session, Policies, DecisionIndex, AllValues)\n\nOver500WithoutApprovalRefused ==\n    (amount > 500 /\\ ~(hasApproval /\\ approved /\\ approvalCharge = refundCharge /\\ gap <= 1800)) => ~RefundAllowed\n\nCompliantApprovalAllowed ==\n    (hasApproval /\\ approved /\\ approvalCharge = 1 /\\ refundCharge = 1 /\\ gap = 60 /\\ amount = 501) => RefundAllowed\n\n============================================================================="
 }
 ```
 
@@ -994,107 +1298,50 @@ SupervisorApproval
 ```
 SupervisorApproval
 
-  3 claims will be checked, over 192 states:
+  Every value each variable takes -- nothing else is checked:
+      hasApproval     FALSE, TRUE
+      approvalCharge  1, 2
+      approved        FALSE, TRUE
+      gap             60, 1800, 1801
+      refundCharge    1, 2
+      amount          499, 500, 501, 1000
 
-  Over500RequiresApproval
-      says:     whenever amount is greater than 500 and isValidApproval does not hold,
+  2 claims will be checked, over 192 states:
+
+  Over500WithoutApprovalRefused
+      says:     whenever amount is greater than 500 and hasApproval does not hold or
+                approved does not hold or approvalCharge is not refundCharge or gap is
+                greater than 1800,
                 then the policy REFUSES it (RefundAllowed)
-      forbids:  amount is greater than 500 and isValidApproval does not hold,
-                and yet the policy GRANTS it (RefundAllowed)
-      applies:  unknown -- `amount > 500 /\ ~isValidApproval` could not be worked out
-                here for 96 of the 192 states
-
-  ApprovedRefundIsAllowed
-      says:     whenever amount is 2500 and has_approval holds and approved holds and
-                approval_charge is 1 and refund_charge is 1 and gap is 60,
-                then the policy GRANTS it (RefundAllowed)
-      forbids:  amount is 2500 and has_approval holds and approved holds and
-                approval_charge is 1 and refund_charge is 1 and gap is 60,
-                and yet the policy REFUSES it (RefundAllowed)
-      applies:  to 1 of the 192 states:
-                  amount = 2500, has_approval = TRUE, approved = TRUE, approval_charge =
-                    1, refund_charge = 1, gap = 60
-
-  SmallRefundWithoutApprovalIsAllowed
-      says:     whenever amount is 500 and has_approval does not hold and refund_charge
-                is 1 and gap is 60 and approval_charge is 1 and approved does not hold,
-                then the policy GRANTS it (RefundAllowed)
-      forbids:  amount is 500 and has_approval does not hold and refund_charge is 1 and
-                gap is 60 and approval_charge is 1 and approved does not hold,
-                and yet the policy REFUSES it (RefundAllowed)
-      applies:  to 1 of the 192 states:
-                  amount = 500, has_approval = FALSE, approved = FALSE, approval_charge
-                    = 1, refund_charge = 1, gap = 60
-
-  !!        defined here but NOT named in the .cfg, so not checked: isValidApproval. A
-            claim nobody listed is a claim nobody checked
-
-  Read the `forbids` lines before the run, not after it. Each one is the only
-  thing its claim can catch; if none of them describes something you would
-  object to, the check will pass without having tested what you meant.
-```
-
-</details>
-
-**Tool call 11** — `what_it_forbids`
-
-```json
-{
-  "config": "SPECIFICATION Spec\nINVARIANT Over500RequiresApproval\nINVARIANT ApprovedRefundIsAllowed\nINVARIANT SmallRefundWithoutApprovalIsAllowed\n",
-  "module": "---------------------------- MODULE SupervisorApproval ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nAmounts == {499, 500, 2500, 2501}\nBooleans == {TRUE, FALSE}\nChargeIds == {1, 2}\nGaps == {60, 1800, 1801}\n\nVARIABLES amount, has_approval, approved, approval_charge, refund_charge, gap\n\nInit ==\n    /\\ amount \\in Amounts\n    /\\ has_approval \\in Booleans\n    /\\ approved \\in Booleans\n    /\\ approval_charge \\in ChargeIds\n    /\\ refund_charge \\in ChargeIds\n    /\\ gap \\in Gaps\n\nNext == UNCHANGED << amount, has_approval, approved, approval_charge, refund_charge, gap >>\n\nSpec == Init /\\ [][Next]_<< amount, has_approval, approved, approval_charge, refund_charge, gap >>\n\nApprovalEv ==\n    Ev(\"request_approval\", \"response\",\n       [charge_id |-> Num(approval_charge), systemNowTime |-> Num(35000000)],\n       [approved |-> Bool(approved), verified |-> Bool(TRUE)],\n       100)\n\nRefundEv ==\n    Ev(\"issue_refund\", DecisionKind,\n       [account |-> Num(1), amount |-> Num(amount), charge_id |-> Num(refund_charge), systemNowTime |-> Num(35000000)],\n       NoFields,\n       IF has_approval THEN 100 + gap ELSE 100)\n\nSession ==\n    IF has_approval THEN << ApprovalEv, RefundEv >> ELSE << RefundEv >>\n\nDecisionIndex ==\n    IF has_approval THEN 2 ELSE 1\n\nRefundAllowed ==\n    D!Decide(Session, Policies, DecisionIndex, AllValues)\n\nValidApproval(h, app, ac, rc, g) ==\n    /\\ h\n    /\\ app\n    /\\ ac = rc\n    /\\ g <= 1800\n\nOver500RequiresApproval ==\n    (amount > 500 /\\ ~ValidApproval(has_approval, approved, approval_charge, refund_charge, gap)) => ~RefundAllowed\n\nApprovedRefundIsAllowed ==\n    (amount = 2500 /\\ has_approval /\\ approved /\\ approval_charge = 1 /\\ refund_charge = 1 /\\ gap = 60) => RefundAllowed\n\nSmallRefundWithoutApprovalIsAllowed ==\n    (amount = 500 /\\ ~has_approval /\\ refund_charge = 1 /\\ gap = 60 /\\ approval_charge = 1 /\\ ~approved) => RefundAllowed\n\n============================================================================="
-}
-```
-
-<details><summary>tool result (success)</summary>
-
-```
-SupervisorApproval
-
-  3 claims will be checked, over 192 states:
-
-  Over500RequiresApproval
-      says:     whenever amount is greater than 500 and ValidApproval(has_approval,
-                approved, approval_charge, refund_charge, gap) does not hold,
-                then the policy REFUSES it (RefundAllowed)
-      forbids:  amount is greater than 500 and ValidApproval(has_approval, approved,
-                approval_charge, refund_charge, gap) does not hold,
+      forbids:  amount is greater than 500 and hasApproval does not hold or approved
+                does not hold or approvalCharge is not refundCharge or gap is greater
+                than 1800,
                 and yet the policy GRANTS it (RefundAllowed)
       applies:  to 88 of the 192 states:
-                  amount = 2500, has_approval = FALSE, approved = FALSE, approval_charge
-                    = 1, refund_charge = 1, gap = 60
-                  amount = 2500, has_approval = FALSE, approved = FALSE, approval_charge
-                    = 1, refund_charge = 1, gap = 1800
-                  amount = 2500, has_approval = FALSE, approved = FALSE, approval_charge
-                    = 1, refund_charge = 1, gap = 1801
-                  amount = 2500, has_approval = FALSE, approved = FALSE, approval_charge
-                    = 1, refund_charge = 2, gap = 60
-                  amount = 2500, has_approval = FALSE, approved = FALSE, approval_charge
-                    = 1, refund_charge = 2, gap = 1800
-                  amount = 2500, has_approval = FALSE, approved = FALSE, approval_charge
-                    = 1, refund_charge = 2, gap = 1801
+                  hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60,
+                    refundCharge = 1, amount = 501
+                  hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60,
+                    refundCharge = 1, amount = 1000
+                  hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60,
+                    refundCharge = 2, amount = 501
+                  hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60,
+                    refundCharge = 2, amount = 1000
+                  hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 1800,
+                    refundCharge = 1, amount = 501
+                  hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 1800,
+                    refundCharge = 1, amount = 1000
                   and 82 more
 
-  ApprovedRefundIsAllowed
-      says:     whenever amount is 2500 and has_approval holds and approved holds and
-                approval_charge is 1 and refund_charge is 1 and gap is 60,
+  CompliantApprovalAllowed
+      says:     whenever hasApproval holds and approved holds and approvalCharge is 1
+                and refundCharge is 1 and gap is 60 and amount is 501,
                 then the policy GRANTS it (RefundAllowed)
-      forbids:  amount is 2500 and has_approval holds and approved holds and
-                approval_charge is 1 and refund_charge is 1 and gap is 60,
+      forbids:  hasApproval holds and approved holds and approvalCharge is 1 and
+                refundCharge is 1 and gap is 60 and amount is 501,
                 and yet the policy REFUSES it (RefundAllowed)
       applies:  to 1 of the 192 states:
-                  amount = 2500, has_approval = TRUE, approved = TRUE, approval_charge =
-                    1, refund_charge = 1, gap = 60
-
-  SmallRefundWithoutApprovalIsAllowed
-      says:     whenever amount is 500 and has_approval does not hold and refund_charge
-                is 1 and gap is 60 and approval_charge is 1 and approved does not hold,
-                then the policy GRANTS it (RefundAllowed)
-      forbids:  amount is 500 and has_approval does not hold and refund_charge is 1 and
-                gap is 60 and approval_charge is 1 and approved does not hold,
-                and yet the policy REFUSES it (RefundAllowed)
-      applies:  to 1 of the 192 states:
-                  amount = 500, has_approval = FALSE, approved = FALSE, approval_charge
-                    = 1, refund_charge = 1, gap = 60
+                  hasApproval = TRUE, approvalCharge = 1, approved = TRUE, gap = 60,
+                    refundCharge = 1, amount = 501
 
   Read the `forbids` lines before the run, not after it. Each one is the only
   thing its claim can catch; if none of them describes something you would
@@ -1103,12 +1350,12 @@ SupervisorApproval
 
 </details>
 
-**Tool call 12** — `check_module`
+**Tool call 16** — `check_module`
 
 ```json
 {
-  "config": "SPECIFICATION Spec\nINVARIANT Over500RequiresApproval\nINVARIANT ApprovedRefundIsAllowed\nINVARIANT SmallRefundWithoutApprovalIsAllowed\n",
-  "module": "---------------------------- MODULE SupervisorApproval ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nAmounts == {499, 500, 2500, 2501}\nBooleans == {TRUE, FALSE}\nChargeIds == {1, 2}\nGaps == {60, 1800, 1801}\n\nVARIABLES amount, has_approval, approved, approval_charge, refund_charge, gap\n\nInit ==\n    /\\ amount \\in Amounts\n    /\\ has_approval \\in Booleans\n    /\\ approved \\in Booleans\n    /\\ approval_charge \\in ChargeIds\n    /\\ refund_charge \\in ChargeIds\n    /\\ gap \\in Gaps\n\nNext == UNCHANGED << amount, has_approval, approved, approval_charge, refund_charge, gap >>\n\nSpec == Init /\\ [][Next]_<< amount, has_approval, approved, approval_charge, refund_charge, gap >>\n\nApprovalEv ==\n    Ev(\"request_approval\", \"response\",\n       [charge_id |-> Num(approval_charge), systemNowTime |-> Num(35000000)],\n       [approved |-> Bool(approved), verified |-> Bool(TRUE)],\n       100)\n\nRefundEv ==\n    Ev(\"issue_refund\", DecisionKind,\n       [account |-> Num(1), amount |-> Num(amount), charge_id |-> Num(refund_charge), systemNowTime |-> Num(35000000)],\n       NoFields,\n       IF has_approval THEN 100 + gap ELSE 100)\n\nSession ==\n    IF has_approval THEN << ApprovalEv, RefundEv >> ELSE << RefundEv >>\n\nDecisionIndex ==\n    IF has_approval THEN 2 ELSE 1\n\nRefundAllowed ==\n    D!Decide(Session, Policies, DecisionIndex, AllValues)\n\nValidApproval(h, app, ac, rc, g) ==\n    /\\ h\n    /\\ app\n    /\\ ac = rc\n    /\\ g <= 1800\n\nOver500RequiresApproval ==\n    (amount > 500 /\\ ~ValidApproval(has_approval, approved, approval_charge, refund_charge, gap)) => ~RefundAllowed\n\nApprovedRefundIsAllowed ==\n    (amount = 2500 /\\ has_approval /\\ approved /\\ approval_charge = 1 /\\ refund_charge = 1 /\\ gap = 60) => RefundAllowed\n\nSmallRefundWithoutApprovalIsAllowed ==\n    (amount = 500 /\\ ~has_approval /\\ refund_charge = 1 /\\ gap = 60 /\\ approval_charge = 1 /\\ ~approved) => RefundAllowed\n\n============================================================================="
+  "config": "SPECIFICATION Spec\nINVARIANT Over500WithoutApprovalRefused\nINVARIANT CompliantApprovalAllowed\nINVARIANT CompliantUnder500Allowed\n",
+  "module": "---------------------------- MODULE SupervisorApproval ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nApproval(charge, appr, t) ==\n    Ev(\"request_approval\", \"response\",\n       [charge_id |-> Num(charge)],\n       [approved |-> Bool(appr)],\n       t)\n\nRefund(charge, amt, t) ==\n    Ev(\"issue_refund\", \"request\",\n       [charge_id |-> Num(charge),\n        amount |-> Num(amt),\n        systemNowTime |-> Num(32400000)],\n       NoFields,\n       t)\n\nVARIABLES hasApproval, approvalCharge, approved, gap, refundCharge, amount\n\nInit ==\n    /\\ hasApproval    \\in {TRUE, FALSE}\n    /\\ approvalCharge \\in {1, 2}\n    /\\ approved       \\in {TRUE, FALSE}\n    /\\ gap            \\in {60, 1800, 1801}\n    /\\ refundCharge   \\in {1, 2}\n    /\\ amount         \\in {499, 500, 501, 1000}\n\nNext == UNCHANGED <<hasApproval, approvalCharge, approved, gap, refundCharge, amount>>\nSpec == Init /\\ [][Next]_<<hasApproval, approvalCharge, approved, gap, refundCharge, amount>>\n\nSession ==\n    IF hasApproval\n    THEN << Approval(approvalCharge, approved, 1000), Refund(refundCharge, amount, 1000 + gap) >>\n    ELSE << Refund(refundCharge, amount, 1000) >>\n\nDecisionIndex == IF hasApproval THEN 2 ELSE 1\n\nRefundAllowed == D!Decide(Session, Policies, DecisionIndex, AllValues)\n\nOver500WithoutApprovalRefused ==\n    (amount > 500 /\\ ~(hasApproval /\\ approved /\\ approvalCharge = refundCharge /\\ gap <= 1800)) => ~RefundAllowed\n\nCompliantApprovalAllowed ==\n    (hasApproval /\\ approved /\\ approvalCharge = 1 /\\ refundCharge = 1 /\\ gap = 60 /\\ amount = 501) => RefundAllowed\n\nCompliantUnder500Allowed ==\n    (~hasApproval /\\ refundCharge = 1 /\\ amount = 500 /\\ gap = 60 /\\ approvalCharge = 1 /\\ approved = FALSE) => RefundAllowed\n\n============================================================================="
 }
 ```
 
@@ -1116,6 +1363,84 @@ SupervisorApproval
 
 ```
 Compiles, evaluates, and holds on this policy. Either answer is acceptable -- a property that fails has already shown it discriminates. Do NOT weaken the claim to make it hold.
+```
+
+</details>
+
+**Tool call 17** — `what_it_forbids`
+
+```json
+{
+  "config": "SPECIFICATION Spec\nINVARIANT Over500WithoutApprovalRefused\nINVARIANT CompliantApprovalAllowed\nINVARIANT CompliantUnder500Allowed\n",
+  "module": "---------------------------- MODULE SupervisorApproval ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nApproval(charge, appr, t) ==\n    Ev(\"request_approval\", \"response\",\n       [charge_id |-> Num(charge)],\n       [approved |-> Bool(appr)],\n       t)\n\nRefund(charge, amt, t) ==\n    Ev(\"issue_refund\", \"request\",\n       [charge_id |-> Num(charge),\n        amount |-> Num(amt),\n        systemNowTime |-> Num(32400000)],\n       NoFields,\n       t)\n\nVARIABLES hasApproval, approvalCharge, approved, gap, refundCharge, amount\n\nInit ==\n    /\\ hasApproval    \\in {TRUE, FALSE}\n    /\\ approvalCharge \\in {1, 2}\n    /\\ approved       \\in {TRUE, FALSE}\n    /\\ gap            \\in {60, 1800, 1801}\n    /\\ refundCharge   \\in {1, 2}\n    /\\ amount         \\in {499, 500, 501, 1000}\n\nNext == UNCHANGED <<hasApproval, approvalCharge, approved, gap, refundCharge, amount>>\nSpec == Init /\\ [][Next]_<<hasApproval, approvalCharge, approved, gap, refundCharge, amount>>\n\nSession ==\n    IF hasApproval\n    THEN << Approval(approvalCharge, approved, 1000), Refund(refundCharge, amount, 1000 + gap) >>\n    ELSE << Refund(refundCharge, amount, 1000) >>\n\nDecisionIndex == IF hasApproval THEN 2 ELSE 1\n\nRefundAllowed == D!Decide(Session, Policies, DecisionIndex, AllValues)\n\nOver500WithoutApprovalRefused ==\n    (amount > 500 /\\ ~(hasApproval /\\ approved /\\ approvalCharge = refundCharge /\\ gap <= 1800)) => ~RefundAllowed\n\nCompliantApprovalAllowed ==\n    (hasApproval /\\ approved /\\ approvalCharge = 1 /\\ refundCharge = 1 /\\ gap = 60 /\\ amount = 501) => RefundAllowed\n\nCompliantUnder500Allowed ==\n    (~hasApproval /\\ refundCharge = 1 /\\ amount = 500 /\\ gap = 60 /\\ approvalCharge = 1 /\\ approved = FALSE) => RefundAllowed\n\n============================================================================="
+}
+```
+
+<details><summary>tool result (success)</summary>
+
+```
+SupervisorApproval
+
+  Every value each variable takes -- nothing else is checked:
+      hasApproval     FALSE, TRUE
+      approvalCharge  1, 2
+      approved        FALSE, TRUE
+      gap             60, 1800, 1801
+      refundCharge    1, 2
+      amount          499, 500, 501, 1000
+
+  3 claims will be checked, over 192 states:
+
+  Over500WithoutApprovalRefused
+      says:     whenever amount is greater than 500 and hasApproval does not hold or
+                approved does not hold or approvalCharge is not refundCharge or gap is
+                greater than 1800,
+                then the policy REFUSES it (RefundAllowed)
+      forbids:  amount is greater than 500 and hasApproval does not hold or approved
+                does not hold or approvalCharge is not refundCharge or gap is greater
+                than 1800,
+                and yet the policy GRANTS it (RefundAllowed)
+      applies:  to 88 of the 192 states:
+                  hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60,
+                    refundCharge = 1, amount = 501
+                  hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60,
+                    refundCharge = 1, amount = 1000
+                  hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60,
+                    refundCharge = 2, amount = 501
+                  hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60,
+                    refundCharge = 2, amount = 1000
+                  hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 1800,
+                    refundCharge = 1, amount = 501
+                  hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 1800,
+                    refundCharge = 1, amount = 1000
+                  and 82 more
+
+  CompliantApprovalAllowed
+      says:     whenever hasApproval holds and approved holds and approvalCharge is 1
+                and refundCharge is 1 and gap is 60 and amount is 501,
+                then the policy GRANTS it (RefundAllowed)
+      forbids:  hasApproval holds and approved holds and approvalCharge is 1 and
+                refundCharge is 1 and gap is 60 and amount is 501,
+                and yet the policy REFUSES it (RefundAllowed)
+      applies:  to 1 of the 192 states:
+                  hasApproval = TRUE, approvalCharge = 1, approved = TRUE, gap = 60,
+                    refundCharge = 1, amount = 501
+
+  CompliantUnder500Allowed
+      says:     whenever hasApproval does not hold and refundCharge is 1 and amount is
+                500 and gap is 60 and approvalCharge is 1 and approved is FALSE (=
+                FALSE),
+                then the policy GRANTS it (RefundAllowed)
+      forbids:  hasApproval does not hold and refundCharge is 1 and amount is 500 and
+                gap is 60 and approvalCharge is 1 and approved is FALSE (= FALSE),
+                and yet the policy REFUSES it (RefundAllowed)
+      applies:  to 1 of the 192 states:
+                  hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60,
+                    refundCharge = 1, amount = 500
+
+  Read the `forbids` lines before the run, not after it. Each one is the only
+  thing its claim can catch; if none of them describes something you would
+  object to, the check will pass without having tested what you meant.
 ```
 
 </details>
@@ -1126,67 +1451,57 @@ EXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest
 
 D == INSTANCE DogwoodSemantics WITH Cases <- << >>
 
-Amounts == {499, 500, 2500, 2501}
-Booleans == {TRUE, FALSE}
-ChargeIds == {1, 2}
-Gaps == {60, 1800, 1801}
+Approval(charge, appr, t) ==
+    Ev("request_approval", "response",
+       [charge_id |-> Num(charge)],
+       [approved |-> Bool(appr)],
+       t)
 
-VARIABLES amount, has_approval, approved, approval_charge, refund_charge, gap
+Refund(charge, amt, t) ==
+    Ev("issue_refund", "request",
+       [charge_id |-> Num(charge),
+        amount |-> Num(amt),
+        systemNowTime |-> Num(32400000)],
+       NoFields,
+       t)
+
+VARIABLES hasApproval, approvalCharge, approved, gap, refundCharge, amount
 
 Init ==
-    /\ amount \in Amounts
-    /\ has_approval \in Booleans
-    /\ approved \in Booleans
-    /\ approval_charge \in ChargeIds
-    /\ refund_charge \in ChargeIds
-    /\ gap \in Gaps
+    /\ hasApproval    \in {TRUE, FALSE}
+    /\ approvalCharge \in {1, 2}
+    /\ approved       \in {TRUE, FALSE}
+    /\ gap            \in {60, 1800, 1801}
+    /\ refundCharge   \in {1, 2}
+    /\ amount         \in {499, 500, 501, 1000}
 
-Next == UNCHANGED << amount, has_approval, approved, approval_charge, refund_charge, gap >>
-
-Spec == Init /\ [][Next]_<< amount, has_approval, approved, approval_charge, refund_charge, gap >>
-
-ApprovalEv ==
-    Ev("request_approval", "response",
-       [charge_id |-> Num(approval_charge), systemNowTime |-> Num(35000000)],
-       [approved |-> Bool(approved), verified |-> Bool(TRUE)],
-       100)
-
-RefundEv ==
-    Ev("issue_refund", DecisionKind,
-       [account |-> Num(1), amount |-> Num(amount), charge_id |-> Num(refund_charge), systemNowTime |-> Num(35000000)],
-       NoFields,
-       IF has_approval THEN 100 + gap ELSE 100)
+Next == UNCHANGED <<hasApproval, approvalCharge, approved, gap, refundCharge, amount>>
+Spec == Init /\ [][Next]_<<hasApproval, approvalCharge, approved, gap, refundCharge, amount>>
 
 Session ==
-    IF has_approval THEN << ApprovalEv, RefundEv >> ELSE << RefundEv >>
+    IF hasApproval
+    THEN << Approval(approvalCharge, approved, 1000), Refund(refundCharge, amount, 1000 + gap) >>
+    ELSE << Refund(refundCharge, amount, 1000) >>
 
-DecisionIndex ==
-    IF has_approval THEN 2 ELSE 1
+DecisionIndex == IF hasApproval THEN 2 ELSE 1
 
-RefundAllowed ==
-    D!Decide(Session, Policies, DecisionIndex, AllValues)
+RefundAllowed == D!Decide(Session, Policies, DecisionIndex, AllValues)
 
-ValidApproval(h, app, ac, rc, g) ==
-    /\ h
-    /\ app
-    /\ ac = rc
-    /\ g <= 1800
+Over500WithoutApprovalRefused ==
+    (amount > 500 /\ ~(hasApproval /\ approved /\ approvalCharge = refundCharge /\ gap <= 1800)) => ~RefundAllowed
 
-Over500RequiresApproval ==
-    (amount > 500 /\ ~ValidApproval(has_approval, approved, approval_charge, refund_charge, gap)) => ~RefundAllowed
+CompliantApprovalAllowed ==
+    (hasApproval /\ approved /\ approvalCharge = 1 /\ refundCharge = 1 /\ gap = 60 /\ amount = 501) => RefundAllowed
 
-ApprovedRefundIsAllowed ==
-    (amount = 2500 /\ has_approval /\ approved /\ approval_charge = 1 /\ refund_charge = 1 /\ gap = 60) => RefundAllowed
-
-SmallRefundWithoutApprovalIsAllowed ==
-    (amount = 500 /\ ~has_approval /\ refund_charge = 1 /\ gap = 60 /\ approval_charge = 1 /\ ~approved) => RefundAllowed
+CompliantUnder500Allowed ==
+    (~hasApproval /\ refundCharge = 1 /\ amount = 500 /\ gap = 60 /\ approvalCharge = 1 /\ approved = FALSE) => RefundAllowed
 
 =============================================================================
 ===CONFIG===
 SPECIFICATION Spec
-INVARIANT Over500RequiresApproval
-INVARIANT ApprovedRefundIsAllowed
-INVARIANT SmallRefundWithoutApprovalIsAllowed
+INVARIANT Over500WithoutApprovalRefused
+INVARIANT CompliantApprovalAllowed
+INVARIANT CompliantUnder500Allowed
 
 ## the review
 
@@ -1200,68 +1515,79 @@ INVARIANT SmallRefundWithoutApprovalIsAllowed
 > 
 > SupervisorApproval
 > 
+>   Every value each variable takes -- nothing else is checked:
+>       hasApproval     FALSE, TRUE
+>       approvalCharge  1, 2
+>       approved        FALSE, TRUE
+>       gap             60, 1800, 1801
+>       refundCharge    1, 2
+>       amount          499, 500, 501, 1000
+> 
 >   3 claims will be checked, over 192 states:
->       amount = 499, has_approval = FALSE, approved = FALSE, approval_charge = 1,
->         refund_charge = 1, gap = 60
->       amount = 499, has_approval = FALSE, approved = FALSE, approval_charge = 1,
->         refund_charge = 1, gap = 1800
->       amount = 499, has_approval = FALSE, approved = FALSE, approval_charge = 1,
->         refund_charge = 1, gap = 1801
->       amount = 499, has_approval = FALSE, approved = FALSE, approval_charge = 1,
->         refund_charge = 2, gap = 60
->       amount = 499, has_approval = FALSE, approved = FALSE, approval_charge = 1,
->         refund_charge = 2, gap = 1800
->       amount = 499, has_approval = FALSE, approved = FALSE, approval_charge = 1,
->         refund_charge = 2, gap = 1801
->       amount = 499, has_approval = FALSE, approved = FALSE, approval_charge = 2,
->         refund_charge = 1, gap = 60
->       amount = 499, has_approval = FALSE, approved = FALSE, approval_charge = 2,
->         refund_charge = 1, gap = 1800
+>       hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60, refundCharge
+>         = 1, amount = 499
+>       hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60, refundCharge
+>         = 1, amount = 500
+>       hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60, refundCharge
+>         = 1, amount = 501
+>       hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60, refundCharge
+>         = 1, amount = 1000
+>       hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60, refundCharge
+>         = 2, amount = 499
+>       hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60, refundCharge
+>         = 2, amount = 500
+>       hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60, refundCharge
+>         = 2, amount = 501
+>       hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60, refundCharge
+>         = 2, amount = 1000
 >       and 184 more
 > 
->   Over500RequiresApproval
->       says:     whenever amount is greater than 500 and ValidApproval(has_approval,
->                 approved, approval_charge, refund_charge, gap) does not hold,
+>   Over500WithoutApprovalRefused
+>       says:     whenever amount is greater than 500 and hasApproval does not hold or
+>                 approved does not hold or approvalCharge is not refundCharge or gap is
+>                 greater than 1800,
 >                 then the policy REFUSES it (RefundAllowed)
->       forbids:  amount is greater than 500 and ValidApproval(has_approval, approved,
->                 approval_charge, refund_charge, gap) does not hold,
+>       forbids:  amount is greater than 500 and hasApproval does not hold or approved
+>                 does not hold or approvalCharge is not refundCharge or gap is greater
+>                 than 1800,
 >                 and yet the policy GRANTS it (RefundAllowed)
 >       applies:  to 88 of the 192 states:
->                   amount = 2500, has_approval = FALSE, approved = FALSE, approval_charge
->                     = 1, refund_charge = 1, gap = 60
->                   amount = 2500, has_approval = FALSE, approved = FALSE, approval_charge
->                     = 1, refund_charge = 1, gap = 1800
->                   amount = 2500, has_approval = FALSE, approved = FALSE, approval_charge
->                     = 1, refund_charge = 1, gap = 1801
->                   amount = 2500, has_approval = FALSE, approved = FALSE, approval_charge
->                     = 1, refund_charge = 2, gap = 60
->                   amount = 2500, has_approval = FALSE, approved = FALSE, approval_charge
->                     = 1, refund_charge = 2, gap = 1800
->                   amount = 2500, has_approval = FALSE, approved = FALSE, approval_charge
->                     = 1, refund_charge = 2, gap = 1801
+>                   hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60,
+>                     refundCharge = 1, amount = 501
+>                   hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60,
+>                     refundCharge = 1, amount = 1000
+>                   hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60,
+>                     refundCharge = 2, amount = 501
+>                   hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60,
+>                     refundCharge = 2, amount = 1000
+>                   hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 1800,
+>                     refundCharge = 1, amount = 501
+>                   hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 1800,
+>                     refundCharge = 1, amount = 1000
 >                   and 82 more
 > 
->   ApprovedRefundIsAllowed
->       says:     whenever amount is 2500 and has_approval holds and approved holds and
->                 approval_charge is 1 and refund_charge is 1 and gap is 60,
+>   CompliantApprovalAllowed
+>       says:     whenever hasApproval holds and approved holds and approvalCharge is 1
+>                 and refundCharge is 1 and gap is 60 and amount is 501,
 >                 then the policy GRANTS it (RefundAllowed)
->       forbids:  amount is 2500 and has_approval holds and approved holds and
->                 approval_charge is 1 and refund_charge is 1 and gap is 60,
+>       forbids:  hasApproval holds and approved holds and approvalCharge is 1 and
+>                 refundCharge is 1 and gap is 60 and amount is 501,
 >                 and yet the policy REFUSES it (RefundAllowed)
 >       applies:  to 1 of the 192 states:
->                   amount = 2500, has_approval = TRUE, approved = TRUE, approval_charge =
->                     1, refund_charge = 1, gap = 60
+>                   hasApproval = TRUE, approvalCharge = 1, approved = TRUE, gap = 60,
+>                     refundCharge = 1, amount = 501
 > 
->   SmallRefundWithoutApprovalIsAllowed
->       says:     whenever amount is 500 and has_approval does not hold and refund_charge
->                 is 1 and gap is 60 and approval_charge is 1 and approved does not hold,
+>   CompliantUnder500Allowed
+>       says:     whenever hasApproval does not hold and refundCharge is 1 and amount is
+>                 500 and gap is 60 and approvalCharge is 1 and approved is FALSE (=
+>                 FALSE),
 >                 then the policy GRANTS it (RefundAllowed)
->       forbids:  amount is 500 and has_approval does not hold and refund_charge is 1 and
->                 gap is 60 and approval_charge is 1 and approved does not hold,
+>       forbids:  hasApproval does not hold and refundCharge is 1 and amount is 500 and
+>                 gap is 60 and approvalCharge is 1 and approved is FALSE (= FALSE),
 >                 and yet the policy REFUSES it (RefundAllowed)
 >       applies:  to 1 of the 192 states:
->                   amount = 500, has_approval = FALSE, approved = FALSE, approval_charge
->                     = 1, refund_charge = 1, gap = 60
+>                   hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60,
+>                     refundCharge = 1, amount = 500
 > 
 >   Read the `forbids` lines before the run, not after it. Each one is the only
 >   thing its claim can catch; if none of them describes something you would
@@ -1270,12 +1596,12 @@ INVARIANT SmallRefundWithoutApprovalIsAllowed
 | | |
 |---|---|
 | model | gemini-3.7-flash |
-| tokens | 1,733 |
-| seconds | 4.2 |
+| tokens | 1,967 |
+| seconds | 4.9 |
 
 VERDICT: MATCH
 
-The formal reading accurately captures the requirement that refunds exceeding $500 require a valid supervisor approval for the specific charge within the 30-minute window (checked up to 1800 seconds). It correctly verifies that refunds over $500 lacking valid approval are refused, while also testing standard valid approval and below-threshold cases.
+The reading correctly requires supervisor approval for the matching charge within 1800 seconds (30 minutes) whenever the refund amount exceeds $500. It also tests the exact boundary values—including the threshold values and the first values just past them (501 for amount and 1801 for the time gap).
 
 ## the report
 
@@ -1290,68 +1616,79 @@ The formal reading accurately captures the requirement that refunds exceeding $5
 > 
 > SupervisorApproval
 > 
+>   Every value each variable takes -- nothing else is checked:
+>   hasApproval     FALSE, TRUE
+>   approvalCharge  1, 2
+>   approved        FALSE, TRUE
+>   gap             60, 1800, 1801
+>   refundCharge    1, 2
+>   amount          499, 500, 501, 1000
+> 
 >   3 claims will be checked, over 192 states:
->   amount = 499, has_approval = FALSE, approved = FALSE, approval_charge = 1,
->     refund_charge = 1, gap = 60
->   amount = 499, has_approval = FALSE, approved = FALSE, approval_charge = 1,
->     refund_charge = 1, gap = 1800
->   amount = 499, has_approval = FALSE, approved = FALSE, approval_charge = 1,
->     refund_charge = 1, gap = 1801
->   amount = 499, has_approval = FALSE, approved = FALSE, approval_charge = 1,
->     refund_charge = 2, gap = 60
->   amount = 499, has_approval = FALSE, approved = FALSE, approval_charge = 1,
->     refund_charge = 2, gap = 1800
->   amount = 499, has_approval = FALSE, approved = FALSE, approval_charge = 1,
->     refund_charge = 2, gap = 1801
->   amount = 499, has_approval = FALSE, approved = FALSE, approval_charge = 2,
->     refund_charge = 1, gap = 60
->   amount = 499, has_approval = FALSE, approved = FALSE, approval_charge = 2,
->     refund_charge = 1, gap = 1800
+>   hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60, refundCharge
+>     = 1, amount = 499
+>   hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60, refundCharge
+>     = 1, amount = 500
+>   hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60, refundCharge
+>     = 1, amount = 501
+>   hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60, refundCharge
+>     = 1, amount = 1000
+>   hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60, refundCharge
+>     = 2, amount = 499
+>   hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60, refundCharge
+>     = 2, amount = 500
+>   hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60, refundCharge
+>     = 2, amount = 501
+>   hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60, refundCharge
+>     = 2, amount = 1000
 >   and 184 more
 > 
->   Over500RequiresApproval
->   says:     whenever amount is greater than 500 and ValidApproval(has_approval,
->             approved, approval_charge, refund_charge, gap) does not hold,
+>   Over500WithoutApprovalRefused
+>   says:     whenever amount is greater than 500 and hasApproval does not hold or
+>             approved does not hold or approvalCharge is not refundCharge or gap is
+>             greater than 1800,
 >             then the policy REFUSES it (RefundAllowed)
->   forbids:  amount is greater than 500 and ValidApproval(has_approval, approved,
->             approval_charge, refund_charge, gap) does not hold,
+>   forbids:  amount is greater than 500 and hasApproval does not hold or approved
+>             does not hold or approvalCharge is not refundCharge or gap is greater
+>             than 1800,
 >             and yet the policy GRANTS it (RefundAllowed)
 >   applies:  to 88 of the 192 states:
->               amount = 2500, has_approval = FALSE, approved = FALSE, approval_charge
->                 = 1, refund_charge = 1, gap = 60
->               amount = 2500, has_approval = FALSE, approved = FALSE, approval_charge
->                 = 1, refund_charge = 1, gap = 1800
->               amount = 2500, has_approval = FALSE, approved = FALSE, approval_charge
->                 = 1, refund_charge = 1, gap = 1801
->               amount = 2500, has_approval = FALSE, approved = FALSE, approval_charge
->                 = 1, refund_charge = 2, gap = 60
->               amount = 2500, has_approval = FALSE, approved = FALSE, approval_charge
->                 = 1, refund_charge = 2, gap = 1800
->               amount = 2500, has_approval = FALSE, approved = FALSE, approval_charge
->                 = 1, refund_charge = 2, gap = 1801
+>               hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60,
+>                 refundCharge = 1, amount = 501
+>               hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60,
+>                 refundCharge = 1, amount = 1000
+>               hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60,
+>                 refundCharge = 2, amount = 501
+>               hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60,
+>                 refundCharge = 2, amount = 1000
+>               hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 1800,
+>                 refundCharge = 1, amount = 501
+>               hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 1800,
+>                 refundCharge = 1, amount = 1000
 >               and 82 more
 > 
->   ApprovedRefundIsAllowed
->   says:     whenever amount is 2500 and has_approval holds and approved holds and
->             approval_charge is 1 and refund_charge is 1 and gap is 60,
+>   CompliantApprovalAllowed
+>   says:     whenever hasApproval holds and approved holds and approvalCharge is 1
+>             and refundCharge is 1 and gap is 60 and amount is 501,
 >             then the policy GRANTS it (RefundAllowed)
->   forbids:  amount is 2500 and has_approval holds and approved holds and
->             approval_charge is 1 and refund_charge is 1 and gap is 60,
+>   forbids:  hasApproval holds and approved holds and approvalCharge is 1 and
+>             refundCharge is 1 and gap is 60 and amount is 501,
 >             and yet the policy REFUSES it (RefundAllowed)
 >   applies:  to 1 of the 192 states:
->               amount = 2500, has_approval = TRUE, approved = TRUE, approval_charge =
->                 1, refund_charge = 1, gap = 60
+>               hasApproval = TRUE, approvalCharge = 1, approved = TRUE, gap = 60,
+>                 refundCharge = 1, amount = 501
 > 
->   SmallRefundWithoutApprovalIsAllowed
->   says:     whenever amount is 500 and has_approval does not hold and refund_charge
->             is 1 and gap is 60 and approval_charge is 1 and approved does not hold,
+>   CompliantUnder500Allowed
+>   says:     whenever hasApproval does not hold and refundCharge is 1 and amount is
+>             500 and gap is 60 and approvalCharge is 1 and approved is FALSE (=
+>             FALSE),
 >             then the policy GRANTS it (RefundAllowed)
->   forbids:  amount is 500 and has_approval does not hold and refund_charge is 1 and
->             gap is 60 and approval_charge is 1 and approved does not hold,
+>   forbids:  hasApproval does not hold and refundCharge is 1 and amount is 500 and
+>             gap is 60 and approvalCharge is 1 and approved is FALSE (= FALSE),
 >             and yet the policy REFUSES it (RefundAllowed)
 >   applies:  to 1 of the 192 states:
->               amount = 500, has_approval = FALSE, approved = FALSE, approval_charge
->                 = 1, refund_charge = 1, gap = 60
+>               hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60,
+>                 refundCharge = 1, amount = 500
 > 
 >   Read the `forbids` lines before the run, not after it. Each one is the only
 >   thing its claim can catch; if none of them describes something you would
@@ -1367,67 +1704,47 @@ The formal reading accurately captures the requirement that refunds exceeding $5
 | | |
 |---|---|
 | model | gemini-3.7-flash |
-| tokens | 3,281 |
-| seconds | 11.2 |
+| tokens | 3,633 |
+| seconds | 13.1 |
 
 ### Verification Summary
 
-All 3 claims in `SupervisorApproval.tla` **held** across the **192 states** explored by the model checker. No counterexamples were found within this tested subset.
-
-However, two of the three claims test only single, specific request configurations rather than broader conditions. Furthermore, derived general questions were not evaluated.
+All 3 claims in the property module **SupervisorApproval.tla** held over the finite set of **192 states** evaluated for `agent-policy.dw`.
 
 ---
 
-### What Was Checked and What Held
+### Exact Bounds Checked
 
-The checker evaluated combinations formed from discrete values across 6 variables:
-* **`amount`**: sampled values including `499`, `500`, and `2500`
-* **`has_approval`**: `TRUE`, `FALSE`
-* **`approved`**: `TRUE`, `FALSE`
-* **`approval_charge`**: `1`, `2`
-* **`refund_charge`**: `1`, `2`
-* **`gap`**: `60`, `1800`, `1801`
+The verification tested combinations strictly limited to the following values (a total state space of 192 combinations):
 
-Total state space explored: **192 states**.
+*   **hasApproval**: `FALSE`, `TRUE`
+*   **approvalCharge**: `1`, `2`
+*   **approved**: `FALSE`, `TRUE`
+*   **gap**: `60`, `1800`, `1801`
+*   **refundCharge**: `1`, `2`
+*   **amount**: `499`, `500`, `501`, `1000`
 
----
-
-### Claim-by-Claim Results
-
-#### 1. `Over500RequiresApproval`
-* **Verdict:** Held.
-* **Scope:** Applied to **88 of the 192 states** (specifically where `amount = 2500` and `ValidApproval(...)` is false).
-* **Behavior:** In all 88 applicable states where the amount exceeded 500 without valid approval, the policy refused the refund (`RefundAllowed` was false).
-
-#### 2. `ApprovedRefundIsAllowed`
-* **Verdict:** Held.
-* **Scope:** Applied to **1 of the 192 states**.
-* **Finding on Property Design:** This property only tests a single point:
-  * `amount = 2500`
-  * `has_approval = TRUE`
-  * `approved = TRUE`
-  * `approval_charge = 1`
-  * `refund_charge = 1`
-  * `gap = 60`
-  
-  The property did not test whether approvals are granted for other amounts over 500, other valid charge identifiers, or other valid gap durations (e.g., `gap = 1800`).
-
-#### 3. `SmallRefundWithoutApprovalIsAllowed`
-* **Verdict:** Held.
-* **Scope:** Applied to **1 of the 192 states**.
-* **Finding on Property Design:** This property also tests only a single point:
-  * `amount = 500`
-  * `has_approval = FALSE`
-  * `approved = FALSE`
-  * `approval_charge = 1`
-  * `refund_charge = 1`
-  * `gap = 60`
-  
-  It did not test whether unapproved refunds are permitted for other small amounts (such as `amount = 499`) or across other charge IDs and gap values.
+Any requests with values outside these sets (such as different refund amounts, gaps under 60 or between 60 and 1800, or other charge IDs) were not evaluated.
 
 ---
 
-### What Was Not Checked
+### Detailed Findings by Claim
 
-1. **Unchecked Request Values:** Any inputs outside the sampled values—including amounts other than `499`, `500`, and `2500`, gaps other than `60`, `1800`, and `1801`, or charge IDs other than `1` and `2`—were not evaluated.
-2. **Derived General Questions:** Automated derived property checks were skipped because `agent-policy.dw` evaluates 6 input/output fields, exceeding the default 4-field limit.
+1. **`Over500WithoutApprovalRefused`** — **HELD**
+   * **What was checked:** Applied to **88 of the 192 states** where the refund amount is over 500 (`501` or `1000`) and at least one approval requirement fails (no approval present, approval marked false, charge IDs mismatch, or the gap is `1801`).
+   * **Verdict:** The policy refused the refund across all 88 evaluated configurations.
+
+2. **`CompliantApprovalAllowed`** — **HELD**
+   * **What was checked:** Applied to **1 of the 192 states** — specifically: `hasApproval = TRUE`, `approved = TRUE`, `approvalCharge = 1`, `refundCharge = 1`, `gap = 60`, and `amount = 501`.
+   * **Verdict:** The policy granted the refund for this specific request.
+
+3. **`CompliantUnder500Allowed`** — **HELD**
+   * **What was checked:** Applied to **1 of the 192 states** — specifically: `hasApproval = FALSE`, `approved = FALSE`, `approvalCharge = 1`, `refundCharge = 1`, `gap = 60`, and `amount = 500`.
+   * **Verdict:** The policy granted the refund for this specific request.
+
+---
+
+### Property Observations and Coverage Notes
+
+* **Single-State "Allowed" Properties:** Both `CompliantApprovalAllowed` and `CompliantUnder500Allowed` test only **one specific request each**. They confirm that those two exact scenarios grant a refund, but they do not check other compliant combinations (such as amounts of `499`, approved amounts of `1000`, a `gap` of `1800`, or transactions under charge ID `2`).
+* **Derived Questions Skipped:** Automated derived questions were refused and not run because the policy involves 6 input/output fields, exceeding the tool's default limit of 4 fields.

@@ -22,68 +22,79 @@ WHAT WAS ACTUALLY CHECKED -- each claim, what it forbids, and how many of the st
 
 SupervisorApproval
 
+  Every value each variable takes -- nothing else is checked:
+      hasApproval     FALSE, TRUE
+      approvalCharge  1, 2
+      approved        FALSE, TRUE
+      gap             60, 1800, 1801
+      refundCharge    1, 2
+      amount          499, 500, 501, 1000
+
   3 claims will be checked, over 192 states:
-      amount = 499, has_approval = FALSE, approved = FALSE, approval_charge = 1,
-        refund_charge = 1, gap = 60
-      amount = 499, has_approval = FALSE, approved = FALSE, approval_charge = 1,
-        refund_charge = 1, gap = 1800
-      amount = 499, has_approval = FALSE, approved = FALSE, approval_charge = 1,
-        refund_charge = 1, gap = 1801
-      amount = 499, has_approval = FALSE, approved = FALSE, approval_charge = 1,
-        refund_charge = 2, gap = 60
-      amount = 499, has_approval = FALSE, approved = FALSE, approval_charge = 1,
-        refund_charge = 2, gap = 1800
-      amount = 499, has_approval = FALSE, approved = FALSE, approval_charge = 1,
-        refund_charge = 2, gap = 1801
-      amount = 499, has_approval = FALSE, approved = FALSE, approval_charge = 2,
-        refund_charge = 1, gap = 60
-      amount = 499, has_approval = FALSE, approved = FALSE, approval_charge = 2,
-        refund_charge = 1, gap = 1800
+      hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60, refundCharge
+        = 1, amount = 499
+      hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60, refundCharge
+        = 1, amount = 500
+      hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60, refundCharge
+        = 1, amount = 501
+      hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60, refundCharge
+        = 1, amount = 1000
+      hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60, refundCharge
+        = 2, amount = 499
+      hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60, refundCharge
+        = 2, amount = 500
+      hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60, refundCharge
+        = 2, amount = 501
+      hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60, refundCharge
+        = 2, amount = 1000
       and 184 more
 
-  Over500RequiresApproval
-      says:     whenever amount is greater than 500 and ValidApproval(has_approval,
-                approved, approval_charge, refund_charge, gap) does not hold,
+  Over500WithoutApprovalRefused
+      says:     whenever amount is greater than 500 and hasApproval does not hold or
+                approved does not hold or approvalCharge is not refundCharge or gap is
+                greater than 1800,
                 then the policy REFUSES it (RefundAllowed)
-      forbids:  amount is greater than 500 and ValidApproval(has_approval, approved,
-                approval_charge, refund_charge, gap) does not hold,
+      forbids:  amount is greater than 500 and hasApproval does not hold or approved
+                does not hold or approvalCharge is not refundCharge or gap is greater
+                than 1800,
                 and yet the policy GRANTS it (RefundAllowed)
       applies:  to 88 of the 192 states:
-                  amount = 2500, has_approval = FALSE, approved = FALSE, approval_charge
-                    = 1, refund_charge = 1, gap = 60
-                  amount = 2500, has_approval = FALSE, approved = FALSE, approval_charge
-                    = 1, refund_charge = 1, gap = 1800
-                  amount = 2500, has_approval = FALSE, approved = FALSE, approval_charge
-                    = 1, refund_charge = 1, gap = 1801
-                  amount = 2500, has_approval = FALSE, approved = FALSE, approval_charge
-                    = 1, refund_charge = 2, gap = 60
-                  amount = 2500, has_approval = FALSE, approved = FALSE, approval_charge
-                    = 1, refund_charge = 2, gap = 1800
-                  amount = 2500, has_approval = FALSE, approved = FALSE, approval_charge
-                    = 1, refund_charge = 2, gap = 1801
+                  hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60,
+                    refundCharge = 1, amount = 501
+                  hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60,
+                    refundCharge = 1, amount = 1000
+                  hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60,
+                    refundCharge = 2, amount = 501
+                  hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60,
+                    refundCharge = 2, amount = 1000
+                  hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 1800,
+                    refundCharge = 1, amount = 501
+                  hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 1800,
+                    refundCharge = 1, amount = 1000
                   and 82 more
 
-  ApprovedRefundIsAllowed
-      says:     whenever amount is 2500 and has_approval holds and approved holds and
-                approval_charge is 1 and refund_charge is 1 and gap is 60,
+  CompliantApprovalAllowed
+      says:     whenever hasApproval holds and approved holds and approvalCharge is 1
+                and refundCharge is 1 and gap is 60 and amount is 501,
                 then the policy GRANTS it (RefundAllowed)
-      forbids:  amount is 2500 and has_approval holds and approved holds and
-                approval_charge is 1 and refund_charge is 1 and gap is 60,
+      forbids:  hasApproval holds and approved holds and approvalCharge is 1 and
+                refundCharge is 1 and gap is 60 and amount is 501,
                 and yet the policy REFUSES it (RefundAllowed)
       applies:  to 1 of the 192 states:
-                  amount = 2500, has_approval = TRUE, approved = TRUE, approval_charge =
-                    1, refund_charge = 1, gap = 60
+                  hasApproval = TRUE, approvalCharge = 1, approved = TRUE, gap = 60,
+                    refundCharge = 1, amount = 501
 
-  SmallRefundWithoutApprovalIsAllowed
-      says:     whenever amount is 500 and has_approval does not hold and refund_charge
-                is 1 and gap is 60 and approval_charge is 1 and approved does not hold,
+  CompliantUnder500Allowed
+      says:     whenever hasApproval does not hold and refundCharge is 1 and amount is
+                500 and gap is 60 and approvalCharge is 1 and approved is FALSE (=
+                FALSE),
                 then the policy GRANTS it (RefundAllowed)
-      forbids:  amount is 500 and has_approval does not hold and refund_charge is 1 and
-                gap is 60 and approval_charge is 1 and approved does not hold,
+      forbids:  hasApproval does not hold and refundCharge is 1 and amount is 500 and
+                gap is 60 and approvalCharge is 1 and approved is FALSE (= FALSE),
                 and yet the policy REFUSES it (RefundAllowed)
       applies:  to 1 of the 192 states:
-                  amount = 500, has_approval = FALSE, approved = FALSE, approval_charge
-                    = 1, refund_charge = 1, gap = 60
+                  hasApproval = FALSE, approvalCharge = 1, approved = FALSE, gap = 60,
+                    refundCharge = 1, amount = 500
 
   Read the `forbids` lines before the run, not after it. Each one is the only
   thing its claim can catch; if none of them describes something you would
@@ -107,65 +118,45 @@ anchor check examples\aws2\agent-policy.dw --full --property examples\aws2\ancho
 
 ### Verification Summary
 
-All 3 claims in `SupervisorApproval.tla` **held** across the **192 states** explored by the model checker. No counterexamples were found within this tested subset.
-
-However, two of the three claims test only single, specific request configurations rather than broader conditions. Furthermore, derived general questions were not evaluated.
+All 3 claims in the property module **SupervisorApproval.tla** held over the finite set of **192 states** evaluated for `agent-policy.dw`.
 
 ---
 
-### What Was Checked and What Held
+### Exact Bounds Checked
 
-The checker evaluated combinations formed from discrete values across 6 variables:
-* **`amount`**: sampled values including `499`, `500`, and `2500`
-* **`has_approval`**: `TRUE`, `FALSE`
-* **`approved`**: `TRUE`, `FALSE`
-* **`approval_charge`**: `1`, `2`
-* **`refund_charge`**: `1`, `2`
-* **`gap`**: `60`, `1800`, `1801`
+The verification tested combinations strictly limited to the following values (a total state space of 192 combinations):
 
-Total state space explored: **192 states**.
+*   **hasApproval**: `FALSE`, `TRUE`
+*   **approvalCharge**: `1`, `2`
+*   **approved**: `FALSE`, `TRUE`
+*   **gap**: `60`, `1800`, `1801`
+*   **refundCharge**: `1`, `2`
+*   **amount**: `499`, `500`, `501`, `1000`
 
----
-
-### Claim-by-Claim Results
-
-#### 1. `Over500RequiresApproval`
-* **Verdict:** Held.
-* **Scope:** Applied to **88 of the 192 states** (specifically where `amount = 2500` and `ValidApproval(...)` is false).
-* **Behavior:** In all 88 applicable states where the amount exceeded 500 without valid approval, the policy refused the refund (`RefundAllowed` was false).
-
-#### 2. `ApprovedRefundIsAllowed`
-* **Verdict:** Held.
-* **Scope:** Applied to **1 of the 192 states**.
-* **Finding on Property Design:** This property only tests a single point:
-  * `amount = 2500`
-  * `has_approval = TRUE`
-  * `approved = TRUE`
-  * `approval_charge = 1`
-  * `refund_charge = 1`
-  * `gap = 60`
-  
-  The property did not test whether approvals are granted for other amounts over 500, other valid charge identifiers, or other valid gap durations (e.g., `gap = 1800`).
-
-#### 3. `SmallRefundWithoutApprovalIsAllowed`
-* **Verdict:** Held.
-* **Scope:** Applied to **1 of the 192 states**.
-* **Finding on Property Design:** This property also tests only a single point:
-  * `amount = 500`
-  * `has_approval = FALSE`
-  * `approved = FALSE`
-  * `approval_charge = 1`
-  * `refund_charge = 1`
-  * `gap = 60`
-  
-  It did not test whether unapproved refunds are permitted for other small amounts (such as `amount = 499`) or across other charge IDs and gap values.
+Any requests with values outside these sets (such as different refund amounts, gaps under 60 or between 60 and 1800, or other charge IDs) were not evaluated.
 
 ---
 
-### What Was Not Checked
+### Detailed Findings by Claim
 
-1. **Unchecked Request Values:** Any inputs outside the sampled values—including amounts other than `499`, `500`, and `2500`, gaps other than `60`, `1800`, and `1801`, or charge IDs other than `1` and `2`—were not evaluated.
-2. **Derived General Questions:** Automated derived property checks were skipped because `agent-policy.dw` evaluates 6 input/output fields, exceeding the default 4-field limit.
+1. **`Over500WithoutApprovalRefused`** — **HELD**
+   * **What was checked:** Applied to **88 of the 192 states** where the refund amount is over 500 (`501` or `1000`) and at least one approval requirement fails (no approval present, approval marked false, charge IDs mismatch, or the gap is `1801`).
+   * **Verdict:** The policy refused the refund across all 88 evaluated configurations.
+
+2. **`CompliantApprovalAllowed`** — **HELD**
+   * **What was checked:** Applied to **1 of the 192 states** — specifically: `hasApproval = TRUE`, `approved = TRUE`, `approvalCharge = 1`, `refundCharge = 1`, `gap = 60`, and `amount = 501`.
+   * **Verdict:** The policy granted the refund for this specific request.
+
+3. **`CompliantUnder500Allowed`** — **HELD**
+   * **What was checked:** Applied to **1 of the 192 states** — specifically: `hasApproval = FALSE`, `approved = FALSE`, `approvalCharge = 1`, `refundCharge = 1`, `gap = 60`, and `amount = 500`.
+   * **Verdict:** The policy granted the refund for this specific request.
+
+---
+
+### Property Observations and Coverage Notes
+
+* **Single-State "Allowed" Properties:** Both `CompliantApprovalAllowed` and `CompliantUnder500Allowed` test only **one specific request each**. They confirm that those two exact scenarios grant a refund, but they do not check other compliant combinations (such as amounts of `499`, approved amounts of `1000`, a `gap` of `1800`, or transactions under charge ID `2`).
+* **Derived Questions Skipped:** Automated derived questions were refused and not run because the policy involves 6 input/output fields, exceeding the tool's default limit of 4 fields.
 
 Every LLM call this run made, with each tool call and its reply, is in `transcript.md` beside this file.
 
@@ -177,23 +168,23 @@ Every LLM call this run made, with each tool call and its reply, is in `transcri
 
 | | tokens in | of which cached | out | total | seconds |
 |---|---:|---:|---:|---:|---:|
-| draft round 1 | 186,331 | 119,848 | 8,890 | 195,221 | 97.8 |
-| the review | 1,408 | 0 | 325 | 1,733 | 4.2 |
-| the report | 1,573 | 0 | 1,708 | 3,281 | 11.2 |
-| **3 model call(s)** | **189,312** | **119,848** | **10,923** | **200,235** | **113.1** |
+| draft round 1 | 265,825 | 194,833 | 9,533 | 275,358 | 161.7 |
+| the review | 1,527 | 0 | 440 | 1,967 | 4.9 |
+| the report | 1,603 | 0 | 2,030 | 3,633 | 13.1 |
+| **3 model call(s)** | **268,955** | **194,833** | **12,003** | **280,958** | **179.7** |
 
 Time per stage, model calls and verification together:
 
 ```
   describe          0.0s
-  draft           104.3s
+  draft           169.8s
   preflight         0.0s
-  score            15.1s
-  review            4.2s
+  score            19.4s
+  review            4.9s
   check             0.0s
-  answer           11.2s
+  answer           13.1s
   report            0.0s
-  total           134.8s
+  total           207.3s
 ```
 
-Of which 113.1s was model calls; the rest is verification -- TLC runs in `score` and `check`, which cost no tokens.
+Of which 179.7s was model calls; the rest is verification -- TLC runs in `score` and `check`, which cost no tokens.

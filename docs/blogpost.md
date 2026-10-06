@@ -68,11 +68,13 @@ other's context. That matters because the best-documented failure in agentic for
 that a model asked to produce both an artifact and its specification discovers that a trivial
 specification is the cheapest way to pass.
 
-There is one more separation that is easy to miss: **the drafting model never sees the policy's rule
-conditions.** It gets a vocabulary generated mechanically from the policy, a knowledge article on
-writing property modules, and your prose. That is deliberate — a property derived from a policy is a
-restatement of that policy and will always pass. Only a property derived from a *requirement* can
-disagree with the rules, and disagreeing is the entire point.
+There is one more separation that is easy to miss: **the drafting model is not given the policy's
+rule conditions.** It gets a vocabulary generated mechanically from the policy, a knowledge article
+on writing property modules, and your prose. That is deliberate — a property derived from a policy
+is a restatement of that policy and will always pass. Only a property derived from a *requirement*
+can disagree with the rules, and disagreeing is the entire point. The separation is not airtight:
+its `evaluate` tool can read the generated rule set, and it is told, rather than prevented, to
+decide its claims from the requirement first.
 
 Underneath, the checker runs TLC out of process on a real JVM, and the real **Dogwood** binary is
 kept in the loop as a second opinion: when a claim breaks, the counterexample is carried back to the

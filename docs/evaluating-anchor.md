@@ -202,8 +202,9 @@ docker run --rm -v "$PWD:/work" -v "$PWD/config:/config:ro" public.ecr.aws/v4q7x
 
 `auto` is **autoformalization**: the only artifact you supply is prose. The agent gets a vocabulary
 derived mechanically from the policy, a knowledge article on writing a property module, and your
-requirement — and it never sees the policy's rule conditions, so what it drafts cannot be a
-restatement of the policy. Three different models and four mechanical gates stand between a draft
+requirement. It is not given the policy's rule conditions, and is told to decide its claims from
+the requirement before looking at the policy, though its `evaluate` tool can read the generated rule
+set. Three different models and four mechanical gates stand between a draft
 and a verdict, and a draft that fails any of them is reported rather than retried into acceptance.
 
 Omit `--intent` and it reads the requirement from a `## <policy>.dw` heading in the `intents.md`

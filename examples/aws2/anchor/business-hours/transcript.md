@@ -2,7 +2,7 @@
 
 `agent-policy.dw`: every LLM call this run made, in order -- the drafter with its tool calls, the reviewer and the reporter.
 
-*Generated 2026-10-04 17:15 UTC by `src/agent/pipeline.py`. Tool calls and their full replies are included: the prose is a claim, and the tool output is the evidence for it.*
+*Generated 2026-10-06 05:41 UTC by `src/agent/pipeline.py`. Tool calls and their full replies are included: the prose is a claim, and the tool output is the evidence for it.*
 
 ## draft round 1
 
@@ -605,9 +605,10 @@
 >     "Decide the allowed and denied cases from the requirement BEFORE evaluating the policy. A claim written from the policy's own behaviour restates it.",
 >     "Include a claim that one specific, fully compliant session is ALLOWED. A module of refusal claims alone cannot be broken by removing a permission. 'X requires Y' means 'without Y, refused', not 'with Y, always allowed'.",
 >     "Put every prerequisite event in the session, and each value where the policy reads it: inputFields in an event's input record, outputFields in its output record.",
+>     "For every threshold and window the REQUIREMENT states, range over the value at it and the value just past it ('over $500': 500 and 501). Take them from the requirement, not from these domains: a policy with the wrong threshold supplies its own wrong edge.",
 >     "The .cfg must name SPECIFICATION Spec and every INVARIANT. A claim nobody listed is a claim nobody checked."
 >   ],
->   "skeleton": "---------------------------- MODULE agent_policy ----------------------------\n\\* What agent-policy.dw is SUPPOSED to mean, stated by its author. The three built-in findings\n\\* (VACUOUS, REDUNDANT/DEAD, diff) are the claims statable WITHOUT knowing intent; this is the\n\\* other kind, and only the author can write it.\n\\*\n\\* SAVE THIS AS agent_policy.tla -- TLA+ requires the file name to match the module name, and a\n\\* module name may not contain `-` or `.` or begin with a digit, so it is not always the policy's\n\\* own name.\n\\*\n\\* Check it with:  python src/checker/properties.py agent-policy.dw --property agent_policy.tla\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\n\\* The verdict for one request. No session: \"what does this policy decide for this request\" is\n\\* not a temporal question, so there is no state machine beyond holding one request still.\nGrants(input) == D!Decide(<<Request(\"initiate_transfer\", input)>>, Policies, 1, AllValues)\n\n(***************************************************************************)\n(* THE REQUESTS THIS CLAIM IS ABOUT.                                       *)\n(*                                                                         *)\n(* Written out rather than derived from InputDomain, and that is the       *)\n(* point. A space derived from the policy's own literals cannot test a     *)\n(* claim about a value the policy never mentions: delete the rule that     *)\n(* names a value and it vanishes from the vocabulary, so the claim ranges  *)\n(* over nothing and PASSES having looked at nothing.                       *)\n(*                                                                         *)\n(* Add the values your claim is about, including ones this policy never    *)\n(* mentions.                                                               *)\n(***************************************************************************)\naccountValues == {Num(1), Num(2)}\namountValues == {Num(499), Num(500), Num(2500), Num(2501)}\ncharge_idValues == {Num(1), Num(2)}\nsystemNowTimeValues == {Num(32399999), Num(32400000), Num(61200000), Num(61200001)}\n\nRequests == {[account |-> account, amount |-> amount, charge_id |-> charge_id, systemNowTime |-> systemNowTime] : account \\in accountValues, amount \\in amountValues, charge_id \\in charge_idValues, systemNowTime \\in systemNowTimeValues}\n\n\\* One request, chosen nondeterministically and held, so a violation's counterexample NAMES the\n\\* request that breaks the claim rather than merely reporting that one exists.\nVARIABLE req\nInit == req \\in Requests\nNext == UNCHANGED req\nSpec == Init /\\ [][Nex
+>   "skeleton": "---------------------------- MODULE agent_policy ----------------------------\n\\* What agent-policy.dw is SUPPOSED to mean, stated by its author. The three built-in findings\n\\* (VACUOUS, REDUNDANT/DEAD, diff) are the claims statable WITHOUT knowing intent; this is the\n\\* other kind, and only the author can write it.\n\\*\n\\* SAVE THIS AS agent_policy.tla -- TLA+ requires the file name to match the module name, and a\n\\* module name may not contain `-` or `.` or begin with a digit, so it is not always the policy's\n\\* own name.\n\\*\n\\* Check it with:  python src/checker/properties.py agent-policy.dw --property agent_policy.tla\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\n\\* The verdict for one request. No session: \"what does this policy decide for this request\" is\n\\* not a temporal question, so there is no state machine beyond holding one request still.\nGrants(input) == D!Decide(<<Request(\"initiate_transfer\", input)>>, Policies, 1, AllValues)\n\n(***************************************************************************)\n(* THE REQUESTS THIS CLAIM IS ABOUT.                                       *)\n(*                                                                         *)\n(* Written out rather than derived from InputDomain, and that is the       *)\n(* point. A space derived from the policy's own literals cannot test a     *)\n(* claim about a value the policy never mentions: delete the rule that     *)\n(* names a value and it vanishes from the vocabulary, so the claim ranges  *)\n(* over nothing and PASSES having looked at nothing.                       *)\n(*                                                                         *)\n(* Add the values your claim is about, including ones this policy never    *)\n(* mentions.                                                               *)\n(***************************************************************************)\naccountValues == {Num(1), Num(2)}\namountValues == {Num(499), Num(500), Num(2500), Num(2501)}\ncharge_idValues == {Num(1), Num(2)}\nsystemNowTimeValues == {Num(32399999), Num(32400000), Num(61200000), Num(61200001)}\n\nRequests == {[account |-> account, amount |-> amount, charge_id |-> charge_id, systemNowTime |-> systemNowTime] : account \\in accountValues, amount \\in amountValues, charge_id \\in charge_idValues, systemNowTime \\in systemNowTimeValues}\n\n\\*
 > ```
 > 
 > The intention to state formally:
@@ -617,33 +618,106 @@
 | | |
 |---|---|
 | model | gemini-3.7-flash |
-| tokens | 321,105 |
-| seconds | 135.7 |
+| tokens | 280,265 |
+| seconds | 177.5 |
 
 **Tool call 1** — `evaluate`
 
 ```json
 {
-  "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
-  "expression": "Policies",
-  "module": "---------------------------- MODULE BusinessHours ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\nVARIABLE x\nInit == x = 1\nNext == UNCHANGED x\nSpec == Init /\\ [][Next]_x\nDummy == TRUE\n============================================================================="
+  "config": "SPECIFICATION Spec\n",
+  "expression": "D!Decide(<<Request(\"issue_refund\", [amount |-> Num(100), charge_id |-> Num(1), systemNowTime |-> Num(32400000), account |-> Num(1)])>>, Policies, 1, AllValues)",
+  "module": "---------------------------- MODULE BusinessHours ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE req\nInit == req = 1\nNext == UNCHANGED req\nSpec == Init /\\ [][Next]_req\n============================================================================="
 }
 ```
 
 <details><summary>tool result (success)</summary>
 
 ```
-ld |-> "",
-                             cmp |-> "",
-                             value |-> [k |-> "s", v |-> ""],
-                             other |-> "",
-                             pattern |-> <<>>,
-                             net |-> <<>>,
-                             prefix |-> 0 ],
-                       leftNeg |-> FALSE,
-                       keys |-> <<>> ] ] ],
-         [ effect |-> "permit",
-           actions |-> {"request_approval"},
+D!Decide(<<Request("issue_refund", [amount |-> Num(100), charge_id |-> Num(1), systemNowTime |-> Num(32400000), account |-> Num(1)])>>, Policies, 1, AllValues)
+
+      TRUE
+```
+
+</details>
+
+**Tool call 2** — `evaluate`
+
+```json
+{
+  "config": "SPECIFICATION Spec\n",
+  "expression": "<<\n  D!Decide(<<Request(\"issue_refund\", [amount |-> Num(2500), charge_id |-> Num(1), systemNowTime |-> Num(32400000), account |-> Num(1)])>>, Policies, 1, AllValues),\n  D!Decide(<<Request(\"issue_refund\", [amount |-> Num(2501), charge_id |-> Num(1), systemNowTime |-> Num(32400000), account |-> Num(1)])>>, Policies, 1, AllValues),\n  D!Decide(<<Request(\"issue_refund\", [amount |-> Num(2500), charge_id |-> Num(1), systemNowTime |-> Num(32399999), account |-> Num(1)])>>, Policies, 1, AllValues),\n  D!Decide(<<Request(\"issue_refund\", [amount |-> Num(2500), charge_id |-> Num(1), systemNowTime |-> Num(61200000), account |-> Num(1)])>>, Policies, 1, AllValues),\n  D!Decide(<<Request(\"issue_refund\", [amount |-> Num(2500), charge_id |-> Num(1), systemNowTime |-> Num(61200001), account |-> Num(1)])>>, Policies, 1, AllValues)\n>>",
+  "module": "---------------------------- MODULE BusinessHours ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE req\nInit == req = 1\nNext == UNCHANGED req\nSpec == Init /\\ [][Next]_req\n============================================================================="
+}
+```
+
+<details><summary>tool result (success)</summary>
+
+```
+<<
+  D!Decide(<<Request("issue_refund", [amount |-> Num(2500), charge_id |-> Num(1), systemNowTime |-> Num(32400000), account |-> Num(1)])>>, Policies, 1, AllValues),
+  D!Decide(<<Request("issue_refund", [amount |-> Num(2501), charge_id |-> Num(1), systemNowTime |-> Num(32400000), account |-> Num(1)])>>, Policies, 1, AllValues),
+  D!Decide(<<Request("issue_refund", [amount |-> Num(2500), charge_id |-> Num(1), systemNowTime |-> Num(32399999), account |-> Num(1)])>>, Policies, 1, AllValues),
+  D!Decide(<<Request("issue_refund", [amount |-> Num(2500), charge_id |-> Num(1), systemNowTime |-> Num(61200000), account |-> Num(1)])>>, Policies, 1, AllValues),
+  D!Decide(<<Request("issue_refund", [amount |-> Num(2500), charge_id |-> Num(1), systemNowTime |-> Num(61200001), account |-> Num(1)])>>, Policies, 1, AllValues)
+>>
+
+      <<FALSE, FALSE, FALSE, FALSE, FALSE>>
+```
+
+</details>
+
+**Tool call 3** — `evaluate`
+
+```json
+{
+  "config": "SPECIFICATION Spec\n",
+  "expression": "<<\n  D!Decide(<<\n    Ev(\"verify_identity\", \"response\", NoFields, [verified |-> Bool(TRUE)], 1),\n    Ev(\"issue_refund\", \"request\", [amount |-> Num(2500), charge_id |-> Num(1), systemNowTime |-> Num(32400000), account |-> Num(1)], NoFields, 2)\n  >>, Policies, 2, AllValues),\n  D!Decide(<<\n    Ev(\"request_approval\", \"response\", NoFields, [approved |-> Bool(TRUE)], 1),\n    Ev(\"issue_refund\", \"request\", [amount |-> Num(2500), charge_id |-> Num(1), systemNowTime |-> Num(32400000), account |-> Num(1)], NoFields, 2)\n  >>, Policies, 2, AllValues),\n  D!Decide(<<\n    Ev(\"verify_identity\", \"response\", NoFields, [verified |-> Bool(TRUE)], 1),\n    Ev(\"request_approval\", \"response\", NoFields, [approved |-> Bool(TRUE)], 2),\n    Ev(\"issue_refund\", \"request\", [amount |-> Num(2500), charge_id |-> Num(1), systemNowTime |-> Num(32400000), account |-> Num(1)], NoFields, 3)\n  >>, Policies, 3, AllValues)\n>>",
+  "module": "---------------------------- MODULE BusinessHours ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE req\nInit == req = 1\nNext == UNCHANGED req\nSpec == Init /\\ [][Next]_req\n============================================================================="
+}
+```
+
+<details><summary>tool result (success)</summary>
+
+```
+<<
+  D!Decide(<<
+    Ev("verify_identity", "response", NoFields, [verified |-> Bool(TRUE)], 1),
+    Ev("issue_refund", "request", [amount |-> Num(2500), charge_id |-> Num(1), systemNowTime |-> Num(32400000), account |-> Num(1)], NoFields, 2)
+  >>, Policies, 2, AllValues),
+  D!Decide(<<
+    Ev("request_approval", "response", NoFields, [approved |-> Bool(TRUE)], 1),
+    Ev("issue_refund", "request", [amount |-> Num(2500), charge_id |-> Num(1), systemNowTime |-> Num(32400000), account |-> Num(1)], NoFields, 2)
+  >>, Policies, 2, AllValues),
+  D!Decide(<<
+    Ev("verify_identity", "response", NoFields, [verified |-> Bool(TRUE)], 1),
+    Ev("request_approval", "response", NoFields, [approved |-> Bool(TRUE)], 2),
+    Ev("issue_refund", "request", [amount |-> Num(2500), charge_id |-> Num(1), systemNowTime |-> Num(32400000), account |-> Num(1)], NoFields, 3)
+  >>, Policies, 3, AllValues)
+>>
+
+      <<FALSE, FALSE, FALSE>>
+```
+
+</details>
+
+**Tool call 4** — `evaluate`
+
+```json
+{
+  "config": "SPECIFICATION Spec\n",
+  "expression": "Policies",
+  "module": "---------------------------- MODULE BusinessHours ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE req\nInit == req = 1\nNext == UNCHANGED req\nSpec == Init /\\ [][Next]_req\n============================================================================="
+}
+```
+
+<details><summary>tool result (success)</summary>
+
+```
+Policies
+
+      << [ effect |-> "permit",
+           actions |-> {"verify_identity"},
            cond |->
                [ op |-> "true",
                  args |-> <<>>,
@@ -668,101 +742,17 @@ ld |-> "",
                              pred |-> [action |-> "", kind |-> "", binds |-> <<>>],
                              var |-> "",
                              field |-> "",
-```
+                             cmp |-> "",
+                             value |-> [k |-> "s", v |-> ""],
+                             other |-> "",
+                             pattern |-> <<>>,
+                             net |-> <<>>,
+                             prefix |-> 0 ],
+                       leftNeg |-> FALSE,
+                       keys |-> <<>> ] ] ],
+ 
 
-</details>
-
-**Tool call 2** — `evaluate`
-
-```json
-{
-  "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
-  "expression": "<<\n  D!Decide(<<Request(\"issue_refund\", [amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000), account |-> Num(1)])>>, Policies, 1, AllValues),\n  D!Decide(<<Request(\"issue_refund\", [amount |-> Num(2500), charge_id |-> Num(1), systemNowTime |-> Num(61200000), account |-> Num(1)])>>, Policies, 1, AllValues),\n  D!Decide(<<Request(\"issue_refund\", [amount |-> Num(2501), charge_id |-> Num(1), systemNowTime |-> Num(32400000), account |-> Num(1)])>>, Policies, 1, AllValues),\n  D!Decide(<<Request(\"issue_refund\", [amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32399999), account |-> Num(1)])>>, Policies, 1, AllValues),\n  D!Decide(<<Request(\"issue_refund\", [amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(61200001), account |-> Num(1)])>>, Policies, 1, AllValues)\n>>",
-  "module": "---------------------------- MODULE BusinessHours ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\nVARIABLE x\nInit == x = 1\nNext == UNCHANGED x\nSpec == Init /\\ [][Next]_x\nDummy == TRUE\n============================================================================="
-}
-```
-
-<details><summary>tool result (success)</summary>
-
-```
-<<
-  D!Decide(<<Request("issue_refund", [amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000), account |-> Num(1)])>>, Policies, 1, AllValues),
-  D!Decide(<<Request("issue_refund", [amount |-> Num(2500), charge_id |-> Num(1), systemNowTime |-> Num(61200000), account |-> Num(1)])>>, Policies, 1, AllValues),
-  D!Decide(<<Request("issue_refund", [amount |-> Num(2501), charge_id |-> Num(1), systemNowTime |-> Num(32400000), account |-> Num(1)])>>, Policies, 1, AllValues),
-  D!Decide(<<Request("issue_refund", [amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32399999), account |-> Num(1)])>>, Policies, 1, AllValues),
-  D!Decide(<<Request("issue_refund", [amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(61200001), account |-> Num(1)])>>, Policies, 1, AllValues)
->>
-
-      <<TRUE, FALSE, FALSE, FALSE, FALSE>>
-```
-
-</details>
-
-**Tool call 3** — `evaluate`
-
-```json
-{
-  "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
-  "expression": "<<\n  D!Decide(<<Request(\"issue_refund\", [amount |-> Num(2500), charge_id |-> Num(1), systemNowTime |-> Num(32400000), account |-> Num(1)])>>, Policies, 1, AllValues),\n  D!Decide(<<Request(\"issue_refund\", [amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(61200000), account |-> Num(1)])>>, Policies, 1, AllValues),\n  D!Decide(<<Request(\"issue_refund\", [amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(61199999), account |-> Num(1)])>>, Policies, 1, AllValues)\n>>",
-  "module": "---------------------------- MODULE BusinessHours ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\nVARIABLE x\nInit == x = 1\nNext == UNCHANGED x\nSpec == Init /\\ [][Next]_x\nDummy == TRUE\n============================================================================="
-}
-```
-
-<details><summary>tool result (success)</summary>
-
-```
-<<
-  D!Decide(<<Request("issue_refund", [amount |-> Num(2500), charge_id |-> Num(1), systemNowTime |-> Num(32400000), account |-> Num(1)])>>, Policies, 1, AllValues),
-  D!Decide(<<Request("issue_refund", [amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(61200000), account |-> Num(1)])>>, Policies, 1, AllValues),
-  D!Decide(<<Request("issue_refund", [amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(61199999), account |-> Num(1)])>>, Policies, 1, AllValues)
->>
-
-      <<FALSE, TRUE, TRUE>>
-```
-
-</details>
-
-**Tool call 4** — `evaluate`
-
-```json
-{
-  "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
-  "expression": "Policies[6]",
-  "module": "---------------------------- MODULE BusinessHours ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\nVARIABLE x\nInit == x = 1\nNext == UNCHANGED x\nSpec == Init /\\ [][Next]_x\nDummy == TRUE\n============================================================================="
-}
-```
-
-<details><summary>tool result (success)</summary>
-
-```
-      leftNeg |-> FALSE,
-                    keys |-> <<>> ],
-              cmp |-> ">",
-              value |-> 3,
-              agg |->
-                  [ kind |-> "count",
-                    cond |->
-                        [ op |-> "term",
-                          args |-> <<>>,
-                          term |->
-                              [ op |-> "formerly",
-                                window |-> 3600,
-                                atom |->
-                                    [ op |-> "and",
-                                      args |->
-                                          << [ op |-> "pred",
-                                               args |-> <<>>,
-                                               pred |->
-                                                   [ action |-> "issue_refund",
-                                                     kind |-> "request",
-                                                     binds |->
-                                                         << [ kind |-> "ctx",
-                                                              field |-> "account",
-                                                              value |->
-                                                                  [ k |-> "s",
-                                                                    v |-> "" ],
-                                                              side |-> "input",
-                                                              name |->
+[TRUNCATED: the first 1500 of 2703 characters, and 725 more line(s) the checker did not print. Evaluate a smaller part -- one element or one field -- to see the rest.]
 ```
 
 </details>
@@ -771,67 +761,25 @@ ld |-> "",
 
 ```json
 {
-  "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
-  "expression": "Policies[7]",
-  "module": "---------------------------- MODULE BusinessHours ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\nVARIABLE x\nInit == x = 1\nNext == UNCHANGED x\nSpec == Init /\\ [][Next]_x\nDummy == TRUE\n============================================================================="
+  "config": "SPECIFICATION Spec\n",
+  "expression": "<<Policies[3], Policies[6], Policies[7]>>",
+  "module": "---------------------------- MODULE BusinessHours ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE req\nInit == req = 1\nNext == UNCHANGED req\nSpec == Init /\\ [][Next]_req\n============================================================================="
 }
 ```
 
 <details><summary>tool result (success)</summary>
 
 ```
-    prefix |-> 0 ],
-                             leftNeg |-> FALSE,
-                             keys |-> <<"principal">> ] ],
-                     [ op |-> "not",
-                       args |->
-                           << [ op |-> "term",
-                                args |-> <<>>,
-                                term |->
-                                    [ op |-> "formerly",
-                                      window |-> 1800,
-                                      atom |->
-                                          [ op |-> "pred",
-                                            args |-> <<>>,
-                                            pred |->
-                                                [ action |-> "request_approval",
-                                                  kind |-> "response",
-                                                  binds |->
-                                                      << [ kind |-> "ctx",
-                                                           field |-> "charge_id",
-                                                           value |->
-                                                               [k |-> "s", v |-> ""],
-                                                           side |-> "input",
-                                                           name |-> "charge_id" ],
-                                                         [ kind |-> "lit",
-                                                           field |-> "approved",
-```
+<<Policies[3], Policies[6], Policies[7]>>
 
-</details>
-
-**Tool call 6** — `evaluate`
-
-```json
-{
-  "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
-  "expression": "<<Policies[3], Policies[5], Policies[6], Policies[7]>>",
-  "module": "---------------------------- MODULE BusinessHours ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\nVARIABLE x\nInit == x = 1\nNext == UNCHANGED x\nSpec == Init /\\ [][Next]_x\nDummy == TRUE\n============================================================================="
-}
-```
-
-<details><summary>tool result (success)</summary>
-
-```
-ime",
-                                               cmp |-> ">=",
-                                               value |-> [k |-> "n", v |-> 32400000],
-                                               other |-> "",
-                                               pattern |-> <<>>,
-                                               net |-> <<>>,
-                                               prefix |-> 0 ],
-                                         leftNeg |-> FALSE,
-                                         keys |-> <<"principal">> ] ],
-                                 [ op |-> "term",
+      << [ effect |-> "permit",
+           actions |-> {"issue_refund"},
+           cond |->
+               [ op |-> "and",
+                 args |->
+                     << [ op |-> "and",
+                          args |->
+                              << [ op |-> "term",
                                    args |-> <<>>,
                                    term |->
                                        [ op |-> "at",
@@ -845,74 +793,36 @@ ime",
                                                      binds |-> <<>> ],
                                                var |-> "",
                                                field |-> "systemNowTime",
-                                               cmp |-> "<=",
-                                               value |-> [k |-> "n", v |-> 61200000],
+                                               cmp |-> ">=",
+                                               value |-> [k |-> "n", v |-> 32400000],
+                                               other |-> "",
+                                               pattern |-> <<>>,
+                                               net |-> <<>>,
+                                               prefix |-> 0 ],
+               
+
+[TRUNCATED: the first 1500 of 3628 characters, and 445 more line(s) the checker did not print. Evaluate a smaller part -- one element or one field -- to see the rest.]
 ```
 
 </details>
 
-**Tool call 7** — `evaluate`
+**Tool call 6** — `evaluate`
 
 ```json
 {
-  "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
-  "expression": "Policies[3].cond",
-  "module": "---------------------------- MODULE BusinessHours ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\nVARIABLE x\nInit == x = 1\nNext == UNCHANGED x\nSpec == Init /\\ [][Next]_x\nDummy == TRUE\n============================================================================="
-}
-```
-
-<details><summary>tool result (success)</summary>
-
-```
-                                   field |-> "systemNowTime",
-                                      cmp |-> ">=",
-                                      value |-> [k |-> "n", v |-> 32400000],
-                                      other |-> "",
-                                      pattern |-> <<>>,
-                                      net |-> <<>>,
-                                      prefix |-> 0 ],
-                                leftNeg |-> FALSE,
-                                keys |-> <<"principal">> ] ],
-                        [ op |-> "term",
-                          args |-> <<>>,
-                          term |->
-                              [ op |-> "at",
-                                window |-> 0,
-                                atom |->
-                                    [ op |-> "cmp",
-                                      args |-> <<>>,
-                                      pred |->
-                                          [ action |-> "",
-                                            kind |-> "",
-                                            binds |-> <<>> ],
-                                      var |-> "",
-                                      field |-> "systemNowTime",
-                                      cmp |-> "<=",
-                                      value |-> [k |-> "n", v |-> 61200000],
-                                      other |-> "",
-                                      pattern |-> <<>>,
-                                      net |-> <<>>,
-```
-
-</details>
-
-**Tool call 8** — `evaluate`
-
-```json
-{
-  "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
+  "config": "SPECIFICATION Spec\n",
   "expression": "Policies[3].cond.args",
-  "module": "---------------------------- MODULE BusinessHours ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\nVARIABLE x\nInit == x = 1\nNext == UNCHANGED x\nSpec == Init /\\ [][Next]_x\nDummy == TRUE\n============================================================================="
+  "module": "---------------------------- MODULE BusinessHours ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE req\nInit == req = 1\nNext == UNCHANGED req\nSpec == Init /\\ [][Next]_req\n============================================================================="
 }
 ```
 
 <details><summary>tool result (success)</summary>
 
 ```
-    prefix |-> 0 ],
-                          leftNeg |-> FALSE,
-                          keys |-> <<"principal">> ] ],
-                  [ args |-> <<>>,
+Policies[3].cond.args
+
+      << [ args |->
+               << [ args |-> <<>>,
                     op |-> "term",
                     term |->
                         [ op |-> "at",
@@ -923,8 +833,8 @@ ime",
                                 pred |-> [action |-> "", kind |-> "", binds |-> <<>>],
                                 var |-> "",
                                 field |-> "systemNowTime",
-                                cmp |-> "<=",
-                                value |-> [k |-> "n", v |-> 61200000],
+                                cmp |-> ">=",
+                                value |-> [k |-> "n", v |-> 32400000],
                                 other |-> "",
                                 pattern |-> <<>>,
                                 net |-> <<>>,
@@ -935,11 +845,104 @@ ime",
                                 pred |-> [action |-> "", kind |-> "", binds |-> <<>>],
                                 var |-> "",
                                 field |-> "systemNowTime",
-                                cmp |-> "<=",
-                                value |-> [k |-> "n", v |-> 61200000],
+                                cmp |-> ">=",
+                                value |-> [k |-> "n", v |-> 32400000],
                                 other |-> "",
                                 pattern |-> <<>>,
                                 net |-> <<>>,
+                                prefix |-> 0 ],
+                          lef
+
+[TRUNCATED: the first 1500 of 3032 characters, and 64 more line(s) the checker did not print. Evaluate a smaller part -- one element or one field -- to see the rest.]
+```
+
+</details>
+
+**Tool call 7** — `evaluate`
+
+```json
+{
+  "config": "SPECIFICATION Spec\n",
+  "expression": "<<Policies[3].cond.args[1].args[2], Policies[3].cond.args[2]>>",
+  "module": "---------------------------- MODULE BusinessHours ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE req\nInit == req = 1\nNext == UNCHANGED req\nSpec == Init /\\ [][Next]_req\n============================================================================="
+}
+```
+
+<details><summary>tool result (success)</summary>
+
+```
+<<Policies[3].cond.args[1].args[2], Policies[3].cond.args[2]>>
+
+      << [ args |-> <<>>,
+           op |-> "term",
+           term |->
+               [ op |-> "at",
+                 window |-> 0,
+                 atom |->
+                     [ args |-> <<>>,
+                       op |-> "cmp",
+                       pred |-> [action |-> "", kind |-> "", binds |-> <<>>],
+                       var |-> "",
+                       field |-> "systemNowTime",
+                       cmp |-> "<=",
+                       value |-> [k |-> "n", v |-> 61200000],
+                       other |-> "",
+                       pattern |-> <<>>,
+                       net |-> <<>>,
+                       prefix |-> 0 ],
+                 left |->
+                     [ args |-> <<>>,
+                       op |-> "cmp",
+                       pred |-> [action |-> "", kind |-> "", binds |-> <<>>],
+                       var |-> "",
+                       field |-> "systemNowTime",
+                       cmp |-> "<=",
+                       value |-> [k |-> "n", v |-> 61200000],
+                       other |-> "",
+                       pattern |-> <<>>,
+                       net |-> <<>>,
+                       prefix |-> 0 ],
+                 leftNeg |-> FALSE,
+                 keys |-> <<"principal">> ] ],
+         [ args |-> <<>>,
+           op |-> "term",
+           term |->
+               [ op |-> "at",
+                 window |-> 0,
+                 atom |->
+                     [ args
+
+[TRUNCATED: the first 1500 of 2538 characters, and 2 more line(s) the checker did not print. Evaluate a smaller part -- one element or one field -- to see the rest.]
+```
+
+</details>
+
+**Tool call 8** — `evaluate`
+
+```json
+{
+  "config": "SPECIFICATION Spec\n",
+  "expression": "Policies[3].cond.args[2].term.atom",
+  "module": "---------------------------- MODULE BusinessHours ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE req\nInit == req = 1\nNext == UNCHANGED req\nSpec == Init /\\ [][Next]_req\n============================================================================="
+}
+```
+
+<details><summary>tool result (success)</summary>
+
+```
+Policies[3].cond.args[2].term.atom
+
+      [ args |-> <<>>,
+        op |-> "cmp",
+        pred |-> [action |-> "", kind |-> "", binds |-> <<>>],
+        var |-> "",
+        field |-> "amount",
+        cmp |-> "<=",
+        value |-> [k |-> "n", v |-> 2500],
+        other |-> "",
+        pattern |-> <<>>,
+        net |-> <<>>,
+        prefix |-> 0 ]
 ```
 
 </details>
@@ -948,18 +951,59 @@ ime",
 
 ```json
 {
-  "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
-  "expression": "Len(Policies[3].cond.args)",
-  "module": "---------------------------- MODULE BusinessHours ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\nVARIABLE x\nInit == x = 1\nNext == UNCHANGED x\nSpec == Init /\\ [][Next]_x\nDummy == TRUE\n============================================================================="
+  "config": "SPECIFICATION Spec\n",
+  "expression": "<<Policies[6].cond, Policies[7].cond>>",
+  "module": "---------------------------- MODULE BusinessHours ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE req\nInit == req = 1\nNext == UNCHANGED req\nSpec == Init /\\ [][Next]_req\n============================================================================="
 }
 ```
 
 <details><summary>tool result (success)</summary>
 
 ```
-Len(Policies[3].cond.args)
+<<Policies[6].cond, Policies[7].cond>>
 
-      2
+      << [ op |-> "agg",
+           args |-> <<>>,
+           term |->
+               [ op |-> "formerly",
+                 window |-> 0,
+                 atom |->
+                     [ op |-> "pred",
+                       args |-> <<>>,
+                       pred |-> [action |-> "", kind |-> "", binds |-> <<>>],
+                       var |-> "",
+                       field |-> "",
+                       cmp |-> "",
+                       value |-> [k |-> "s", v |-> ""],
+                       other |-> "",
+                       pattern |-> <<>>,
+                       net |-> <<>>,
+                       prefix |-> 0 ],
+                 left |->
+                     [ op |-> "pred",
+                       args |-> <<>>,
+                       pred |-> [action |-> "", kind |-> "", binds |-> <<>>],
+                       var |-> "",
+                       field |-> "",
+                       cmp |-> "",
+                       value |-> [k |-> "s", v |-> ""],
+                       other |-> "",
+                       pattern |-> <<>>,
+                       net |-> <<>>,
+                       prefix |-> 0 ],
+                 leftNeg |-> FALSE,
+                 keys |-> <<>> ],
+           cmp |-> ">",
+           value |-> 3,
+           agg |->
+               [ cond |->
+                     [ op |-> "term",
+                       args |-> <<>>,
+                       term |->
+                           [ op |-> "formerly",
+         
+
+[TRUNCATED: the first 1500 of 2905 characters, and 233 more line(s) the checker did not print. Evaluate a smaller part -- one element or one field -- to see the rest.]
 ```
 
 </details>
@@ -968,18 +1012,28 @@ Len(Policies[3].cond.args)
 
 ```json
 {
-  "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
-  "expression": "<<Policies[5].actions, Policies[6].actions, Policies[7].actions>>",
-  "module": "---------------------------- MODULE BusinessHours ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\nVARIABLE x\nInit == x = 1\nNext == UNCHANGED x\nSpec == Init /\\ [][Next]_x\nDummy == TRUE\n============================================================================="
+  "config": "SPECIFICATION Spec\n",
+  "expression": "<<Policies[3].cond.args[1].args[1].term.atom>>",
+  "module": "---------------------------- MODULE BusinessHours ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE req\nInit == req = 1\nNext == UNCHANGED req\nSpec == Init /\\ [][Next]_req\n============================================================================="
 }
 ```
 
 <details><summary>tool result (success)</summary>
 
 ```
-<<Policies[5].actions, Policies[6].actions, Policies[7].actions>>
+<<Policies[3].cond.args[1].args[1].term.atom>>
 
-      <<{"initiate_transfer"}, {"issue_refund"}, {"issue_refund"}>>
+      << [ args |-> <<>>,
+           op |-> "cmp",
+           pred |-> [action |-> "", kind |-> "", binds |-> <<>>],
+           var |-> "",
+           field |-> "systemNowTime",
+           cmp |-> ">=",
+           value |-> [k |-> "n", v |-> 32400000],
+           other |-> "",
+           pattern |-> <<>>,
+           net |-> <<>>,
+           prefix |-> 0 ] >>
 ```
 
 </details>
@@ -988,40 +1042,21 @@ Len(Policies[3].cond.args)
 
 ```json
 {
-  "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
-  "expression": "Policies[7].cond",
-  "module": "---------------------------- MODULE BusinessHours ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\nVARIABLE x\nInit == x = 1\nNext == UNCHANGED x\nSpec == Init /\\ [][Next]_x\nDummy == TRUE\n============================================================================="
+  "config": "SPECIFICATION Spec\n",
+  "expression": "<<\n  Request(\"issue_refund\", [amount |-> Num(2500), charge_id |-> Num(1), systemNowTime |-> Num(32400000), account |-> Num(1)]),\n  D!Decide(<<Request(\"issue_refund\", [amount |-> Num(2500), charge_id |-> Num(1), systemNowTime |-> Num(32400000), account |-> Num(1)])>>, Policies, 1, AllValues)\n>>",
+  "module": "---------------------------- MODULE BusinessHours ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE req\nInit == req = 1\nNext == UNCHANGED req\nSpec == Init /\\ [][Next]_req\n============================================================================="
 }
 ```
 
 <details><summary>tool result (success)</summary>
 
 ```
-  << [ op |-> "term",
-                          args |-> <<>>,
-                          term |->
-                              [ op |-> "formerly",
-                                window |-> 1800,
-                                atom |->
-                                    [ op |-> "pred",
-                                      args |-> <<>>,
-                                      pred |->
-                                          [ action |-> "request_approval",
-                                            kind |-> "response",
-                                            binds |->
-                                                << [ kind |-> "ctx",
-                                                     field |-> "charge_id",
-                                                     value |-> [k |-> "s", v |-> ""],
-                                                     side |-> "input",
-                                                     name |-> "charge_id" ],
-                                                   [ kind |-> "lit",
-                                                     field |-> "approved",
-                                                     value |->
-                                                         [k |-> "b", v |-> TRUE],
-                                                     side |-> "output",
-                                                     name |-> "" ] >> ],
-                                      var |-> "",
-                                      field |-> "",
+<<
+  Request("issue_refund", [amount |-> Num(2500), charge_id |-> Num(1), systemNowTime |-> Num(32400000), account |-> Num(1)]),
+  D!Decide(<<Request("issue_refund", [amount |-> Num(2500), charge_id |-> Num(1), systemNowTime |-> Num(32400000), account |-> Num(1)])>>, Policies, 1, AllValues)
+>>
+
+      <<[action |-> "issue_refund", kind |-> "request", input |-> [amount |-> [k |-> "n", v |-> 2500], charge_id |-> [k |-> "n", v |-> 1], systemNowTime |-> [k |-> "n", v |-> 32400000], account |-> [k |-> "n", v |-> 1]], output |-> << >>, time |-> 1, principal |-> [k |-> "s", v |-> "caller"], resource |-> [k |-> "s", v |-> "caller"], session |-> [k |-> "s", v |-> "caller"], pins |-> [principal |-> [k |-> "s", v |-> "caller"]]], FALSE>>
 ```
 
 </details>
@@ -1030,45 +1065,51 @@ Len(Policies[3].cond.args)
 
 ```json
 {
-  "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
-  "expression": "Policies[6].cond",
-  "module": "---------------------------- MODULE BusinessHours ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\nVARIABLE x\nInit == x = 1\nNext == UNCHANGED x\nSpec == Init /\\ [][Next]_x\nDummy == TRUE\n============================================================================="
+  "config": "SPECIFICATION Spec\n",
+  "expression": "Policies[7]",
+  "module": "---------------------------- MODULE BusinessHours ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE req\nInit == req = 1\nNext == UNCHANGED req\nSpec == Init /\\ [][Next]_req\n============================================================================="
 }
 ```
 
 <details><summary>tool result (success)</summary>
 
 ```
->> ],
-        cmp |-> ">",
-        value |-> 3,
-        agg |->
-            [ cond |->
-                  [ op |-> "term",
-                    args |-> <<>>,
-                    term |->
-                        [ op |-> "formerly",
-                          window |-> 3600,
-                          atom |->
-                              [ op |-> "and",
-                                args |->
-                                    << [ op |-> "pred",
-                                         args |-> <<>>,
-                                         pred |->
-                                             [ action |-> "issue_refund",
-                                               kind |-> "request",
-                                               binds |->
-                                                   << [ kind |-> "ctx",
-                                                        field |-> "account",
-                                                        value |->
-                                                            [k |-> "s", v |-> ""],
-                                                        side |-> "input",
-                                                        name |-> "account" ] >> ],
-                                         var |-> "",
-                                         field |-> "",
-                                         cmp |-> "",
-                                         value |-> [k |-> "s", v |-> ""],
-                                         other |-> "",
+Policies[7]
+
+      [ effect |-> "forbid",
+        actions |-> {"issue_refund"},
+        cond |->
+            [ op |-> "and",
+              args |->
+                  << [ op |-> "term",
+                       args |-> <<>>,
+                       term |->
+                           [ op |-> "at",
+                             window |-> 0,
+                             atom |->
+                                 [ op |-> "cmp",
+                                   args |-> <<>>,
+                                   pred |->
+                                       [action |-> "", kind |-> "", binds |-> <<>>],
+                                   var |-> "",
+                                   field |-> "amount",
+                                   cmp |-> ">",
+                                   value |-> [k |-> "n", v |-> 500],
+                                   other |-> "",
+                                   pattern |-> <<>>,
+                                   net |-> <<>>,
+                                   prefix |-> 0 ],
+                             left |->
+                                 [ op |-> "cmp",
+                                   args |-> <<>>,
+                                   pred |->
+                                       [action |-> "", kind |-> "", binds |-> <<>>],
+                                   var |-> "",
+                                   field |-> "amount",
+                                   cmp |-> ">",
+                                   value |-> [k |-> "n",
+
+[TRUNCATED: the first 1500 of 3277 characters, and 103 more line(s) the checker did not print. Evaluate a smaller part -- one element or one field -- to see the rest.]
 ```
 
 </details>
@@ -1077,45 +1118,49 @@ Len(Policies[3].cond.args)
 
 ```json
 {
-  "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
-  "expression": "Policies[5].cond",
-  "module": "---------------------------- MODULE BusinessHours ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\nVARIABLE x\nInit == x = 1\nNext == UNCHANGED x\nSpec == Init /\\ [][Next]_x\nDummy == TRUE\n============================================================================="
+  "config": "SPECIFICATION Spec\n",
+  "expression": "Policies[7].cond.args[2]",
+  "module": "---------------------------- MODULE BusinessHours ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE req\nInit == req = 1\nNext == UNCHANGED req\nSpec == Init /\\ [][Next]_req\n============================================================================="
 }
 ```
 
 <details><summary>tool result (success)</summary>
 
 ```
-],
-        cmp |-> ">",
-        value |-> 50000,
-        agg |->
-            [ cond |->
-                  [ op |-> "term",
-                    args |-> <<>>,
-                    term |->
-                        [ op |-> "formerly",
-                          window |-> 43200,
-                          atom |->
-                              [ op |-> "and",
-                                args |->
-                                    << [ op |-> "pred",
-                                         args |-> <<>>,
-                                         pred |->
-                                             [ action |-> "initiate_transfer",
-                                               kind |-> "request",
-                                               binds |->
-                                                   << [ kind |-> "var",
-                                                        field |-> "amount",
-                                                        value |->
-                                                            [k |-> "s", v |-> ""],
-                                                        side |-> "input",
-                                                        name |-> "a" ] >> ],
-                                         var |-> "",
-                                         field |-> "",
-                                         cmp |-> "",
-                                         value |-> [k |-> "s", v |-> ""],
-                                         other |-> "",
+Policies[7].cond.args[2]
+
+      [ args |->
+            << [ args |-> <<>>,
+                 op |-> "term",
+                 term |->
+                     [ op |-> "formerly",
+                       window |-> 1800,
+                       atom |->
+                           [ args |-> <<>>,
+                             op |-> "pred",
+                             pred |->
+                                 [ action |-> "request_approval",
+                                   kind |-> "response",
+                                   binds |->
+                                       << [ kind |-> "ctx",
+                                            field |-> "charge_id",
+                                            value |-> [k |-> "s", v |-> ""],
+                                            side |-> "input",
+                                            name |-> "charge_id" ],
+                                          [ kind |-> "lit",
+                                            field |-> "approved",
+                                            value |-> [k |-> "b", v |-> TRUE],
+                                            side |-> "output",
+                                            name |-> "" ] >> ],
+                             var |-> "",
+                             field |-> "",
+                             cmp |-> "",
+                             value |-> [k |-> "s", v |-> ""],
+                             other |-> "",
+                             pattern |-> <<>>,
+                 
+
+[TRUNCATED: the first 1500 of 3144 characters, and 28 more line(s) the checker did not print. Evaluate a smaller part -- one element or one field -- to see the rest.]
 ```
 
 </details>
@@ -1124,61 +1169,69 @@ Len(Policies[3].cond.args)
 
 ```json
 {
-  "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
-  "expression": "Policies[4].cond",
-  "module": "---------------------------- MODULE BusinessHours ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\nVARIABLE x\nInit == x = 1\nNext == UNCHANGED x\nSpec == Init /\\ [][Next]_x\nDummy == TRUE\n============================================================================="
+  "config": "SPECIFICATION Spec\n",
+  "expression": "D!Decide(<<Request(\"issue_refund\", [amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000), account |-> Num(1)])>>, Policies, 1, AllValues)",
+  "module": "---------------------------- MODULE BusinessHours ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE req\nInit == req = 1\nNext == UNCHANGED req\nSpec == Init /\\ [][Next]_req\n============================================================================="
 }
 ```
 
 <details><summary>tool result (success)</summary>
 
 ```
->> ],
-                    var |-> "",
-                    field |-> "",
-                    cmp |-> "",
-                    value |-> [k |-> "s", v |-> ""],
-                    other |-> "",
-                    pattern |-> <<>>,
-                    net |-> <<>>,
-                    prefix |-> 0 ],
-              left |->
-                  [ op |-> "pred",
-                    args |-> <<>>,
-                    pred |->
-                        [ action |-> "verify_identity",
-                          kind |-> "response",
-                          binds |->
-                              << [ kind |-> "ctx",
-                                   field |-> "account",
-                                   value |-> [k |-> "s", v |-> ""],
-                                   side |-> "input",
-                                   name |-> "account" ],
-                                 [ kind |-> "lit",
-                                   field |-> "verified",
-                                   value |-> [k |-> "b", v |-> TRUE],
-                                   side |-> "output",
-                                   name |-> "" ] >> ],
-                    var |-> "",
-                    field |-> "",
-                    cmp |-> "",
-                    value |-> [k |-> "s", v |-> ""],
-                    other |-> "",
-                    pattern |-> <<>>,
-                    net |-> <<>>,
-                    prefix |-> 0 ],
-              leftNeg |-> FALSE,
-              keys |-> <<"principal">> ] ]
+D!Decide(<<Request("issue_refund", [amount |-> Num(500), charge_id |-> Num(1), systemNowTime |-> Num(32400000), account |-> Num(1)])>>, Policies, 1, AllValues)
+
+      TRUE
 ```
 
 </details>
 
-**Tool call 15** — `check_module`
+**Tool call 15** — `evaluate`
 
 ```json
 {
-  "config": "SPECIFICATION Spec\nINVARIANT OutsideBusinessHoursRefused\nINVARIANT OverMaxAmountRefused\nINVARIANT CompliantRefundAllowed\n",
-  "module": "---------------------------- MODULE BusinessHours ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nBusinessHoursMin == 32400000\nBusinessHoursMax == 61200000\nMaxAmount == 2500\n\nAccounts == {1, 2}\nAmounts == {499, 500, 2500, 2501}\nChargeIds == {1, 2}\nTimes == {32399999, 32400000, 61200000, 61200001}\n\nRequests == [\n  account: Accounts,\n  amount: Amounts,\n  charge_id: ChargeIds,\n  systemNowTime: Times\n]\n\nRefundAllowed(r) ==\n  D!Decide(\n    <<Request(\"issue_refund\", [\n        account |-> Num(r.account),\n        amount |-> Num(r.amount),\n        charge_id |-> Num(r.charge_id),\n        systemNowTime |-> Num(r.systemNowTime)\n      ])>>,\n    Policies,\n    1,\n    AllValues\n  )\n\nVARIABLE req\n\nInit == req \\in Requests\nNext == UNCHANGED req\nSpec == Init /\\ [][Next]_req\n\nOutsideBusinessHoursRefused ==\n  (req.systemNowTime < BusinessHoursMin \\/ req.systemNowTime > BusinessHoursMax) => ~RefundAllowed(req)\n\nOverMaxAmountRefused ==\n  (req.amount > MaxAmount) => ~RefundAllowed(req)\n\nCompliantRefundAllowed ==\n  (req.amount = 500 /\\ req.systemNowTime = BusinessHoursMin /\\ req.account = 1 /\\ req.charge_id = 1) => RefundAllowed(req)\n\n============================================================================="
+  "config": "SPECIFICATION Spec\n",
+  "expression": "<<\n  D!Decide(<<\n    Ev(\"request_approval\", \"response\", [charge_id |-> Num(1)], [approved |-> Bool(TRUE)], 1),\n    Ev(\"issue_refund\", \"request\", [charge_id |-> Num(1), amount |-> Num(2500), systemNowTime |-> Num(32400000), account |-> Num(1)], NoFields, 2)\n  >>, Policies, 2, AllValues),\n  D!Decide(<<\n    Ev(\"request_approval\", \"response\", [charge_id |-> Num(1)], [approved |-> Bool(TRUE)], 1),\n    Ev(\"issue_refund\", \"request\", [charge_id |-> Num(1), amount |-> Num(2501), systemNowTime |-> Num(32400000), account |-> Num(1)], NoFields, 2)\n  >>, Policies, 2, AllValues),\n  D!Decide(<<\n    Ev(\"request_approval\", \"response\", [charge_id |-> Num(1)], [approved |-> Bool(TRUE)], 1),\n    Ev(\"issue_refund\", \"request\", [charge_id |-> Num(1), amount |-> Num(2500), systemNowTime |-> Num(32399999), account |-> Num(1)], NoFields, 2)\n  >>, Policies, 2, AllValues),\n  D!Decide(<<\n    Ev(\"request_approval\", \"response\", [charge_id |-> Num(1)], [approved |-> Bool(TRUE)], 1),\n    Ev(\"issue_refund\", \"request\", [charge_id |-> Num(1), amount |-> Num(2500), systemNowTime |-> Num(61200000), account |-> Num(1)], NoFields, 2)\n  >>, Policies, 2, AllValues),\n  D!Decide(<<\n    Ev(\"request_approval\", \"response\", [charge_id |-> Num(1)], [approved |-> Bool(TRUE)], 1),\n    Ev(\"issue_refund\", \"request\", [charge_id |-> Num(1), amount |-> Num(2500), systemNowTime |-> Num(61200001), account |-> Num(1)], NoFields, 2)\n  >>, Policies, 2, AllValues)\n>>",
+  "module": "---------------------------- MODULE BusinessHours ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE req\nInit == req = 1\nNext == UNCHANGED req\nSpec == Init /\\ [][Next]_req\n============================================================================="
+}
+```
+
+<details><summary>tool result (success)</summary>
+
+```
+<<
+  D!Decide(<<
+    Ev("request_approval", "response", [charge_id |-> Num(1)], [approved |-> Bool(TRUE)], 1),
+    Ev("issue_refund", "request", [charge_id |-> Num(1), amount |-> Num(2500), systemNowTime |-> Num(32400000), account |-> Num(1)], NoFields, 2)
+  >>, Policies, 2, AllValues),
+  D!Decide(<<
+    Ev("request_approval", "response", [charge_id |-> Num(1)], [approved |-> Bool(TRUE)], 1),
+    Ev("issue_refund", "request", [charge_id |-> Num(1), amount |-> Num(2501), systemNowTime |-> Num(32400000), account |-> Num(1)], NoFields, 2)
+  >>, Policies, 2, AllValues),
+  D!Decide(<<
+    Ev("request_approval", "response", [charge_id |-> Num(1)], [approved |-> Bool(TRUE)], 1),
+    Ev("issue_refund", "request", [charge_id |-> Num(1), amount |-> Num(2500), systemNowTime |-> Num(32399999), account |-> Num(1)], NoFields, 2)
+  >>, Policies, 2, AllValues),
+  D!Decide(<<
+    Ev("request_approval", "response", [charge_id |-> Num(1)], [approved |-> Bool(TRUE)], 1),
+    Ev("issue_refund", "request", [charge_id |-> Num(1), amount |-> Num(2500), systemNowTime |-> Num(61200000), account |-> Num(1)], NoFields, 2)
+  >>, Policies, 2, AllValues),
+  D!Decide(<<
+    Ev("request_approval", "response", [charge_id |-> Num(1)], [approved |-> Bool(TRUE)], 1),
+    Ev("issue_refund", "request", [charge_id |-> Num(1), amount |-> Num(2500), systemNowTime |-> Num(61200001), account |-> Num(1)], NoFields, 2)
+  >>, Policies, 2, AllValues)
+>>
+
+      <<TRUE, FALSE, FALSE, TRUE, FALSE>>
+```
+
+</details>
+
+**Tool call 16** — `check_module`
+
+```json
+{
+  "config": "SPECIFICATION Spec\nINVARIANT OutsideBusinessHoursRefused\nINVARIANT OverAmountLimitRefused\nINVARIANT CompliantRefundAllowed\n",
+  "module": "---------------------------- MODULE BusinessHours ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nApproval(t) == Ev(\"request_approval\", \"response\", [charge_id |-> Num(1)], [approved |-> Bool(TRUE)], t)\nRefund(t, amt, nowTime) == Ev(\"issue_refund\", \"request\", [charge_id |-> Num(1), amount |-> Num(amt), systemNowTime |-> Num(nowTime), account |-> Num(1)], NoFields, t)\n\nSession(amt, nowTime) == << Approval(1), Refund(2, amt, nowTime) >>\nRefundAllowed(amt, nowTime) == D!Decide(Session(amt, nowTime), Policies, 2, AllValues)\n\nBusinessHoursStart == 32400000\nBusinessHoursEnd   == 61200000\nMaxRefundAmount    == 2500\n\nAmounts == {500, MaxRefundAmount, MaxRefundAmount + 1}\nTimes   == {BusinessHoursStart - 1, BusinessHoursStart, 40000000, BusinessHoursEnd, BusinessHoursEnd + 1}\n\nVARIABLES amount, nowTime\n\nInit ==\n    /\\ amount \\in Amounts\n    /\\ nowTime \\in Times\n\nNext == UNCHANGED <<amount, nowTime>>\n\nSpec == Init /\\ [][Next]_<<amount, nowTime>>\n\nOutsideBusinessHoursRefused ==\n    (nowTime < BusinessHoursStart \\/ nowTime > BusinessHoursEnd) => ~RefundAllowed(amount, nowTime)\n\nOverAmountLimitRefused ==\n    (amount > MaxRefundAmount) => ~RefundAllowed(amount, nowTime)\n\nCompliantRefundAllowed ==\n    (amount = MaxRefundAmount /\\ nowTime = BusinessHoursStart) => RefundAllowed(amount, nowTime)\n\n============================================================================="
 }
 ```
 
@@ -1186,60 +1239,6 @@ Len(Policies[3].cond.args)
 
 ```
 Compiles, evaluates, and holds on this policy. Either answer is acceptable -- a property that fails has already shown it discriminates. Do NOT weaken the claim to make it hold.
-```
-
-</details>
-
-**Tool call 16** — `what_it_forbids`
-
-```json
-{
-  "config": "SPECIFICATION Spec\nINVARIANT OutsideBusinessHoursRefused\nINVARIANT OverMaxAmountRefused\nINVARIANT CompliantRefundAllowed\n",
-  "module": "---------------------------- MODULE BusinessHours ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nBusinessHoursMin == 32400000\nBusinessHoursMax == 61200000\nMaxAmount == 2500\n\nAccounts == {1, 2}\nAmounts == {499, 500, 2500, 2501}\nChargeIds == {1, 2}\nTimes == {32399999, 32400000, 61200000, 61200001}\n\nRequests == [\n  account: Accounts,\n  amount: Amounts,\n  charge_id: ChargeIds,\n  systemNowTime: Times\n]\n\nRefundAllowed(r) ==\n  D!Decide(\n    <<Request(\"issue_refund\", [\n        account |-> Num(r.account),\n        amount |-> Num(r.amount),\n        charge_id |-> Num(r.charge_id),\n        systemNowTime |-> Num(r.systemNowTime)\n      ])>>,\n    Policies,\n    1,\n    AllValues\n  )\n\nVARIABLE req\n\nInit == req \\in Requests\nNext == UNCHANGED req\nSpec == Init /\\ [][Next]_req\n\nOutsideBusinessHoursRefused ==\n  (req.systemNowTime < BusinessHoursMin \\/ req.systemNowTime > BusinessHoursMax) => ~RefundAllowed(req)\n\nOverMaxAmountRefused ==\n  (req.amount > MaxAmount) => ~RefundAllowed(req)\n\nCompliantRefundAllowed ==\n  (req.amount = 500 /\\ req.systemNowTime = BusinessHoursMin /\\ req.account = 1 /\\ req.charge_id = 1) => RefundAllowed(req)\n\n============================================================================="
-}
-```
-
-<details><summary>tool result (success)</summary>
-
-```
-BusinessHours
-
-  3 claims will be checked, over an unknown number of states -- the set `Requests` could not be enumerated.
-
-  OutsideBusinessHoursRefused
-      says:     whenever req.systemNowTime is less than BusinessHoursMin or
-                req.systemNowTime is greater than BusinessHoursMax,
-                then the policy REFUSES it (RefundAllowed(req))
-      forbids:  req.systemNowTime is less than BusinessHoursMin or req.systemNowTime is
-                greater than BusinessHoursMax,
-                and yet the policy GRANTS it (RefundAllowed(req))
-      applies:  NOT DETERMINED -- this module's Init is outside the shape the reader can
-                enumerate, so the states were never counted. This is not a claim that it
-                applies to none of them.
-
-  OverMaxAmountRefused
-      says:     whenever req.amount is greater than MaxAmount,
-                then the policy REFUSES it (RefundAllowed(req))
-      forbids:  req.amount is greater than MaxAmount,
-                and yet the policy GRANTS it (RefundAllowed(req))
-      applies:  NOT DETERMINED -- this module's Init is outside the shape the reader can
-                enumerate, so the states were never counted. This is not a claim that it
-                applies to none of them.
-
-  CompliantRefundAllowed
-      says:     whenever req.amount is 500 and req.systemNowTime is BusinessHoursMin and
-                req.account is 1 and req.charge_id is 1,
-                then the policy GRANTS it (RefundAllowed(req))
-      forbids:  req.amount is 500 and req.systemNowTime is BusinessHoursMin and
-                req.account is 1 and req.charge_id is 1,
-                and yet the policy REFUSES it (RefundAllowed(req))
-      applies:  NOT DETERMINED -- this module's Init is outside the shape the reader can
-                enumerate, so the states were never counted. This is not a claim that it
-                applies to none of them.
-
-  Read the `forbids` lines before the run, not after it. Each one is the only
-  thing its claim can catch; if none of them describes something you would
-  object to, the check will pass without having tested what you meant.
 ```
 
 </details>
@@ -1248,8 +1247,8 @@ BusinessHours
 
 ```json
 {
-  "config": "SPECIFICATION Spec\nINVARIANT OutsideBusinessHoursRefused\nINVARIANT OverMaxAmountRefused\nINVARIANT CompliantRefundAllowed\n",
-  "module": "---------------------------- MODULE BusinessHours ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nBusinessHoursMin == 32400000\nBusinessHoursMax == 61200000\nMaxAmount == 2500\n\nAccounts == {1, 2}\nAmounts == {499, 500, 2500, 2501}\nChargeIds == {1, 2}\nTimes == {32399999, 32400000, 61200000, 61200001}\n\nRequests == {\n  [account |-> a, amount |-> am, charge_id |-> c, systemNowTime |-> t] :\n    a \\in Accounts, am \\in Amounts, c \\in ChargeIds, t \\in Times\n}\n\nRefundAllowed(r) ==\n  D!Decide(\n    <<Request(\"issue_refund\", [\n        account |-> Num(r.account),\n        amount |-> Num(r.amount),\n        charge_id |-> Num(r.charge_id),\n        systemNowTime |-> Num(r.systemNowTime)\n      ])>>,\n    Policies,\n    1,\n    AllValues\n  )\n\nVARIABLE req\n\nInit == req \\in Requests\nNext == UNCHANGED req\nSpec == Init /\\ [][Next]_req\n\nOutsideBusinessHoursRefused ==\n  (req.systemNowTime < BusinessHoursMin \\/ req.systemNowTime > BusinessHoursMax) => ~RefundAllowed(req)\n\nOverMaxAmountRefused ==\n  (req.amount > MaxAmount) => ~RefundAllowed(req)\n\nCompliantRefundAllowed ==\n  (req.amount = 500 /\\ req.systemNowTime = BusinessHoursMin /\\ req.account = 1 /\\ req.charge_id = 1) => RefundAllowed(req)\n\n============================================================================="
+  "config": "SPECIFICATION Spec\nINVARIANT OutsideBusinessHoursRefused\nINVARIANT OverAmountLimitRefused\nINVARIANT CompliantRefundAllowed\n",
+  "module": "---------------------------- MODULE BusinessHours ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nApproval(t) == Ev(\"request_approval\", \"response\", [charge_id |-> Num(1)], [approved |-> Bool(TRUE)], t)\nRefund(t, amt, nowTime) == Ev(\"issue_refund\", \"request\", [charge_id |-> Num(1), amount |-> Num(amt), systemNowTime |-> Num(nowTime), account |-> Num(1)], NoFields, t)\n\nSession(amt, nowTime) == << Approval(1), Refund(2, amt, nowTime) >>\nRefundAllowed(amt, nowTime) == D!Decide(Session(amt, nowTime), Policies, 2, AllValues)\n\nBusinessHoursStart == 32400000\nBusinessHoursEnd   == 61200000\nMaxRefundAmount    == 2500\n\nAmounts == {500, MaxRefundAmount, MaxRefundAmount + 1}\nTimes   == {BusinessHoursStart - 1, BusinessHoursStart, 40000000, BusinessHoursEnd, BusinessHoursEnd + 1}\n\nVARIABLES amount, nowTime\n\nInit ==\n    /\\ amount \\in Amounts\n    /\\ nowTime \\in Times\n\nNext == UNCHANGED <<amount, nowTime>>\n\nSpec == Init /\\ [][Next]_<<amount, nowTime>>\n\nOutsideBusinessHoursRefused ==\n    (nowTime < BusinessHoursStart \\/ nowTime > BusinessHoursEnd) => ~RefundAllowed(amount, nowTime)\n\nOverAmountLimitRefused ==\n    (amount > MaxRefundAmount) => ~RefundAllowed(amount, nowTime)\n\nCompliantRefundAllowed ==\n    (amount = MaxRefundAmount /\\ nowTime = BusinessHoursStart) => RefundAllowed(amount, nowTime)\n\n============================================================================="
 }
 ```
 
@@ -1258,135 +1257,50 @@ BusinessHours
 ```
 BusinessHours
 
-  3 claims will be checked, over an unknown number of states -- the set `Requests` could not be enumerated.
+  Every value each variable takes -- nothing else is checked:
+      amount   500, 2500, 2501
+      nowTime  32399999, 32400000, 40000000, 61200000, 61200001
+
+  3 claims will be checked, over 15 states:
 
   OutsideBusinessHoursRefused
-      says:     whenever req.systemNowTime is less than BusinessHoursMin or
-                req.systemNowTime is greater than BusinessHoursMax,
-                then the policy REFUSES it (RefundAllowed(req))
-      forbids:  req.systemNowTime is less than BusinessHoursMin or req.systemNowTime is
-                greater than BusinessHoursMax,
-                and yet the policy GRANTS it (RefundAllowed(req))
-      applies:  NOT DETERMINED -- this module's Init is outside the shape the reader can
-                enumerate, so the states were never counted. This is not a claim that it
-                applies to none of them.
+      says:     whenever nowTime is less than BusinessHoursStart or nowTime is greater
+                than BusinessHoursEnd,
+                then the policy REFUSES it (RefundAllowed(amount, nowTime))
+      forbids:  nowTime is less than BusinessHoursStart or nowTime is greater than
+                BusinessHoursEnd,
+                and yet the policy GRANTS it (RefundAllowed(amount, nowTime))
+      applies:  to 6 of the 15 states:
+                  amount = 500, nowTime = 32399999
+                  amount = 500, nowTime = 61200001
+                  amount = 2500, nowTime = 32399999
+                  amount = 2500, nowTime = 61200001
+                  amount = 2501, nowTime = 32399999
+                  amount = 2501, nowTime = 61200001
 
-  OverMaxAmountRefused
-      says:     whenever req.amount is greater than MaxAmount,
-                then the policy REFUSES it (RefundAllowed(req))
-      forbids:  req.amount is greater than MaxAmount,
-                and yet the policy GRANTS it (RefundAllowed(req))
-      applies:  NOT DETERMINED -- this module's Init is outside the shape the reader can
-                enumerate, so the states were never counted. This is not a claim that it
-                applies to none of them.
+  OverAmountLimitRefused
+      says:     whenever amount is greater than MaxRefundAmount,
+                then the policy REFUSES it (RefundAllowed(amount, nowTime))
+      forbids:  amount is greater than MaxRefundAmount,
+                and yet the policy GRANTS it (RefundAllowed(amount, nowTime))
+      applies:  to 5 of the 15 states:
+                  amount = 2501, nowTime = 32399999
+                  amount = 2501, nowTime = 32400000
+                  amount = 2501, nowTime = 40000000
+                  amount = 2501, nowTime = 61200000
+                  amount = 2501, nowTime = 61200001
 
   CompliantRefundAllowed
-      says:     whenever req.amount is 500 and req.systemNowTime is BusinessHoursMin and
-                req.account is 1 and req.charge_id is 1,
-                then the policy GRANTS it (RefundAllowed(req))
-      forbids:  req.amount is 500 and req.systemNowTime is BusinessHoursMin and
-                req.account is 1 and req.charge_id is 1,
-                and yet the policy REFUSES it (RefundAllowed(req))
-      applies:  NOT DETERMINED -- this module's Init is outside the shape the reader can
-                enumerate, so the states were never counted. This is not a claim that it
-                applies to none of them.
+      says:     whenever amount is MaxRefundAmount and nowTime is BusinessHoursStart,
+                then the policy GRANTS it (RefundAllowed(amount, nowTime))
+      forbids:  amount is MaxRefundAmount and nowTime is BusinessHoursStart,
+                and yet the policy REFUSES it (RefundAllowed(amount, nowTime))
+      applies:  to 1 of the 15 states:
+                  amount = 2500, nowTime = 32400000
 
   Read the `forbids` lines before the run, not after it. Each one is the only
   thing its claim can catch; if none of them describes something you would
   object to, the check will pass without having tested what you meant.
-```
-
-</details>
-
-**Tool call 18** — `what_it_forbids`
-
-```json
-{
-  "config": "SPECIFICATION Spec\nINVARIANT OutsideBusinessHoursRefused\nINVARIANT OverMaxAmountRefused\nINVARIANT CompliantRefundAllowed\n",
-  "module": "---------------------------- MODULE BusinessHours ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nBusinessHoursMin == 32400000\nBusinessHoursMax == 61200000\nMaxAmount == 2500\n\naccountValues == {1, 2}\namountValues == {499, 500, 2500, 2501}\ncharge_idValues == {1, 2}\nsystemNowTimeValues == {32399999, 32400000, 61200000, 61200001}\n\nRequests == {[account |-> account, amount |-> amount, charge_id |-> charge_id, systemNowTime |-> systemNowTime] :\n  account \\in accountValues, amount \\in amountValues, charge_id \\in charge_idValues, systemNowTime \\in systemNowTimeValues}\n\nRefundAllowed(r) ==\n  D!Decide(\n    <<Request(\"issue_refund\", [\n        account |-> Num(r.account),\n        amount |-> Num(r.amount),\n        charge_id |-> Num(r.charge_id),\n        systemNowTime |-> Num(r.systemNowTime)\n      ])>>,\n    Policies,\n    1,\n    AllValues\n  )\n\nVARIABLE req\n\nInit == req \\in Requests\nNext == UNCHANGED req\nSpec == Init /\\ [][Next]_req\n\nOutsideBusinessHoursRefused ==\n  (req.systemNowTime < BusinessHoursMin \\/ req.systemNowTime > BusinessHoursMax) => ~RefundAllowed(req)\n\nOverMaxAmountRefused ==\n  (req.amount > MaxAmount) => ~RefundAllowed(req)\n\nCompliantRefundAllowed ==\n  (req.amount = 500 /\\ req.systemNowTime = BusinessHoursMin /\\ req.account = 1 /\\ req.charge_id = 1) => RefundAllowed(req)\n\n============================================================================="
-}
-```
-
-<details><summary>tool result (success)</summary>
-
-```
-BusinessHours
-
-  3 claims will be checked, over 64 states:
-
-  OutsideBusinessHoursRefused
-      says:     whenever req.systemNowTime is less than BusinessHoursMin or
-                req.systemNowTime is greater than BusinessHoursMax,
-                then the policy REFUSES it (RefundAllowed(req))
-      forbids:  req.systemNowTime is less than BusinessHoursMin or req.systemNowTime is
-                greater than BusinessHoursMax,
-                and yet the policy GRANTS it (RefundAllowed(req))
-      applies:  to 32 of the 64 states:
-                  req = [account |-> 1, amount |-> 2500, charge_id |-> 1, systemNowTime
-                    |-> 32399999]
-                  req = [account |-> 1, amount |-> 2500, charge_id |-> 1, systemNowTime
-                    |-> 61200001]
-                  req = [account |-> 1, amount |-> 2500, charge_id |-> 2, systemNowTime
-                    |-> 32399999]
-                  req = [account |-> 1, amount |-> 2500, charge_id |-> 2, systemNowTime
-                    |-> 61200001]
-                  req = [account |-> 1, amount |-> 2501, charge_id |-> 1, systemNowTime
-                    |-> 32399999]
-                  req = [account |-> 1, amount |-> 2501, charge_id |-> 1, systemNowTime
-                    |-> 61200001]
-                  and 26 more
-
-  OverMaxAmountRefused
-      says:     whenever req.amount is greater than MaxAmount,
-                then the policy REFUSES it (RefundAllowed(req))
-      forbids:  req.amount is greater than MaxAmount,
-                and yet the policy GRANTS it (RefundAllowed(req))
-      applies:  to 16 of the 64 states:
-                  req = [account |-> 1, amount |-> 2501, charge_id |-> 1, systemNowTime
-                    |-> 32399999]
-                  req = [account |-> 1, amount |-> 2501, charge_id |-> 1, systemNowTime
-                    |-> 32400000]
-                  req = [account |-> 1, amount |-> 2501, charge_id |-> 1, systemNowTime
-                    |-> 61200000]
-                  req = [account |-> 1, amount |-> 2501, charge_id |-> 1, systemNowTime
-                    |-> 61200001]
-                  req = [account |-> 1, amount |-> 2501, charge_id |-> 2, systemNowTime
-                    |-> 32399999]
-                  req = [account |-> 1, amount |-> 2501, charge_id |-> 2, systemNowTime
-                    |-> 32400000]
-                  and 10 more
-
-  CompliantRefundAllowed
-      says:     whenever req.amount is 500 and req.systemNowTime is BusinessHoursMin and
-                req.account is 1 and req.charge_id is 1,
-                then the policy GRANTS it (RefundAllowed(req))
-      forbids:  req.amount is 500 and req.systemNowTime is BusinessHoursMin and
-                req.account is 1 and req.charge_id is 1,
-                and yet the policy REFUSES it (RefundAllowed(req))
-      applies:  to 1 of the 64 states:
-                  req = [account |-> 1, amount |-> 500, charge_id |-> 1, systemNowTime
-                    |-> 32400000]
-
-  Read the `forbids` lines before the run, not after it. Each one is the only
-  thing its claim can catch; if none of them describes something you would
-  object to, the check will pass without having tested what you meant.
-```
-
-</details>
-
-**Tool call 19** — `check_module`
-
-```json
-{
-  "config": "SPECIFICATION Spec\nINVARIANT OutsideBusinessHoursRefused\nINVARIANT OverMaxAmountRefused\nINVARIANT CompliantRefundAllowed\n",
-  "module": "---------------------------- MODULE BusinessHours ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nBusinessHoursMin == 32400000\nBusinessHoursMax == 61200000\nMaxAmount == 2500\n\naccountValues == {1, 2}\namountValues == {499, 500, 2500, 2501}\ncharge_idValues == {1, 2}\nsystemNowTimeValues == {32399999, 32400000, 61200000, 61200001}\n\nRequests == {[account |-> account, amount |-> amount, charge_id |-> charge_id, systemNowTime |-> systemNowTime] :\n  account \\in accountValues, amount \\in amountValues, charge_id \\in charge_idValues, systemNowTime \\in systemNowTimeValues}\n\nRefundAllowed(r) ==\n  D!Decide(\n    <<Request(\"issue_refund\", [\n        account |-> Num(r.account),\n        amount |-> Num(r.amount),\n        charge_id |-> Num(r.charge_id),\n        systemNowTime |-> Num(r.systemNowTime)\n      ])>>,\n    Policies,\n    1,\n    AllValues\n  )\n\nVARIABLE req\n\nInit == req \\in Requests\nNext == UNCHANGED req\nSpec == Init /\\ [][Next]_req\n\nOutsideBusinessHoursRefused ==\n  (req.systemNowTime < BusinessHoursMin \\/ req.systemNowTime > BusinessHoursMax) => ~RefundAllowed(req)\n\nOverMaxAmountRefused ==\n  (req.amount > MaxAmount) => ~RefundAllowed(req)\n\nCompliantRefundAllowed ==\n  (req.amount = 500 /\\ req.systemNowTime = BusinessHoursMin /\\ req.account = 1 /\\ req.charge_id = 1) => RefundAllowed(req)\n\n============================================================================="
-}
-```
-
-<details><summary>tool result (success)</summary>
-
-```
-Compiles, evaluates, and holds on this policy. Either answer is acceptable -- a property that fails has already shown it discriminates. Do NOT weaken the claim to make it hold.
 ```
 
 </details>
@@ -1397,51 +1311,43 @@ EXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest
 
 D == INSTANCE DogwoodSemantics WITH Cases <- << >>
 
-BusinessHoursMin == 32400000
-BusinessHoursMax == 61200000
-MaxAmount == 2500
+Approval(t) == Ev("request_approval", "response", [charge_id |-> Num(1)], [approved |-> Bool(TRUE)], t)
+Refund(t, amt, nowTime) == Ev("issue_refund", "request", [charge_id |-> Num(1), amount |-> Num(amt), systemNowTime |-> Num(nowTime), account |-> Num(1)], NoFields, t)
 
-accountValues == {1, 2}
-amountValues == {499, 500, 2500, 2501}
-charge_idValues == {1, 2}
-systemNowTimeValues == {32399999, 32400000, 61200000, 61200001}
+Session(amt, nowTime) == << Approval(1), Refund(2, amt, nowTime) >>
+RefundAllowed(amt, nowTime) == D!Decide(Session(amt, nowTime), Policies, 2, AllValues)
 
-Requests == {[account |-> account, amount |-> amount, charge_id |-> charge_id, systemNowTime |-> systemNowTime] :
-  account \in accountValues, amount \in amountValues, charge_id \in charge_idValues, systemNowTime \in systemNowTimeValues}
+BusinessHoursStart == 32400000
+BusinessHoursEnd   == 61200000
+MaxRefundAmount    == 2500
 
-RefundAllowed(r) ==
-  D!Decide(
-    <<Request("issue_refund", [
-        account |-> Num(r.account),
-        amount |-> Num(r.amount),
-        charge_id |-> Num(r.charge_id),
-        systemNowTime |-> Num(r.systemNowTime)
-      ])>>,
-    Policies,
-    1,
-    AllValues
-  )
+Amounts == {500, MaxRefundAmount, MaxRefundAmount + 1}
+Times   == {BusinessHoursStart - 1, BusinessHoursStart, 40000000, BusinessHoursEnd, BusinessHoursEnd + 1}
 
-VARIABLE req
+VARIABLES amount, nowTime
 
-Init == req \in Requests
-Next == UNCHANGED req
-Spec == Init /\ [][Next]_req
+Init ==
+    /\ amount \in Amounts
+    /\ nowTime \in Times
+
+Next == UNCHANGED <<amount, nowTime>>
+
+Spec == Init /\ [][Next]_<<amount, nowTime>>
 
 OutsideBusinessHoursRefused ==
-  (req.systemNowTime < BusinessHoursMin \/ req.systemNowTime > BusinessHoursMax) => ~RefundAllowed(req)
+    (nowTime < BusinessHoursStart \/ nowTime > BusinessHoursEnd) => ~RefundAllowed(amount, nowTime)
 
-OverMaxAmountRefused ==
-  (req.amount > MaxAmount) => ~RefundAllowed(req)
+OverAmountLimitRefused ==
+    (amount > MaxRefundAmount) => ~RefundAllowed(amount, nowTime)
 
 CompliantRefundAllowed ==
-  (req.amount = 500 /\ req.systemNowTime = BusinessHoursMin /\ req.account = 1 /\ req.charge_id = 1) => RefundAllowed(req)
+    (amount = MaxRefundAmount /\ nowTime = BusinessHoursStart) => RefundAllowed(amount, nowTime)
 
 =============================================================================
 ===CONFIG===
 SPECIFICATION Spec
 INVARIANT OutsideBusinessHoursRefused
-INVARIANT OverMaxAmountRefused
+INVARIANT OverAmountLimitRefused
 INVARIANT CompliantRefundAllowed
 
 ## the review
@@ -1456,77 +1362,55 @@ INVARIANT CompliantRefundAllowed
 > 
 > BusinessHours
 > 
->   3 claims will be checked, over 64 states:
->       req = [account |-> 1, amount |-> 2500, charge_id |-> 1, systemNowTime |->
->         32399999]
->       req = [account |-> 1, amount |-> 2500, charge_id |-> 1, systemNowTime |->
->         32400000]
->       req = [account |-> 1, amount |-> 2500, charge_id |-> 1, systemNowTime |->
->         61200000]
->       req = [account |-> 1, amount |-> 2500, charge_id |-> 1, systemNowTime |->
->         61200001]
->       req = [account |-> 1, amount |-> 2500, charge_id |-> 2, systemNowTime |->
->         32399999]
->       req = [account |-> 1, amount |-> 2500, charge_id |-> 2, systemNowTime |->
->         32400000]
->       req = [account |-> 1, amount |-> 2500, charge_id |-> 2, systemNowTime |->
->         61200000]
->       req = [account |-> 1, amount |-> 2500, charge_id |-> 2, systemNowTime |->
->         61200001]
->       and 56 more
+>   Every value each variable takes -- nothing else is checked:
+>       amount   500, 2500, 2501
+>       nowTime  32399999, 32400000, 40000000, 61200000, 61200001
+> 
+>   3 claims will be checked, over 15 states:
+>       amount = 500, nowTime = 32399999
+>       amount = 500, nowTime = 32400000
+>       amount = 500, nowTime = 40000000
+>       amount = 500, nowTime = 61200000
+>       amount = 500, nowTime = 61200001
+>       amount = 2500, nowTime = 32399999
+>       amount = 2500, nowTime = 32400000
+>       amount = 2500, nowTime = 40000000
+>       and 7 more
 > 
 >   OutsideBusinessHoursRefused
->       says:     whenever req.systemNowTime is less than BusinessHoursMin or
->                 req.systemNowTime is greater than BusinessHoursMax,
->                 then the policy REFUSES it (RefundAllowed(req))
->       forbids:  req.systemNowTime is less than BusinessHoursMin or req.systemNowTime is
->                 greater than BusinessHoursMax,
->                 and yet the policy GRANTS it (RefundAllowed(req))
->       applies:  to 32 of the 64 states:
->                   req = [account |-> 1, amount |-> 2500, charge_id |-> 1, systemNowTime
->                     |-> 32399999]
->                   req = [account |-> 1, amount |-> 2500, charge_id |-> 1, systemNowTime
->                     |-> 61200001]
->                   req = [account |-> 1, amount |-> 2500, charge_id |-> 2, systemNowTime
->                     |-> 32399999]
->                   req = [account |-> 1, amount |-> 2500, charge_id |-> 2, systemNowTime
->                     |-> 61200001]
->                   req = [account |-> 1, amount |-> 2501, charge_id |-> 1, systemNowTime
->                     |-> 32399999]
->                   req = [account |-> 1, amount |-> 2501, charge_id |-> 1, systemNowTime
->                     |-> 61200001]
->                   and 26 more
+>       says:     whenever nowTime is less than BusinessHoursStart or nowTime is greater
+>                 than BusinessHoursEnd,
+>                 then the policy REFUSES it (RefundAllowed(amount, nowTime))
+>       forbids:  nowTime is less than BusinessHoursStart or nowTime is greater than
+>                 BusinessHoursEnd,
+>                 and yet the policy GRANTS it (RefundAllowed(amount, nowTime))
+>       applies:  to 6 of the 15 states:
+>                   amount = 500, nowTime = 32399999
+>                   amount = 500, nowTime = 61200001
+>                   amount = 2500, nowTime = 32399999
+>                   amount = 2500, nowTime = 61200001
+>                   amount = 2501, nowTime = 32399999
+>                   amount = 2501, nowTime = 61200001
 > 
->   OverMaxAmountRefused
->       says:     whenever req.amount is greater than MaxAmount,
->                 then the policy REFUSES it (RefundAllowed(req))
->       forbids:  req.amount is greater than MaxAmount,
->                 and yet the policy GRANTS it (RefundAllowed(req))
->       applies:  to 16 of the 64 states:
->                   req = [account |-> 1, amount |-> 2501, charge_id |-> 1, systemNowTime
->                     |-> 32399999]
->                   req = [account |-> 1, amount |-> 2501, charge_id |-> 1, systemNowTime
->                     |-> 32400000]
->                   req = [account |-> 1, amount |-> 2501, charge_id |-> 1, systemNowTime
->                     |-> 61200000]
->                   req = [account |-> 1, amount |-> 2501, charge_id |-> 1, systemNowTime
->                     |-> 61200001]
->                   req = [account |-> 1, amount |-> 2501, charge_id |-> 2, systemNowTime
->                     |-> 32399999]
->                   req = [account |-> 1, amount |-> 2501, charge_id |-> 2, systemNowTime
->                     |-> 32400000]
->                   and 10 more
+>   OverAmountLimitRefused
+>       says:     whenever amount is greater than MaxRefundAmount,
+>                 then the policy REFUSES it (RefundAllowed(amount, nowTime))
+>       forbids:  amount is greater than MaxRefundAmount,
+>                 and yet the policy GRANTS it (RefundAllowed(amount, nowTime))
+>       applies:  to 5 of the 15 states:
+>                   amount = 2501, nowTime = 32399999
+>                   amount = 2501, nowTime = 32400000
+>                   amount = 2501, nowTime = 40000000
+>                   amount = 2501, nowTime = 61200000
+>                   amount = 2501, nowTime = 61200001
 > 
 >   CompliantRefundAllowed
->       says:     whenever req.amount is 500 and req.systemNowTime is BusinessHoursMin and
->                 req.account is 1 and req.charge_id is 1,
->                 then the policy GRANTS it (RefundAllowed(req))
->       forbids:  req.amount is 500 and req.systemNowTime is BusinessHoursMin and
->                 req.account is 1 and req.charge_id is 1,
->                 and yet the policy REFUSES it (RefundAllowed(req))
->       applies:  to 1 of the 64 states:
->                   req = [account |-> 1, amount |-> 500, charge_id |-> 1, systemNowTime
->                     |-> 32400000]
+>       says:     whenever amount is MaxRefundAmount and nowTime is BusinessHoursStart,
+>                 then the policy GRANTS it (RefundAllowed(amount, nowTime))
+>       forbids:  amount is MaxRefundAmount and nowTime is BusinessHoursStart,
+>                 and yet the policy REFUSES it (RefundAllowed(amount, nowTime))
+>       applies:  to 1 of the 15 states:
+>                   amount = 2500, nowTime = 32400000
 > 
 >   Read the `forbids` lines before the run, not after it. Each one is the only
 >   thing its claim can catch; if none of them describes something you would
@@ -1535,12 +1419,12 @@ INVARIANT CompliantRefundAllowed
 | | |
 |---|---|
 | model | gemini-3.7-flash |
-| tokens | 2,277 |
-| seconds | 5.6 |
+| tokens | 2,394 |
+| seconds | 9.6 |
 
 VERDICT: MATCH
 
-The formal claims correctly capture the restriction that refunds are refused outside of the 9:00 AM–5:00 PM UTC window (32,400,000 ms to 61,200,000 ms) and refused for amounts exceeding $2,500. The boundary values and refusal conditions directly align with the requirement.
+The reading correctly models the requirement by refusing refunds outside the specified 9:00 AM to 5:00 PM UTC window (32,400,000 to 61,200,000 ms) and for amounts exceeding $2,500. All threshold boundary values and the immediate values just past those thresholds (32399999, 61200001, and 2501) are properly included and examined.
 
 ## the report
 
@@ -1555,77 +1439,55 @@ The formal claims correctly capture the restriction that refunds are refused out
 > 
 > BusinessHours
 > 
->   3 claims will be checked, over 64 states:
->   req = [account |-> 1, amount |-> 2500, charge_id |-> 1, systemNowTime |->
->     32399999]
->   req = [account |-> 1, amount |-> 2500, charge_id |-> 1, systemNowTime |->
->     32400000]
->   req = [account |-> 1, amount |-> 2500, charge_id |-> 1, systemNowTime |->
->     61200000]
->   req = [account |-> 1, amount |-> 2500, charge_id |-> 1, systemNowTime |->
->     61200001]
->   req = [account |-> 1, amount |-> 2500, charge_id |-> 2, systemNowTime |->
->     32399999]
->   req = [account |-> 1, amount |-> 2500, charge_id |-> 2, systemNowTime |->
->     32400000]
->   req = [account |-> 1, amount |-> 2500, charge_id |-> 2, systemNowTime |->
->     61200000]
->   req = [account |-> 1, amount |-> 2500, charge_id |-> 2, systemNowTime |->
->     61200001]
->   and 56 more
+>   Every value each variable takes -- nothing else is checked:
+>   amount   500, 2500, 2501
+>   nowTime  32399999, 32400000, 40000000, 61200000, 61200001
+> 
+>   3 claims will be checked, over 15 states:
+>   amount = 500, nowTime = 32399999
+>   amount = 500, nowTime = 32400000
+>   amount = 500, nowTime = 40000000
+>   amount = 500, nowTime = 61200000
+>   amount = 500, nowTime = 61200001
+>   amount = 2500, nowTime = 32399999
+>   amount = 2500, nowTime = 32400000
+>   amount = 2500, nowTime = 40000000
+>   and 7 more
 > 
 >   OutsideBusinessHoursRefused
->   says:     whenever req.systemNowTime is less than BusinessHoursMin or
->             req.systemNowTime is greater than BusinessHoursMax,
->             then the policy REFUSES it (RefundAllowed(req))
->   forbids:  req.systemNowTime is less than BusinessHoursMin or req.systemNowTime is
->             greater than BusinessHoursMax,
->             and yet the policy GRANTS it (RefundAllowed(req))
->   applies:  to 32 of the 64 states:
->               req = [account |-> 1, amount |-> 2500, charge_id |-> 1, systemNowTime
->                 |-> 32399999]
->               req = [account |-> 1, amount |-> 2500, charge_id |-> 1, systemNowTime
->                 |-> 61200001]
->               req = [account |-> 1, amount |-> 2500, charge_id |-> 2, systemNowTime
->                 |-> 32399999]
->               req = [account |-> 1, amount |-> 2500, charge_id |-> 2, systemNowTime
->                 |-> 61200001]
->               req = [account |-> 1, amount |-> 2501, charge_id |-> 1, systemNowTime
->                 |-> 32399999]
->               req = [account |-> 1, amount |-> 2501, charge_id |-> 1, systemNowTime
->                 |-> 61200001]
->               and 26 more
+>   says:     whenever nowTime is less than BusinessHoursStart or nowTime is greater
+>             than BusinessHoursEnd,
+>             then the policy REFUSES it (RefundAllowed(amount, nowTime))
+>   forbids:  nowTime is less than BusinessHoursStart or nowTime is greater than
+>             BusinessHoursEnd,
+>             and yet the policy GRANTS it (RefundAllowed(amount, nowTime))
+>   applies:  to 6 of the 15 states:
+>               amount = 500, nowTime = 32399999
+>               amount = 500, nowTime = 61200001
+>               amount = 2500, nowTime = 32399999
+>               amount = 2500, nowTime = 61200001
+>               amount = 2501, nowTime = 32399999
+>               amount = 2501, nowTime = 61200001
 > 
->   OverMaxAmountRefused
->   says:     whenever req.amount is greater than MaxAmount,
->             then the policy REFUSES it (RefundAllowed(req))
->   forbids:  req.amount is greater than MaxAmount,
->             and yet the policy GRANTS it (RefundAllowed(req))
->   applies:  to 16 of the 64 states:
->               req = [account |-> 1, amount |-> 2501, charge_id |-> 1, systemNowTime
->                 |-> 32399999]
->               req = [account |-> 1, amount |-> 2501, charge_id |-> 1, systemNowTime
->                 |-> 32400000]
->               req = [account |-> 1, amount |-> 2501, charge_id |-> 1, systemNowTime
->                 |-> 61200000]
->               req = [account |-> 1, amount |-> 2501, charge_id |-> 1, systemNowTime
->                 |-> 61200001]
->               req = [account |-> 1, amount |-> 2501, charge_id |-> 2, systemNowTime
->                 |-> 32399999]
->               req = [account |-> 1, amount |-> 2501, charge_id |-> 2, systemNowTime
->                 |-> 32400000]
->               and 10 more
+>   OverAmountLimitRefused
+>   says:     whenever amount is greater than MaxRefundAmount,
+>             then the policy REFUSES it (RefundAllowed(amount, nowTime))
+>   forbids:  amount is greater than MaxRefundAmount,
+>             and yet the policy GRANTS it (RefundAllowed(amount, nowTime))
+>   applies:  to 5 of the 15 states:
+>               amount = 2501, nowTime = 32399999
+>               amount = 2501, nowTime = 32400000
+>               amount = 2501, nowTime = 40000000
+>               amount = 2501, nowTime = 61200000
+>               amount = 2501, nowTime = 61200001
 > 
 >   CompliantRefundAllowed
->   says:     whenever req.amount is 500 and req.systemNowTime is BusinessHoursMin and
->             req.account is 1 and req.charge_id is 1,
->             then the policy GRANTS it (RefundAllowed(req))
->   forbids:  req.amount is 500 and req.systemNowTime is BusinessHoursMin and
->             req.account is 1 and req.charge_id is 1,
->             and yet the policy REFUSES it (RefundAllowed(req))
->   applies:  to 1 of the 64 states:
->               req = [account |-> 1, amount |-> 500, charge_id |-> 1, systemNowTime
->                 |-> 32400000]
+>   says:     whenever amount is MaxRefundAmount and nowTime is BusinessHoursStart,
+>             then the policy GRANTS it (RefundAllowed(amount, nowTime))
+>   forbids:  amount is MaxRefundAmount and nowTime is BusinessHoursStart,
+>             and yet the policy REFUSES it (RefundAllowed(amount, nowTime))
+>   applies:  to 1 of the 15 states:
+>               amount = 2500, nowTime = 32400000
 > 
 >   Read the `forbids` lines before the run, not after it. Each one is the only
 >   thing its claim can catch; if none of them describes something you would
@@ -1641,37 +1503,53 @@ The formal claims correctly capture the restriction that refunds are refused out
 | | |
 |---|---|
 | model | gemini-3.7-flash |
-| tokens | 3,418 |
-| seconds | 11.3 |
+| tokens | 2,864 |
+| seconds | 9.2 |
+
+Here is the formal verification report for **`agent-policy.dw`** against the properties defined in **`BusinessHours.tla`**.
+
+---
 
 ### Verification Summary
 
-The property module **`BusinessHours.tla` held** for all 3 claims across the **64 discrete states** tested. 
+All **3 claims** in the property module **held** across the **15 concrete states** evaluated. 
 
-No counterexamples were found within this bounded set.
-
----
-
-### What Was Checked and What Held
-
-The model checker evaluated 3 properties across a specific test grid of **64 concrete request configurations** (combinations of `account` 1, `charge_id` 1 and 2, `amount` 500, 2500, and 2501, and `systemNowTime` values 32399999, 32400000, 61200000, and 61200001):
-
-1. **`OutsideBusinessHoursRefused`** (Held)
-   * **Scope:** Applied to **32 of the 64 states** where `systemNowTime` was set outside business hours (specifically testing `32399999` and `61200001`).
-   * **Result:** In all 32 tested states, the policy refused the refund request.
-
-2. **`OverMaxAmountRefused`** (Held)
-   * **Scope:** Applied to **16 of the 64 states** where `amount` was set to `2501` (exceeding the threshold of 2500).
-   * **Result:** In all 16 tested states, the policy refused the refund request.
-
-3. **`CompliantRefundAllowed`** (Held)
-   * **Scope:** Applied to **exactly 1 state**: `account = 1`, `charge_id = 1`, `amount = 500`, and `systemNowTime = 32400000`.
-   * **Result:** The policy granted the refund for this single request.
+No counterexamples were found within this test space.
 
 ---
 
-### Property Scope and Limitations
+### Bound and Scope of the Check
 
-* **Narrow Positive Test:** `CompliantRefundAllowed` tests only **one single point** (`amount = 500`, `systemNowTime = 32400000`, `account = 1`, `charge_id = 1`). It does not test whether compliant requests at other valid times (e.g., between 32400000 and 61200000) or with other compliant amounts/accounts are granted.
-* **Exact Bounds:** This run checked **only** the 64 discrete requests generated from the specific values listed above. It does not establish behavior for any unlisted timestamps, amounts, account IDs, or charge IDs.
-* **Derived Questions Not Run:** Automated exhaustive analysis across all policy inputs was **not attempted** because the policy reads 6 input/output fields, exceeding the tool's default 4-field limit.
+The verification was strictly limited to the combinations of the following specific values:
+
+* **`amount`**: `500`, `2500`, `2501`
+* **`nowTime`**: `32399999`, `32400000`, `40000000`, `61200000`, `61200001`
+
+**Total combinations checked:** 15 states.  
+Values outside this explicit set were **not checked**.
+
+---
+
+### Detailed Findings by Claim
+
+1. **`OutsideBusinessHoursRefused`** — **HELD**
+   * **What was checked:** That requests submitted outside business hours are refused.
+   * **Applicable states:** 6 of the 15 states (where `nowTime` is `32399999` or `61200001`, across amounts `500`, `2500`, and `2501`).
+   * **Result:** The policy refused the refund in all 6 evaluated states.
+
+2. **`OverAmountLimitRefused`** — **HELD**
+   * **What was checked:** That refund requests exceeding the maximum allowed amount are refused.
+   * **Applicable states:** 5 of the 15 states (where `amount = 2501`, across all 5 evaluated timestamps).
+   * **Result:** The policy refused the refund in all 5 evaluated states.
+
+3. **`CompliantRefundAllowed`** — **HELD**
+   * **What was checked:** That a refund request exactly at the maximum limit (`2500`) and exactly at the start of business hours (`32400000`) is granted.
+   * **Applicable states:** 1 of the 15 states (`amount = 2500, nowTime = 32400000`).
+   * **Result:** The policy granted the refund for this specific state.
+
+---
+
+### Observations and Exclusions
+
+* **Limited Property Scope:** The check verified only the exact boundary and sample values listed above. It does not establish policy behavior for other dollar amounts (e.g., negative amounts, 0, or values between 500 and 2500) or other timestamps during the day.
+* **Derived Questions Skipped:** Automated derived questions were **not attempted**. The policy reads 6 input/output fields, exceeding the tool's configured limit of 4 fields for exhaustive state exploration. This is a limit of the exploration tool, not a failure of the policy.

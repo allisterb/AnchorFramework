@@ -2,7 +2,7 @@
 
 `agent-policy.dw`: every LLM call this run made, in order -- the drafter with its tool calls, the reviewer and the reporter.
 
-*Generated 2026-10-04 17:21 UTC by `src/agent/pipeline.py`. Tool calls and their full replies are included: the prose is a claim, and the tool output is the evidence for it.*
+*Generated 2026-10-06 05:47 UTC by `src/agent/pipeline.py`. Tool calls and their full replies are included: the prose is a claim, and the tool output is the evidence for it.*
 
 ## draft round 1
 
@@ -605,9 +605,10 @@
 >     "Decide the allowed and denied cases from the requirement BEFORE evaluating the policy. A claim written from the policy's own behaviour restates it.",
 >     "Include a claim that one specific, fully compliant session is ALLOWED. A module of refusal claims alone cannot be broken by removing a permission. 'X requires Y' means 'without Y, refused', not 'with Y, always allowed'.",
 >     "Put every prerequisite event in the session, and each value where the policy reads it: inputFields in an event's input record, outputFields in its output record.",
+>     "For every threshold and window the REQUIREMENT states, range over the value at it and the value just past it ('over $500': 500 and 501). Take them from the requirement, not from these domains: a policy with the wrong threshold supplies its own wrong edge.",
 >     "The .cfg must name SPECIFICATION Spec and every INVARIANT. A claim nobody listed is a claim nobody checked."
 >   ],
->   "skeleton": "---------------------------- MODULE agent_policy ----------------------------\n\\* What agent-policy.dw is SUPPOSED to mean, stated by its author. The three built-in findings\n\\* (VACUOUS, REDUNDANT/DEAD, diff) are the claims statable WITHOUT knowing intent; this is the\n\\* other kind, and only the author can write it.\n\\*\n\\* SAVE THIS AS agent_policy.tla -- TLA+ requires the file name to match the module name, and a\n\\* module name may not contain `-` or `.` or begin with a digit, so it is not always the policy's\n\\* own name.\n\\*\n\\* Check it with:  python src/checker/properties.py agent-policy.dw --property agent_policy.tla\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\n\\* The verdict for one request. No session: \"what does this policy decide for this request\" is\n\\* not a temporal question, so there is no state machine beyond holding one request still.\nGrants(input) == D!Decide(<<Request(\"initiate_transfer\", input)>>, Policies, 1, AllValues)\n\n(***************************************************************************)\n(* THE REQUESTS THIS CLAIM IS ABOUT.                                       *)\n(*                                                                         *)\n(* Written out rather than derived from InputDomain, and that is the       *)\n(* point. A space derived from the policy's own literals cannot test a     *)\n(* claim about a value the policy never mentions: delete the rule that     *)\n(* names a value and it vanishes from the vocabulary, so the claim ranges  *)\n(* over nothing and PASSES having looked at nothing.                       *)\n(*                                                                         *)\n(* Add the values your claim is about, including ones this policy never    *)\n(* mentions.                                                               *)\n(***************************************************************************)\naccountValues == {Num(1), Num(2)}\namountValues == {Num(499), Num(500), Num(2500), Num(2501)}\ncharge_idValues == {Num(1), Num(2)}\nsystemNowTimeValues == {Num(32399999), Num(32400000), Num(61200000), Num(61200001)}\n\nRequests == {[account |-> account, amount |-> amount, charge_id |-> charge_id, systemNowTime |-> systemNowTime] : account \\in accountValues, amount \\in amountValues, charge_id \\in charge_idValues, systemNowTime \\in systemNowTimeValues}\n\n\\* One request, chosen nondeterministically and held, so a violation's counterexample NAMES the\n\\* request that breaks the claim rather than merely reporting that one exists.\nVARIABLE req\nInit == req \\in Requests\nNext == UNCHANGED req\nSpec == Init /\\ [][Nex
+>   "skeleton": "---------------------------- MODULE agent_policy ----------------------------\n\\* What agent-policy.dw is SUPPOSED to mean, stated by its author. The three built-in findings\n\\* (VACUOUS, REDUNDANT/DEAD, diff) are the claims statable WITHOUT knowing intent; this is the\n\\* other kind, and only the author can write it.\n\\*\n\\* SAVE THIS AS agent_policy.tla -- TLA+ requires the file name to match the module name, and a\n\\* module name may not contain `-` or `.` or begin with a digit, so it is not always the policy's\n\\* own name.\n\\*\n\\* Check it with:  python src/checker/properties.py agent-policy.dw --property agent_policy.tla\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\n\\* The verdict for one request. No session: \"what does this policy decide for this request\" is\n\\* not a temporal question, so there is no state machine beyond holding one request still.\nGrants(input) == D!Decide(<<Request(\"initiate_transfer\", input)>>, Policies, 1, AllValues)\n\n(***************************************************************************)\n(* THE REQUESTS THIS CLAIM IS ABOUT.                                       *)\n(*                                                                         *)\n(* Written out rather than derived from InputDomain, and that is the       *)\n(* point. A space derived from the policy's own literals cannot test a     *)\n(* claim about a value the policy never mentions: delete the rule that     *)\n(* names a value and it vanishes from the vocabulary, so the claim ranges  *)\n(* over nothing and PASSES having looked at nothing.                       *)\n(*                                                                         *)\n(* Add the values your claim is about, including ones this policy never    *)\n(* mentions.                                                               *)\n(***************************************************************************)\naccountValues == {Num(1), Num(2)}\namountValues == {Num(499), Num(500), Num(2500), Num(2501)}\ncharge_idValues == {Num(1), Num(2)}\nsystemNowTimeValues == {Num(32399999), Num(32400000), Num(61200000), Num(61200001)}\n\nRequests == {[account |-> account, amount |-> amount, charge_id |-> charge_id, systemNowTime |-> systemNowTime] : account \\in accountValues, amount \\in amountValues, charge_id \\in charge_idValues, systemNowTime \\in systemNowTimeValues}\n\n\\*
 > ```
 > 
 > The intention to state formally:
@@ -617,25 +618,25 @@
 | | |
 |---|---|
 | model | gemini-3.7-flash |
-| tokens | 340,485 |
-| seconds | 246.4 |
+| tokens | 273,374 |
+| seconds | 147.3 |
 
 **Tool call 1** — `evaluate`
 
 ```json
 {
-  "expression": "Policies",
-  "module": "---------------------------- MODULE CumulativeCap ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n===\n"
+  "config": "SPECIFICATION Spec\nINVARIANT Allowed",
+  "expression": "D!Decide(<<Ev(\"initiate_transfer\", \"request\", [amount |-> Num(1000), account |-> Num(1)], NoFields, 1000)>>, Policies, 1, AllValues)",
+  "module": "---------------------------- MODULE CumulativeCap ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE dummy\nInit == dummy = 0\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\nAllowed == TRUE\n============================================================================="
 }
 ```
 
-<details><summary>tool result (error)</summary>
+<details><summary>tool result (success)</summary>
 
 ```
-Error: Validation failed for input parameters: 1 validation error for EvaluateTool
-config
-  Field required [type=missing, input_value={'expression': 'Policies'... Cases <- << >>\n===\n'}, input_type=dict]
-    For further information visit https://errors.pydantic.dev/2.13/v/missing
+D!Decide(<<Ev("initiate_transfer", "request", [amount |-> Num(1000), account |-> Num(1)], NoFields, 1000)>>, Policies, 1, AllValues)
+
+      FALSE
 ```
 
 </details>
@@ -644,46 +645,24 @@ config
 
 ```json
 {
-  "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
-  "expression": "Policies",
-  "module": "---------------------------- MODULE CumulativeCap ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\nVARIABLE dummy\nInit == dummy = 1\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\nDummy == TRUE\n===\n"
+  "config": "SPECIFICATION Spec\nINVARIANT Allowed",
+  "expression": "<<\n  D!Decide(<<Ev(\"verify_identity\", \"response\", NoFields, [verified |-> Bool(TRUE)], 1),\n             Ev(\"initiate_transfer\", \"request\", [amount |-> Num(1000), account |-> Num(1), systemNowTime |-> Num(40000000)], NoFields, 1000)>>, Policies, 2, AllValues),\n  D!Decide(<<Ev(\"verify_identity\", \"response\", NoFields, [verified |-> Bool(TRUE)], 1),\n             Ev(\"request_approval\", \"response\", NoFields, [approved |-> Bool(TRUE)], 2),\n             Ev(\"initiate_transfer\", \"request\", [amount |-> Num(1000), account |-> Num(1), systemNowTime |-> Num(40000000)], NoFields, 1000)>>, Policies, 3, AllValues)\n>>",
+  "module": "---------------------------- MODULE CumulativeCap ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE dummy\nInit == dummy = 0\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\nAllowed == TRUE\n============================================================================="
 }
 ```
 
 <details><summary>tool result (success)</summary>
 
 ```
-ith fp 88 and seed -3156047020147001035 with 1 worker on 8 cores with 16344MB heap and 64MB offheap memory [pid: 56208] (Windows 10 10.0 amd64, Microsoft 11.0.16.1 x86_64, MSBDiskFPSet, DiskStateQueue).
-      Parsing file %TEMP%\anchor-prove-komb5h9f\AnchorEval.tla
-      Parsing file %TEMP%\anchor-eval-69zchd3n\Integers.tla
-      Parsing file %TEMP%\anchor-eval-69zchd3n\Sequences.tla
-      Parsing file %TEMP%\anchor-eval-69zchd3n\FiniteSets.tla
-      Parsing file %TEMP%\anchor-prove-komb5h9f\CumulativeCap.tla
-      ***Parse Error***
-      Was expecting "Expression or Instance"
-      Encountered "Beginning of definition" at line 9, column 10 and token "==" 
-      
-      Residual stack trace follows:
-      Definition starting at line 9, column 1.
-      Module body starting at line 4, column 1.
-      Module definition starting at line 1, column 1.
-      
-      
-      Fatal errors while parsing TLA+ spec in file AnchorEval
-      
-      tla2sany.semantic.AbortException
-      *** Abort messages: 1
-      
-      In module CumulativeCap
-      
-      Could not parse module CumulativeCap from file CumulativeCap.tla
-      
-      
-      Starting... (2026-10-04 13:17:37)
-      Error: Parsing or semantic analysis failed.
-      Finished in 00s at (2026-10-04 13:17:37)
+<<
+  D!Decide(<<Ev("verify_identity", "response", NoFields, [verified |-> Bool(TRUE)], 1),
+             Ev("initiate_transfer", "request", [amount |-> Num(1000), account |-> Num(1), systemNowTime |-> Num(40000000)], NoFields, 1000)>>, Policies, 2, AllValues),
+  D!Decide(<<Ev("verify_identity", "response", NoFields, [verified |-> Bool(TRUE)], 1),
+             Ev("request_approval", "response", NoFields, [approved |-> Bool(TRUE)], 2),
+             Ev("initiate_transfer", "request", [amount |-> Num(1000), account |-> Num(1), systemNowTime |-> Num(40000000)], NoFields, 1000)>>, Policies, 3, AllValues)
+>>
 
-The expression did not evaluate. TLC's output is above; nothing was checked.
+      <<FALSE, FALSE>>
 ```
 
 </details>
@@ -692,26 +671,19 @@ The expression did not evaluate. TLC's output is above; nothing was checked.
 
 ```json
 {
-  "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
+  "config": "SPECIFICATION Spec\nINVARIANT Allowed",
   "expression": "Policies",
-  "module": "---------------------------- MODULE CumulativeCap ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\nVARIABLE dummy\nInit == dummy = 1\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\nDummy == TRUE\n============================================================================="
+  "module": "---------------------------- MODULE CumulativeCap ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE dummy\nInit == dummy = 0\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\nAllowed == TRUE\n============================================================================="
 }
 ```
 
 <details><summary>tool result (success)</summary>
 
 ```
-ld |-> "",
-                             cmp |-> "",
-                             value |-> [k |-> "s", v |-> ""],
-                             other |-> "",
-                             pattern |-> <<>>,
-                             net |-> <<>>,
-                             prefix |-> 0 ],
-                       leftNeg |-> FALSE,
-                       keys |-> <<>> ] ] ],
-         [ effect |-> "permit",
-           actions |-> {"request_approval"},
+Policies
+
+      << [ effect |-> "permit",
+           actions |-> {"verify_identity"},
            cond |->
                [ op |-> "true",
                  args |-> <<>>,
@@ -736,6 +708,17 @@ ld |-> "",
                              pred |-> [action |-> "", kind |-> "", binds |-> <<>>],
                              var |-> "",
                              field |-> "",
+                             cmp |-> "",
+                             value |-> [k |-> "s", v |-> ""],
+                             other |-> "",
+                             pattern |-> <<>>,
+                             net |-> <<>>,
+                             prefix |-> 0 ],
+                       leftNeg |-> FALSE,
+                       keys |-> <<>> ] ] ],
+ 
+
+[TRUNCATED: the first 1500 of 2703 characters, and 725 more line(s) the checker did not print. Evaluate a smaller part -- one element or one field -- to see the rest.]
 ```
 
 </details>
@@ -744,18 +727,26 @@ ld |-> "",
 
 ```json
 {
-  "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
+  "config": "SPECIFICATION Spec\nINVARIANT Allowed",
   "expression": "<<Policies[4], Policies[5]>>",
-  "module": "---------------------------- MODULE CumulativeCap ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\nVARIABLE dummy\nInit == dummy = 1\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\nDummy == TRUE\n============================================================================="
+  "module": "---------------------------- MODULE CumulativeCap ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE dummy\nInit == dummy = 0\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\nAllowed == TRUE\n============================================================================="
 }
 ```
 
 <details><summary>tool result (success)</summary>
 
 ```
-> <<>>,
-                             prefix |-> 0 ],
-                       left |->
+<<Policies[4], Policies[5]>>
+
+      << [ effect |-> "permit",
+           actions |-> {"initiate_transfer"},
+           cond |->
+               [ op |-> "term",
+                 args |-> <<>>,
+                 term |->
+                     [ op |-> "formerly",
+                       window |-> 900,
+                       atom |->
                            [ op |-> "pred",
                              args |-> <<>>,
                              pred |->
@@ -776,12 +767,9 @@ ld |-> "",
                              field |-> "",
                              cmp |-> "",
                              value |-> [k |-> "s", v |-> ""],
-                             other |-> "",
-                             pattern |-> <<>>,
-                             net |-> <<>>,
-                             prefix |-> 0 ],
-                       leftNeg |-> FALSE,
-                       keys |-> <<"principal">> ] ] ],
+                            
+
+[TRUNCATED: the first 1500 of 3179 characters, and 152 more line(s) the checker did not print. Evaluate a smaller part -- one element or one field -- to see the rest.]
 ```
 
 </details>
@@ -790,173 +778,41 @@ ld |-> "",
 
 ```json
 {
-  "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
+  "config": "SPECIFICATION Spec\nINVARIANT Allowed",
   "expression": "Policies[5]",
-  "module": "---------------------------- MODULE CumulativeCap ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\nVARIABLE dummy\nInit == dummy = 1\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\nDummy == TRUE\n============================================================================="
+  "module": "---------------------------- MODULE CumulativeCap ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE dummy\nInit == dummy = 0\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\nAllowed == TRUE\n============================================================================="
 }
 ```
 
 <details><summary>tool result (success)</summary>
 
 ```
-ALSE,
-                    keys |-> <<>> ],
-              cmp |-> ">",
-              value |-> 50000,
-              agg |->
-                  [ kind |-> "sum",
-                    cond |->
-                        [ op |-> "term",
+Policies[5]
+
+      [ effect |-> "forbid",
+        actions |-> {"initiate_transfer"},
+        cond |->
+            [ op |-> "agg",
+              args |-> <<>>,
+              term |->
+                  [ op |-> "formerly",
+                    window |-> 0,
+                    atom |->
+                        [ op |-> "pred",
                           args |-> <<>>,
-                          term |->
-                              [ op |-> "formerly",
-                                window |-> 43200,
-                                atom |->
-                                    [ op |-> "and",
-                                      args |->
-                                          << [ op |-> "pred",
-                                               args |-> <<>>,
-                                               pred |->
-                                                   [ action |-> "initiate_transfer",
-                                                     kind |-> "request",
-                                                     binds |->
-                                                         << [ kind |-> "var",
-                                                              field |-> "amount",
-                                                              value |->
-                                                                  [ k |-> "s",
-                                                                    v |-> "" ],
-                                                              side |-> "input",
-                                                              name |-> "a" ] >> ],
-```
-
-</details>
-
-**Tool call 6** — `evaluate`
-
-```json
-{
-  "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
-  "expression": "LET\n  V(t) == Ev(\"verify_identity\", \"response\", [account |-> Num(1)], [verified |-> Bool(TRUE)], t)\n  T(amt, t) == Ev(\"initiate_transfer\", \"request\", [account |-> Num(1), amount |-> Num(amt)], NoFields, t)\n  s1 == << V(1), T(30000, 2), T(25000, 100) >>\n  s2 == << V(1), T(30000, 2), T(15000, 100) >>\n  s3 == << V(1), T(30000, 2), T(25000, 50000) >>\nIN << D!Decide(s1, Policies, 3, AllValues), D!Decide(s2, Policies, 3, AllValues), D!Decide(s3, Policies, 3, AllValues) >>\n",
-  "module": "---------------------------- MODULE CumulativeCap ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\nVARIABLE dummy\nInit == dummy = 1\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\nDummy == TRUE\n============================================================================="
-}
-```
-
-<details><summary>tool result (success)</summary>
-
-```
-ls
-      Semantic processing of module Integers
-      Semantic processing of module Sequences
-      Semantic processing of module FiniteSets
-      Semantic processing of module PolicyUnderTest
-      Semantic processing of module TLC
-      Semantic processing of module DogwoodSemantics
-      Semantic processing of module CumulativeCap
-      Semantic processing of module AnchorEval
-      Semantic errors:
-      
-      *** Errors: 8
-      
-      line 27, col 3 to line 27, col 105 of module AnchorEval
-      
-      Operator T already defined or declared.
-      
-      
-      line 27, col 3 to line 27, col 105 of module AnchorEval
-      
-      Multiply-defined symbol 'T': this definition or declaration conflicts 
-      with the one at line 18, col 1 to line 18, col 17 of module AnchorEval.
-      
-      
-      line 28, col 19 to line 28, col 28 of module AnchorEval
-      
-      The operator T requires 0 arguments.
-      
-      
-      line 28, col 32 to line 28, col 43 of module AnchorEval
-      
-      The operator T requires 0 arguments.
-      
-      
-      line 29, col 19 to line 29, col 28 of module AnchorEval
-      
-      The operator T requires 0 arguments.
-      
-      
-      line 29, col 32 to line 29, col 43 of module AnchorEval
-      
-      The operator T requires 0 arguments.
-      
-      
-      line 30, col 19 to line 30, col 28 of module AnchorEval
-      
-      The operator T requires 0 arguments.
-
-The expression did not evaluate. TLC's output is above; nothing was checked.
-```
-
-</details>
-
-**Tool call 7** — `evaluate`
-
-```json
-{
-  "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
-  "expression": "LET\n  V(t) == Ev(\"verify_identity\", \"response\", [account |-> Num(1)], [verified |-> Bool(TRUE)], t)\n  Tr(amt, t) == Ev(\"initiate_transfer\", \"request\", [account |-> Num(1), amount |-> Num(amt)], NoFields, t)\n  s1 == << V(1), Tr(30000, 2), Tr(25000, 100) >>\n  s2 == << V(1), Tr(30000, 2), Tr(15000, 100) >>\n  s3 == << V(1), Tr(30000, 2), Tr(25000, 50000) >>\nIN << D!Decide(s1, Policies, 3, AllValues), D!Decide(s2, Policies, 3, AllValues), D!Decide(s3, Policies, 3, AllValues) >>",
-  "module": "---------------------------- MODULE CumulativeCap ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\nVARIABLE dummy\nInit == dummy = 1\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\nDummy == TRUE\n============================================================================="
-}
-```
-
-<details><summary>tool result (success)</summary>
-
-```
-LET
-  V(t) == Ev("verify_identity", "response", [account |-> Num(1)], [verified |-> Bool(TRUE)], t)
-  Tr(amt, t) == Ev("initiate_transfer", "request", [account |-> Num(1), amount |-> Num(amt)], NoFields, t)
-  s1 == << V(1), Tr(30000, 2), Tr(25000, 100) >>
-  s2 == << V(1), Tr(30000, 2), Tr(15000, 100) >>
-  s3 == << V(1), Tr(30000, 2), Tr(25000, 50000) >>
-IN << D!Decide(s1, Policies, 3, AllValues), D!Decide(s2, Policies, 3, AllValues), D!Decide(s3, Policies, 3, AllValues) >>
-
-      <<FALSE, TRUE, FALSE>>
-```
-
-</details>
-
-**Tool call 8** — `evaluate`
-
-```json
-{
-  "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
-  "expression": "Policies[4]",
-  "module": "---------------------------- MODULE CumulativeCap ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\nVARIABLE dummy\nInit == dummy = 1\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\nDummy == TRUE\n============================================================================="
-}
-```
-
-<details><summary>tool result (success)</summary>
-
-```
- |-> "",
+                          pred |-> [action |-> "", kind |-> "", binds |-> <<>>],
+                          var |-> "",
+                          field |-> "",
+                          cmp |-> "",
+                          value |-> [k |-> "s", v |-> ""],
+                          other |-> "",
                           pattern |-> <<>>,
                           net |-> <<>>,
                           prefix |-> 0 ],
                     left |->
                         [ op |-> "pred",
                           args |-> <<>>,
-                          pred |->
-                              [ action |-> "verify_identity",
-                                kind |-> "response",
-                                binds |->
-                                    << [ kind |-> "ctx",
-                                         field |-> "account",
-                                         value |-> [k |-> "s", v |-> ""],
-                                         side |-> "input",
-                                         name |-> "account" ],
-                                       [ kind |-> "lit",
-                                         field |-> "verified",
-                                         value |-> [k |-> "b", v |-> TRUE],
-                                         side |-> "output",
-                                         name |-> "" ] >> ],
+                          pred |-> [action |-> "", kind |-> "", binds |-> <<>>],
                           var |-> "",
                           field |-> "",
                           cmp |-> "",
@@ -966,7 +822,149 @@ IN << D!Decide(s1, Policies, 3, AllValues), D!Decide(s2, Policies, 3, AllValues)
                           net |-> <<>>,
                           prefix |-> 0 ],
                     leftNeg |-> FALSE,
-                    keys |-> <<"principal">> ] ] ]
+                    keys |-> <<>> ],
+              cmp |-> ">",
+              value |-> 50000,
+              agg |->
+                  [ kin
+
+[TRUNCATED: the first 1500 of 2935 characters, and 90 more line(s) the checker did not print. Evaluate a smaller part -- one element or one field -- to see the rest.]
+```
+
+</details>
+
+**Tool call 6** — `evaluate`
+
+```json
+{
+  "config": "SPECIFICATION Spec\nINVARIANT Allowed",
+  "expression": "Policies[5].cond.agg",
+  "module": "---------------------------- MODULE CumulativeCap ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE dummy\nInit == dummy = 0\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\nAllowed == TRUE\n============================================================================="
+}
+```
+
+<details><summary>tool result (success)</summary>
+
+```
+Policies[5].cond.agg
+
+      [ cond |->
+            [ op |-> "term",
+              args |-> <<>>,
+              term |->
+                  [ op |-> "formerly",
+                    window |-> 43200,
+                    atom |->
+                        [ op |-> "and",
+                          args |->
+                              << [ op |-> "pred",
+                                   args |-> <<>>,
+                                   pred |->
+                                       [ action |-> "initiate_transfer",
+                                         kind |-> "request",
+                                         binds |->
+                                             << [ kind |-> "var",
+                                                  field |-> "amount",
+                                                  value |-> [k |-> "s", v |-> ""],
+                                                  side |-> "input",
+                                                  name |-> "a" ] >> ],
+                                   var |-> "",
+                                   field |-> "",
+                                   cmp |-> "",
+                                   value |-> [k |-> "s", v |-> ""],
+                                   other |-> "",
+                                   pattern |-> <<>>,
+                                   net |-> <<>>,
+                                   prefix |-> 0 ],
+                                 [ op |-> "tp",
+                                   args |-> <<>>,
+ 
+
+[TRUNCATED: the first 1500 of 3116 characters, and 39 more line(s) the checker did not print. Evaluate a smaller part -- one element or one field -- to see the rest.]
+```
+
+</details>
+
+**Tool call 7** — `evaluate`
+
+```json
+{
+  "config": "SPECIFICATION Spec\nINVARIANT Allowed",
+  "expression": "<<Policies[5].cond.cmp, Policies[5].cond.value, Policies[5].cond.agg.kind, Policies[5].cond.agg.var>>",
+  "module": "---------------------------- MODULE CumulativeCap ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE dummy\nInit == dummy = 0\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\nAllowed == TRUE\n============================================================================="
+}
+```
+
+<details><summary>tool result (success)</summary>
+
+```
+[TRUNCATED: the last 1500 of 3261 characters; TLC's reason is at the end.]
+
+     pattern |-> <<>>,
+                                   net |-> <<>>,
+                                   prefix |-> 0 ],
+                                 [ cmp |-> "",
+                                   value |-> [k |-> "s", v |-> ""],
+                                   var |-> "t",
+                                   op |-> "tp",
+                                   args |-> <<>>,
+                                   pred |->
+                                       [kind |-> "", action |-> "", binds |-> <<>>],
+                                   field |-> "",
+                                   other |-> "",
+                                   pattern |-> <<>>,
+                                   net |-> <<>>,
+                                   prefix |-> 0 ] >>,
+                          pred |-> [kind |-> "", action |-> "", binds |-> <<>>],
+                          field |-> "",
+                          other |-> "",
+                          pattern |-> <<>>,
+                          net |-> <<>>,
+                          prefix |-> 0 ],
+                    leftNeg |-> FALSE,
+                    keys |-> <<"principal">> ] ],
+        kind |-> "sum",
+        over |-> "a",
+        binders |->
+            << [name |-> "a", type |-> "Long"],
+               [name |-> "t", type |-> "Timepoint"] >> ]
+      line 25, col 76 to line 25, col 99 of module AnchorEval
+      Finished in 01s at (2026-10-06 01:45:54)
+
+The expression did not evaluate. TLC's output is above; nothing was checked.
+```
+
+</details>
+
+**Tool call 8** — `evaluate`
+
+```json
+{
+  "config": "SPECIFICATION Spec\nINVARIANT Allowed",
+  "expression": "<<\n  D!Decide(<<\n    Ev(\"verify_identity\", \"response\", [account |-> Num(1)], [verified |-> Bool(TRUE)], 100),\n    Ev(\"initiate_transfer\", \"request\", [amount |-> Num(30000), account |-> Num(1)], NoFields, 100),\n    Ev(\"verify_identity\", \"response\", [account |-> Num(1)], [verified |-> Bool(TRUE)], 200),\n    Ev(\"initiate_transfer\", \"request\", [amount |-> Num(20000), account |-> Num(1)], NoFields, 200)\n  >>, Policies, 4, AllValues),\n  D!Decide(<<\n    Ev(\"verify_identity\", \"response\", [account |-> Num(1)], [verified |-> Bool(TRUE)], 100),\n    Ev(\"initiate_transfer\", \"request\", [amount |-> Num(30000), account |-> Num(1)], NoFields, 100),\n    Ev(\"verify_identity\", \"response\", [account |-> Num(1)], [verified |-> Bool(TRUE)], 200),\n    Ev(\"initiate_transfer\", \"request\", [amount |-> Num(20001), account |-> Num(1)], NoFields, 200)\n  >>, Policies, 4, AllValues)\n>>",
+  "module": "---------------------------- MODULE CumulativeCap ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE dummy\nInit == dummy = 0\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\nAllowed == TRUE\n============================================================================="
+}
+```
+
+<details><summary>tool result (success)</summary>
+
+```
+<<
+  D!Decide(<<
+    Ev("verify_identity", "response", [account |-> Num(1)], [verified |-> Bool(TRUE)], 100),
+    Ev("initiate_transfer", "request", [amount |-> Num(30000), account |-> Num(1)], NoFields, 100),
+    Ev("verify_identity", "response", [account |-> Num(1)], [verified |-> Bool(TRUE)], 200),
+    Ev("initiate_transfer", "request", [amount |-> Num(20000), account |-> Num(1)], NoFields, 200)
+  >>, Policies, 4, AllValues),
+  D!Decide(<<
+    Ev("verify_identity", "response", [account |-> Num(1)], [verified |-> Bool(TRUE)], 100),
+    Ev("initiate_transfer", "request", [amount |-> Num(30000), account |-> Num(1)], NoFields, 100),
+    Ev("verify_identity", "response", [account |-> Num(1)], [verified |-> Bool(TRUE)], 200),
+    Ev("initiate_transfer", "request", [amount |-> Num(20001), account |-> Num(1)], NoFields, 200)
+  >>, Policies, 4, AllValues)
+>>
+
+      <<TRUE, FALSE>>
 ```
 
 </details>
@@ -975,18 +973,31 @@ IN << D!Decide(s1, Policies, 3, AllValues), D!Decide(s2, Policies, 3, AllValues)
 
 ```json
 {
-  "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
-  "expression": "Policies[4].cond.term.window",
-  "module": "---------------------------- MODULE CumulativeCap ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\nVARIABLE dummy\nInit == dummy = 1\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\nDummy == TRUE\n============================================================================="
+  "config": "SPECIFICATION Spec\nINVARIANT Allowed",
+  "expression": "<<\n  D!Decide(<<\n    Ev(\"verify_identity\", \"response\", [account |-> Num(1)], [verified |-> Bool(TRUE)], 100),\n    Ev(\"initiate_transfer\", \"request\", [amount |-> Num(30000), account |-> Num(1)], NoFields, 100),\n    Ev(\"verify_identity\", \"response\", [account |-> Num(1)], [verified |-> Bool(TRUE)], 100 + 43200),\n    Ev(\"initiate_transfer\", \"request\", [amount |-> Num(30000), account |-> Num(1)], NoFields, 100 + 43200)\n  >>, Policies, 4, AllValues),\n  D!Decide(<<\n    Ev(\"verify_identity\", \"response\", [account |-> Num(1)], [verified |-> Bool(TRUE)], 100),\n    Ev(\"initiate_transfer\", \"request\", [amount |-> Num(30000), account |-> Num(1)], NoFields, 100),\n    Ev(\"verify_identity\", \"response\", [account |-> Num(1)], [verified |-> Bool(TRUE)], 100 + 43201),\n    Ev(\"initiate_transfer\", \"request\", [amount |-> Num(30000), account |-> Num(1)], NoFields, 100 + 43201)\n  >>, Policies, 4, AllValues)\n>>",
+  "module": "---------------------------- MODULE CumulativeCap ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE dummy\nInit == dummy = 0\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\nAllowed == TRUE\n============================================================================="
 }
 ```
 
 <details><summary>tool result (success)</summary>
 
 ```
-Policies[4].cond.term.window
+<<
+  D!Decide(<<
+    Ev("verify_identity", "response", [account |-> Num(1)], [verified |-> Bool(TRUE)], 100),
+    Ev("initiate_transfer", "request", [amount |-> Num(30000), account |-> Num(1)], NoFields, 100),
+    Ev("verify_identity", "response", [account |-> Num(1)], [verified |-> Bool(TRUE)], 100 + 43200),
+    Ev("initiate_transfer", "request", [amount |-> Num(30000), account |-> Num(1)], NoFields, 100 + 43200)
+  >>, Policies, 4, AllValues),
+  D!Decide(<<
+    Ev("verify_identity", "response", [account |-> Num(1)], [verified |-> Bool(TRUE)], 100),
+    Ev("initiate_transfer", "request", [amount |-> Num(30000), account |-> Num(1)], NoFields, 100),
+    Ev("verify_identity", "response", [account |-> Num(1)], [verified |-> Bool(TRUE)], 100 + 43201),
+    Ev("initiate_transfer", "request", [amount |-> Num(30000), account |-> Num(1)], NoFields, 100 + 43201)
+  >>, Policies, 4, AllValues)
+>>
 
-      900
+      <<FALSE, TRUE>>
 ```
 
 </details>
@@ -995,22 +1006,18 @@ Policies[4].cond.term.window
 
 ```json
 {
-  "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
-  "expression": "LET\n  V(t) == Ev(\"verify_identity\", \"response\", [account |-> Num(1)], [verified |-> Bool(TRUE)], t)\n  Tr(amt, t) == Ev(\"initiate_transfer\", \"request\", [account |-> Num(1), amount |-> Num(amt)], NoFields, t)\n  s3 == << V(1), Tr(30000, 2), V(49999), Tr(25000, 50000) >>\nIN D!Decide(s3, Policies, 4, AllValues)",
-  "module": "---------------------------- MODULE CumulativeCap ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\nVARIABLE dummy\nInit == dummy = 1\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\nDummy == TRUE\n============================================================================="
+  "config": "SPECIFICATION Spec\nINVARIANT Allowed",
+  "expression": "<<Policies[4].effect, Policies[5].effect>>",
+  "module": "---------------------------- MODULE CumulativeCap ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE dummy\nInit == dummy = 0\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\nAllowed == TRUE\n============================================================================="
 }
 ```
 
 <details><summary>tool result (success)</summary>
 
 ```
-LET
-  V(t) == Ev("verify_identity", "response", [account |-> Num(1)], [verified |-> Bool(TRUE)], t)
-  Tr(amt, t) == Ev("initiate_transfer", "request", [account |-> Num(1), amount |-> Num(amt)], NoFields, t)
-  s3 == << V(1), Tr(30000, 2), V(49999), Tr(25000, 50000) >>
-IN D!Decide(s3, Policies, 4, AllValues)
+<<Policies[4].effect, Policies[5].effect>>
 
-      TRUE
+      <<"permit", "forbid">>
 ```
 
 </details>
@@ -1019,91 +1026,42 @@ IN D!Decide(s3, Policies, 4, AllValues)
 
 ```json
 {
-  "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
-  "expression": "LET\n  V(t) == Ev(\"verify_identity\", \"response\", [account |-> Num(1)], [verified |-> Bool(TRUE)], t)\n  Tr(amt, t) == Ev(\"initiate_transfer\", \"request\", [account |-> Num(1), amount |-> Num(amt)], NoFields, t)\n  s1 == << V(1), Tr(50001, 2) >>\n  s2 == << V(1), Tr(50000, 2) >>\nIN << D!Decide(s1, Policies, 2, AllValues), D!Decide(s2, Policies, 2, AllValues) >>",
-  "module": "---------------------------- MODULE CumulativeCap ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\nVARIABLE dummy\nInit == dummy = 1\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\nDummy == TRUE\n============================================================================="
+  "config": "SPECIFICATION Spec\nINVARIANT Dummy",
+  "expression": "LET Session(prevAmt, currAmt, g) == <<\n      Ev(\"verify_identity\", \"response\", [account |-> Num(1)], [verified |-> Bool(TRUE)], 100),\n      Ev(\"initiate_transfer\", \"request\", [amount |-> Num(prevAmt), account |-> Num(1)], NoFields, 100),\n      Ev(\"verify_identity\", \"response\", [account |-> Num(1)], [verified |-> Bool(TRUE)], 100 + g),\n      Ev(\"initiate_transfer\", \"request\", [amount |-> Num(currAmt), account |-> Num(1)], NoFields, 100 + g)\n    >>\n    Dec(prevAmt, currAmt, g) == D!Decide(Session(prevAmt, currAmt, g), Policies, 4, AllValues)\nIN <<\n  Dec(30000, 20000, 300),\n  Dec(30000, 20001, 300),\n  Dec(30000, 20000, 43200),\n  Dec(30000, 20001, 43200),\n  Dec(30000, 50000, 43201),\n  Dec(30000, 50001, 43201)\n>>",
+  "module": "---------------------------- MODULE CumulativeCap ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nVARIABLE dummy\nInit == dummy = 0\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\nDummy == TRUE\n============================================================================="
 }
 ```
 
 <details><summary>tool result (success)</summary>
 
 ```
-LET
-  V(t) == Ev("verify_identity", "response", [account |-> Num(1)], [verified |-> Bool(TRUE)], t)
-  Tr(amt, t) == Ev("initiate_transfer", "request", [account |-> Num(1), amount |-> Num(amt)], NoFields, t)
-  s1 == << V(1), Tr(50001, 2) >>
-  s2 == << V(1), Tr(50000, 2) >>
-IN << D!Decide(s1, Policies, 2, AllValues), D!Decide(s2, Policies, 2, AllValues) >>
-
-      <<FALSE, TRUE>>
-```
-
-</details>
-
-**Tool call 12** — `evaluate`
-
-```json
-{
-  "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
-  "expression": "LET\n  V(t) == Ev(\"verify_identity\", \"response\", [account |-> Num(1)], [verified |-> Bool(TRUE)], t)\n  Tr(amt, t) == Ev(\"initiate_transfer\", \"request\", [account |-> Num(1), amount |-> Num(amt)], NoFields, t)\n  s1 == << V(1), Tr(30000, 1), V(1 + 43200), Tr(25000, 1 + 43200) >>\n  s2 == << V(1), Tr(30000, 1), V(1 + 43201), Tr(25000, 1 + 43201) >>\nIN << D!Decide(s1, Policies, 4, AllValues), D!Decide(s2, Policies, 4, AllValues) >>",
-  "module": "---------------------------- MODULE CumulativeCap ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\nVARIABLE dummy\nInit == dummy = 1\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\nDummy == TRUE\n============================================================================="
-}
-```
-
-<details><summary>tool result (success)</summary>
-
-```
-LET
-  V(t) == Ev("verify_identity", "response", [account |-> Num(1)], [verified |-> Bool(TRUE)], t)
-  Tr(amt, t) == Ev("initiate_transfer", "request", [account |-> Num(1), amount |-> Num(amt)], NoFields, t)
-  s1 == << V(1), Tr(30000, 1), V(1 + 43200), Tr(25000, 1 + 43200) >>
-  s2 == << V(1), Tr(30000, 1), V(1 + 43201), Tr(25000, 1 + 43201) >>
-IN << D!Decide(s1, Policies, 4, AllValues), D!Decide(s2, Policies, 4, AllValues) >>
-
-      <<FALSE, TRUE>>
-```
-
-</details>
-
-**Tool call 13** — `evaluate`
-
-```json
-{
-  "config": "SPECIFICATION Spec\nINVARIANT Dummy\n",
-  "expression": "LET\n  Hour == 3600\n  Window == 12 * Hour\n  V(t) == Ev(\"verify_identity\", \"response\", [account |-> Num(1)], [verified |-> Bool(TRUE)], t)\n  Tr(amt, t) == Ev(\"initiate_transfer\", \"request\", [account |-> Num(1), amount |-> Num(amt)], NoFields, t)\n  Session(pAmt, cAmt, gap) == << V(1), Tr(pAmt, 2), V(1 + gap), Tr(cAmt, 2 + gap) >>\n  Allowed(pAmt, cAmt, gap) == D!Decide(Session(pAmt, cAmt, gap), Policies, 4, AllValues)\nIN <<\n  Allowed(30000, 25000, 1 * Hour),      \\* sum 55000 in window -> FALSE\n  Allowed(20000, 25000, 1 * Hour),      \\* sum 45000 in window -> TRUE\n  Allowed(30000, 25000, Window),        \\* sum 55000 in window -> FALSE\n  Allowed(30000, 25000, Window + 1),    \\* sum 25000 in window -> TRUE\n  Allowed(40000, 25000, 24 * Hour)      \\* sum 25000 in window -> TRUE\n>>",
-  "module": "---------------------------- MODULE CumulativeCap ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\nVARIABLE dummy\nInit == dummy = 1\nNext == UNCHANGED dummy\nSpec == Init /\\ [][Next]_dummy\nDummy == TRUE\n============================================================================="
-}
-```
-
-<details><summary>tool result (success)</summary>
-
-```
-LET
-  Hour == 3600
-  Window == 12 * Hour
-  V(t) == Ev("verify_identity", "response", [account |-> Num(1)], [verified |-> Bool(TRUE)], t)
-  Tr(amt, t) == Ev("initiate_transfer", "request", [account |-> Num(1), amount |-> Num(amt)], NoFields, t)
-  Session(pAmt, cAmt, gap) == << V(1), Tr(pAmt, 2), V(1 + gap), Tr(cAmt, 2 + gap) >>
-  Allowed(pAmt, cAmt, gap) == D!Decide(Session(pAmt, cAmt, gap), Policies, 4, AllValues)
+LET Session(prevAmt, currAmt, g) == <<
+      Ev("verify_identity", "response", [account |-> Num(1)], [verified |-> Bool(TRUE)], 100),
+      Ev("initiate_transfer", "request", [amount |-> Num(prevAmt), account |-> Num(1)], NoFields, 100),
+      Ev("verify_identity", "response", [account |-> Num(1)], [verified |-> Bool(TRUE)], 100 + g),
+      Ev("initiate_transfer", "request", [amount |-> Num(currAmt), account |-> Num(1)], NoFields, 100 + g)
+    >>
+    Dec(prevAmt, currAmt, g) == D!Decide(Session(prevAmt, currAmt, g), Policies, 4, AllValues)
 IN <<
-  Allowed(30000, 25000, 1 * Hour),      \* sum 55000 in window -> FALSE
-  Allowed(20000, 25000, 1 * Hour),      \* sum 45000 in window -> TRUE
-  Allowed(30000, 25000, Window),        \* sum 55000 in window -> FALSE
-  Allowed(30000, 25000, Window + 1),    \* sum 25000 in window -> TRUE
-  Allowed(40000, 25000, 24 * Hour)      \* sum 25000 in window -> TRUE
+  Dec(30000, 20000, 300),
+  Dec(30000, 20001, 300),
+  Dec(30000, 20000, 43200),
+  Dec(30000, 20001, 43200),
+  Dec(30000, 50000, 43201),
+  Dec(30000, 50001, 43201)
 >>
 
-      <<FALSE, TRUE, FALSE, TRUE, TRUE>>
+      <<TRUE, FALSE, TRUE, FALSE, TRUE, FALSE>>
 ```
 
 </details>
 
-**Tool call 14** — `check_module`
+**Tool call 12** — `check_module`
 
 ```json
 {
-  "config": "SPECIFICATION Spec\nINVARIANT Exceeding12hCapIsRefused\nINVARIANT CompliantSessionUnderCapAllowed\n",
-  "module": "---------------------------- MODULE CumulativeCap ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nHour == 3600\nWindow == 12 * Hour\n\nPriorAmounts == {20000, 30000, 40000}\nCurrentAmounts == {15000, 25000, 55000}\nGaps == {1 * Hour, Window, Window + 1, 24 * Hour}\n\nVARIABLES priorAmount, currentAmount, gap\n\nInit ==\n  /\\ priorAmount \\in PriorAmounts\n  /\\ currentAmount \\in CurrentAmounts\n  /\\ gap \\in Gaps\n\nNext == UNCHANGED <<priorAmount, currentAmount, gap>>\nSpec == Init /\\ [][Next]_<<priorAmount, currentAmount, gap>>\n\nVerify(t) == Ev(\"verify_identity\", \"response\", [account |-> Num(1)], [verified |-> Bool(TRUE)], t)\nTransfer(amt, t) == Ev(\"initiate_transfer\", \"request\", [account |-> Num(1), amount |-> Num(amt)], NoFields, t)\n\nSession == <<\n  Verify(1),\n  Transfer(priorAmount, 2),\n  Verify(1 + gap),\n  Transfer(currentAmount, 2 + gap)\n>>\n\nTransferAllowed == D!Decide(Session, Policies, 4, AllValues)\n\nTotalInWindow == IF gap <= Window THEN priorAmount + currentAmount ELSE currentAmount\n\nExceeding12hCapIsRefused ==\n  (TotalInWindow > 50000) => ~TransferAllowed\n\nCompliantSessionUnderCapAllowed ==\n  (priorAmount = 20000 /\\ currentAmount = 15000 /\\ gap = 1 * Hour) => TransferAllowed\n\n============================================================================="
+  "config": "SPECIFICATION Spec\nINVARIANT ExceedingCapIsBlocked\nINVARIANT CompliantTransferIsAllowed",
+  "module": "---------------------------- MODULE CumulativeCap ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nHour == 3600\nCap == 50000\nWindow == 12 * Hour\n\nPrevAmounts == {30000}\nCurrentAmounts == {20000, 20001, 50000, 50001}\nGaps == {300, Window, Window + 1}\n\nVARIABLES prevAmount, currentAmount, gap\n\nInit ==\n  /\\ prevAmount \\in PrevAmounts\n  /\\ currentAmount \\in CurrentAmounts\n  /\\ gap \\in Gaps\n\nNext == UNCHANGED <<prevAmount, currentAmount, gap>>\nSpec == Init /\\ [][Next]_<<prevAmount, currentAmount, gap>>\n\nSession == <<\n  Ev(\"verify_identity\", \"response\", [account |-> Num(1)], [verified |-> Bool(TRUE)], 100),\n  Ev(\"initiate_transfer\", \"request\", [amount |-> Num(prevAmount), account |-> Num(1)], NoFields, 100),\n  Ev(\"verify_identity\", \"response\", [account |-> Num(1)], [verified |-> Bool(TRUE)], 100 + gap),\n  Ev(\"initiate_transfer\", \"request\", [amount |-> Num(currentAmount), account |-> Num(1)], NoFields, 100 + gap)\n>>\n\nTransferAllowed == D!Decide(Session, Policies, 4, AllValues)\n\nTotalInPast12Hours ==\n  IF gap <= Window\n  THEN prevAmount + currentAmount\n  ELSE currentAmount\n\nExceedingCapIsBlocked ==\n  (TotalInPast12Hours > Cap) => ~TransferAllowed\n\nCompliantTransferIsAllowed ==\n  (gap = 300 /\\ prevAmount = 30000 /\\ currentAmount = 20000) => TransferAllowed\n\n============================================================================="
 }
 ```
 
@@ -1111,6 +1069,97 @@ IN <<
 
 ```
 Compiles, evaluates, and holds on this policy. Either answer is acceptable -- a property that fails has already shown it discriminates. Do NOT weaken the claim to make it hold.
+```
+
+</details>
+
+**Tool call 13** — `what_it_forbids`
+
+```json
+{
+  "config": "SPECIFICATION Spec\nINVARIANT ExceedingCapIsBlocked\nINVARIANT CompliantTransferIsAllowed",
+  "module": "---------------------------- MODULE CumulativeCap ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nHour == 3600\nCap == 50000\nWindow == 12 * Hour\n\nPrevAmounts == {30000}\nCurrentAmounts == {20000, 20001, 50000, 50001}\nGaps == {300, Window, Window + 1}\n\nVARIABLES prevAmount, currentAmount, gap\n\nInit ==\n  /\\ prevAmount \\in PrevAmounts\n  /\\ currentAmount \\in CurrentAmounts\n  /\\ gap \\in Gaps\n\nNext == UNCHANGED <<prevAmount, currentAmount, gap>>\nSpec == Init /\\ [][Next]_<<prevAmount, currentAmount, gap>>\n\nSession == <<\n  Ev(\"verify_identity\", \"response\", [account |-> Num(1)], [verified |-> Bool(TRUE)], 100),\n  Ev(\"initiate_transfer\", \"request\", [amount |-> Num(prevAmount), account |-> Num(1)], NoFields, 100),\n  Ev(\"verify_identity\", \"response\", [account |-> Num(1)], [verified |-> Bool(TRUE)], 100 + gap),\n  Ev(\"initiate_transfer\", \"request\", [amount |-> Num(currentAmount), account |-> Num(1)], NoFields, 100 + gap)\n>>\n\nTransferAllowed == D!Decide(Session, Policies, 4, AllValues)\n\nTotalInPast12Hours ==\n  IF gap <= Window\n  THEN prevAmount + currentAmount\n  ELSE currentAmount\n\nExceedingCapIsBlocked ==\n  (TotalInPast12Hours > Cap) => ~TransferAllowed\n\nCompliantTransferIsAllowed ==\n  (gap = 300 /\\ prevAmount = 30000 /\\ currentAmount = 20000) => TransferAllowed\n\n============================================================================="
+}
+```
+
+<details><summary>tool result (success)</summary>
+
+```
+CumulativeCap
+
+  Every value each variable takes -- nothing else is checked:
+      prevAmount     30000
+      currentAmount  20000, 20001, 50000, 50001
+      gap            300, 43200, 43201
+
+  2 claims will be checked, over 12 states:
+
+  ExceedingCapIsBlocked
+      says:     whenever TotalInPast12Hours is greater than Cap,
+                then the policy REFUSES it (TransferAllowed)
+      forbids:  TotalInPast12Hours is greater than Cap,
+                and yet the policy GRANTS it (TransferAllowed)
+      applies:  unknown -- `TotalInPast12Hours > Cap` could not be worked out here for
+                12 of the 12 states
+
+  CompliantTransferIsAllowed
+      says:     whenever gap is 300 and prevAmount is 30000 and currentAmount is 20000,
+                then the policy GRANTS it (TransferAllowed)
+      forbids:  gap is 300 and prevAmount is 30000 and currentAmount is 20000,
+                and yet the policy REFUSES it (TransferAllowed)
+      applies:  to 1 of the 12 states:
+                  prevAmount = 30000, currentAmount = 20000, gap = 300
+
+  Read the `forbids` lines before the run, not after it. Each one is the only
+  thing its claim can catch; if none of them describes something you would
+  object to, the check will pass without having tested what you meant.
+```
+
+</details>
+
+**Tool call 14** — `what_it_forbids`
+
+```json
+{
+  "config": "SPECIFICATION Spec\nINVARIANT ExceedingCapIsBlocked\nINVARIANT CompliantTransferIsAllowed",
+  "module": "---------------------------- MODULE CumulativeCap ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nHour == 3600\nCap == 50000\nWindow == 12 * Hour\n\nPrevAmounts == {30000}\nCurrentAmounts == {20000, 20001, 50000, 50001}\nGaps == {300, Window, Window + 1}\n\nVARIABLES prevAmount, currentAmount, gap\n\nInit ==\n  /\\ prevAmount \\in PrevAmounts\n  /\\ currentAmount \\in CurrentAmounts\n  /\\ gap \\in Gaps\n\nNext == UNCHANGED <<prevAmount, currentAmount, gap>>\nSpec == Init /\\ [][Next]_<<prevAmount, currentAmount, gap>>\n\nSession == <<\n  Ev(\"verify_identity\", \"response\", [account |-> Num(1)], [verified |-> Bool(TRUE)], 100),\n  Ev(\"initiate_transfer\", \"request\", [amount |-> Num(prevAmount), account |-> Num(1)], NoFields, 100),\n  Ev(\"verify_identity\", \"response\", [account |-> Num(1)], [verified |-> Bool(TRUE)], 100 + gap),\n  Ev(\"initiate_transfer\", \"request\", [amount |-> Num(currentAmount), account |-> Num(1)], NoFields, 100 + gap)\n>>\n\nTransferAllowed == D!Decide(Session, Policies, 4, AllValues)\n\nExceedingCapWithin12Hours ==\n  \\/ (gap <= Window /\\ prevAmount + currentAmount > Cap)\n  \\/ (gap > Window /\\ currentAmount > Cap)\n\nExceedingCapIsBlocked ==\n  ExceedingCapWithin12Hours => ~TransferAllowed\n\nCompliantTransferIsAllowed ==\n  (gap = 300 /\\ prevAmount = 30000 /\\ currentAmount = 20000) => TransferAllowed\n\n============================================================================="
+}
+```
+
+<details><summary>tool result (success)</summary>
+
+```
+CumulativeCap
+
+  Every value each variable takes -- nothing else is checked:
+      prevAmount     30000
+      currentAmount  20000, 20001, 50000, 50001
+      gap            300, 43200, 43201
+
+  2 claims will be checked, over 12 states:
+
+  ExceedingCapIsBlocked
+      says:     whenever ExceedingCapWithin12Hours holds,
+                then the policy REFUSES it (TransferAllowed)
+      forbids:  ExceedingCapWithin12Hours holds,
+                and yet the policy GRANTS it (TransferAllowed)
+      applies:  unknown -- `ExceedingCapWithin12Hours` could not be worked out here for
+                12 of the 12 states
+
+  CompliantTransferIsAllowed
+      says:     whenever gap is 300 and prevAmount is 30000 and currentAmount is 20000,
+                then the policy GRANTS it (TransferAllowed)
+      forbids:  gap is 300 and prevAmount is 30000 and currentAmount is 20000,
+                and yet the policy REFUSES it (TransferAllowed)
+      applies:  to 1 of the 12 states:
+                  prevAmount = 30000, currentAmount = 20000, gap = 300
+
+  !!        defined here but NOT named in the .cfg, so not checked:
+            ExceedingCapWithin12Hours. A claim nobody listed is a claim nobody checked
+
+  Read the `forbids` lines before the run, not after it. Each one is the only
+  thing its claim can catch; if none of them describes something you would
+  object to, the check will pass without having tested what you meant.
 ```
 
 </details>
@@ -1119,8 +1168,8 @@ Compiles, evaluates, and holds on this policy. Either answer is acceptable -- a 
 
 ```json
 {
-  "config": "SPECIFICATION Spec\nINVARIANT Exceeding12hCapIsRefused\nINVARIANT CompliantSessionUnderCapAllowed\n",
-  "module": "---------------------------- MODULE CumulativeCap ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nHour == 3600\nWindow == 12 * Hour\n\nPriorAmounts == {20000, 30000, 40000}\nCurrentAmounts == {15000, 25000, 55000}\nGaps == {1 * Hour, Window, Window + 1, 24 * Hour}\n\nVARIABLES priorAmount, currentAmount, gap\n\nInit ==\n  /\\ priorAmount \\in PriorAmounts\n  /\\ currentAmount \\in CurrentAmounts\n  /\\ gap \\in Gaps\n\nNext == UNCHANGED <<priorAmount, currentAmount, gap>>\nSpec == Init /\\ [][Next]_<<priorAmount, currentAmount, gap>>\n\nVerify(t) == Ev(\"verify_identity\", \"response\", [account |-> Num(1)], [verified |-> Bool(TRUE)], t)\nTransfer(amt, t) == Ev(\"initiate_transfer\", \"request\", [account |-> Num(1), amount |-> Num(amt)], NoFields, t)\n\nSession == <<\n  Verify(1),\n  Transfer(priorAmount, 2),\n  Verify(1 + gap),\n  Transfer(currentAmount, 2 + gap)\n>>\n\nTransferAllowed == D!Decide(Session, Policies, 4, AllValues)\n\nTotalInWindow == IF gap <= Window THEN priorAmount + currentAmount ELSE currentAmount\n\nExceeding12hCapIsRefused ==\n  (TotalInWindow > 50000) => ~TransferAllowed\n\nCompliantSessionUnderCapAllowed ==\n  (priorAmount = 20000 /\\ currentAmount = 15000 /\\ gap = 1 * Hour) => TransferAllowed\n\n============================================================================="
+  "config": "SPECIFICATION Spec\nINVARIANT ExceedingCapIsBlocked\nINVARIANT CompliantTransferIsAllowed",
+  "module": "---------------------------- MODULE CumulativeCap ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nHour == 3600\nCap == 50000\nWindow == 12 * Hour\n\nPrevAmounts == {30000}\nCurrentAmounts == {20000, 20001, 50000, 50001}\nGaps == {300, Window, Window + 1}\n\nVARIABLES prevAmount, currentAmount, gap\n\nInit ==\n  /\\ prevAmount \\in PrevAmounts\n  /\\ currentAmount \\in CurrentAmounts\n  /\\ gap \\in Gaps\n\nNext == UNCHANGED <<prevAmount, currentAmount, gap>>\nSpec == Init /\\ [][Next]_<<prevAmount, currentAmount, gap>>\n\nSession == <<\n  Ev(\"verify_identity\", \"response\", [account |-> Num(1)], [verified |-> Bool(TRUE)], 100),\n  Ev(\"initiate_transfer\", \"request\", [amount |-> Num(prevAmount), account |-> Num(1)], NoFields, 100),\n  Ev(\"verify_identity\", \"response\", [account |-> Num(1)], [verified |-> Bool(TRUE)], 100 + gap),\n  Ev(\"initiate_transfer\", \"request\", [amount |-> Num(currentAmount), account |-> Num(1)], NoFields, 100 + gap)\n>>\n\nTransferAllowed == D!Decide(Session, Policies, 4, AllValues)\n\nExceedingCapIsBlocked ==\n  ((gap <= Window /\\ prevAmount + currentAmount > Cap) \\/ (gap > Window /\\ currentAmount > Cap)) => ~TransferAllowed\n\nCompliantTransferIsAllowed ==\n  (gap = 300 /\\ prevAmount = 30000 /\\ currentAmount = 20000) => TransferAllowed\n\n============================================================================="
 }
 ```
 
@@ -1129,25 +1178,37 @@ Compiles, evaluates, and holds on this policy. Either answer is acceptable -- a 
 ```
 CumulativeCap
 
-  2 claims will be checked, over 36 states:
+  Every value each variable takes -- nothing else is checked:
+      prevAmount     30000
+      currentAmount  20000, 20001, 50000, 50001
+      gap            300, 43200, 43201
 
-  Exceeding12hCapIsRefused
-      says:     whenever TotalInWindow is greater than 50000,
+  2 claims will be checked, over 12 states:
+
+  ExceedingCapIsBlocked
+      says:     whenever gap is at most Window and prevAmount + currentAmount is greater
+                than Cap or gap is greater than Window and currentAmount is greater than
+                Cap,
                 then the policy REFUSES it (TransferAllowed)
-      forbids:  TotalInWindow is greater than 50000,
+      forbids:  gap is at most Window and prevAmount + currentAmount is greater than Cap
+                or gap is greater than Window and currentAmount is greater than Cap,
                 and yet the policy GRANTS it (TransferAllowed)
-      applies:  unknown -- `TotalInWindow > 50000` could not be worked out here for 36
-                of the 36 states
+      applies:  to 7 of the 12 states:
+                  prevAmount = 30000, currentAmount = 20001, gap = 300
+                  prevAmount = 30000, currentAmount = 20001, gap = 43200
+                  prevAmount = 30000, currentAmount = 50000, gap = 300
+                  prevAmount = 30000, currentAmount = 50000, gap = 43200
+                  prevAmount = 30000, currentAmount = 50001, gap = 300
+                  prevAmount = 30000, currentAmount = 50001, gap = 43200
+                  and 1 more
 
-  CompliantSessionUnderCapAllowed
-      says:     whenever priorAmount is 20000 and currentAmount is 15000 and gap is 1 *
-                Hour (= 3600),
+  CompliantTransferIsAllowed
+      says:     whenever gap is 300 and prevAmount is 30000 and currentAmount is 20000,
                 then the policy GRANTS it (TransferAllowed)
-      forbids:  priorAmount is 20000 and currentAmount is 15000 and gap is 1 * Hour (=
-                3600),
+      forbids:  gap is 300 and prevAmount is 30000 and currentAmount is 20000,
                 and yet the policy REFUSES it (TransferAllowed)
-      applies:  to 1 of the 36 states:
-                  priorAmount = 20000, currentAmount = 15000, gap = 3600
+      applies:  to 1 of the 12 states:
+                  prevAmount = 30000, currentAmount = 20000, gap = 300
 
   Read the `forbids` lines before the run, not after it. Each one is the only
   thing its claim can catch; if none of them describes something you would
@@ -1156,165 +1217,12 @@ CumulativeCap
 
 </details>
 
-**Tool call 16** — `what_it_forbids`
+**Tool call 16** — `check_module`
 
 ```json
 {
-  "config": "SPECIFICATION Spec\nINVARIANT ExceedingCapWithin12hIsRefused\nINVARIANT ExceedingCapAfter12hIsRefused\nINVARIANT CompliantSessionUnderCapAllowed\n",
-  "module": "---------------------------- MODULE CumulativeCap ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nHour == 3600\nWindow == 12 * Hour\n\nPriorAmounts == {20000, 30000, 40000}\nCurrentAmounts == {15000, 25000, 55000}\nGaps == {1 * Hour, Window, Window + 1, 24 * Hour}\n\nVARIABLES priorAmount, currentAmount, gap\n\nInit ==\n  /\\ priorAmount \\in PriorAmounts\n  /\\ currentAmount \\in CurrentAmounts\n  /\\ gap \\in Gaps\n\nNext == UNCHANGED <<priorAmount, currentAmount, gap>>\nSpec == Init /\\ [][Next]_<<priorAmount, currentAmount, gap>>\n\nVerify(t) == Ev(\"verify_identity\", \"response\", [account |-> Num(1)], [verified |-> Bool(TRUE)], t)\nTransfer(amt, t) == Ev(\"initiate_transfer\", \"request\", [account |-> Num(1), amount |-> Num(amt)], NoFields, t)\n\nSession == <<\n  Verify(1),\n  Transfer(priorAmount, 2),\n  Verify(1 + gap),\n  Transfer(currentAmount, 2 + gap)\n>>\n\nTransferAllowed == D!Decide(Session, Policies, 4, AllValues)\n\nExceedingCapWithin12hIsRefused ==\n  (gap <= Window /\\ priorAmount + currentAmount > 50000) => ~TransferAllowed\n\nExceedingCapAfter12hIsRefused ==\n  (gap > Window /\\ currentAmount > 50000) => ~TransferAllowed\n\nCompliantSessionUnderCapAllowed ==\n  (priorAmount = 20000 /\\ currentAmount = 15000 /\\ gap = 1 * Hour) => TransferAllowed\n\n============================================================================="
-}
-```
-
-<details><summary>tool result (success)</summary>
-
-```
-CumulativeCap
-
-  3 claims will be checked, over 36 states:
-
-  ExceedingCapWithin12hIsRefused
-      says:     whenever gap is at most Window and priorAmount + currentAmount is
-                greater than 50000,
-                then the policy REFUSES it (TransferAllowed)
-      forbids:  gap is at most Window and priorAmount + currentAmount is greater than
-                50000,
-                and yet the policy GRANTS it (TransferAllowed)
-      applies:  to 12 of the 36 states:
-                  priorAmount = 20000, currentAmount = 55000, gap = 3600
-                  priorAmount = 20000, currentAmount = 55000, gap = 43200
-                  priorAmount = 30000, currentAmount = 25000, gap = 3600
-                  priorAmount = 30000, currentAmount = 25000, gap = 43200
-                  priorAmount = 30000, currentAmount = 55000, gap = 3600
-                  priorAmount = 30000, currentAmount = 55000, gap = 43200
-                  and 6 more
-
-  ExceedingCapAfter12hIsRefused
-      says:     whenever gap is greater than Window and currentAmount is greater than
-                50000,
-                then the policy REFUSES it (TransferAllowed)
-      forbids:  gap is greater than Window and currentAmount is greater than 50000,
-                and yet the policy GRANTS it (TransferAllowed)
-      applies:  to 6 of the 36 states:
-                  priorAmount = 20000, currentAmount = 55000, gap = 43201
-                  priorAmount = 20000, currentAmount = 55000, gap = 86400
-                  priorAmount = 30000, currentAmount = 55000, gap = 43201
-                  priorAmount = 30000, currentAmount = 55000, gap = 86400
-                  priorAmount = 40000, currentAmount = 55000, gap = 43201
-                  priorAmount = 40000, currentAmount = 55000, gap = 86400
-
-  CompliantSessionUnderCapAllowed
-      says:     whenever priorAmount is 20000 and currentAmount is 15000 and gap is 1 *
-                Hour (= 3600),
-                then the policy GRANTS it (TransferAllowed)
-      forbids:  priorAmount is 20000 and currentAmount is 15000 and gap is 1 * Hour (=
-                3600),
-                and yet the policy REFUSES it (TransferAllowed)
-      applies:  to 1 of the 36 states:
-                  priorAmount = 20000, currentAmount = 15000, gap = 3600
-
-  Read the `forbids` lines before the run, not after it. Each one is the only
-  thing its claim can catch; if none of them describes something you would
-  object to, the check will pass without having tested what you meant.
-```
-
-</details>
-
-**Tool call 17** — `check_module`
-
-```json
-{
-  "config": "SPECIFICATION Spec\nINVARIANT ExceedingCapWithin12hIsRefused\nINVARIANT ExceedingCapAfter12hIsRefused\nINVARIANT CompliantSessionUnderCapAllowed\nINVARIANT CompliantSessionAfter12hAllowed\n",
-  "module": "---------------------------- MODULE CumulativeCap ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nHour == 3600\nWindow == 12 * Hour\n\nPriorAmounts == {20000, 30000, 40000}\nCurrentAmounts == {15000, 25000, 55000}\nGaps == {1 * Hour, Window, Window + 1, 24 * Hour}\n\nVARIABLES priorAmount, currentAmount, gap\n\nInit ==\n  /\\ priorAmount \\in PriorAmounts\n  /\\ currentAmount \\in CurrentAmounts\n  /\\ gap \\in Gaps\n\nNext == UNCHANGED <<priorAmount, currentAmount, gap>>\nSpec == Init /\\ [][Next]_<<priorAmount, currentAmount, gap>>\n\nVerify(t) == Ev(\"verify_identity\", \"response\", [account |-> Num(1)], [verified |-> Bool(TRUE)], t)\nTransfer(amt, t) == Ev(\"initiate_transfer\", \"request\", [account |-> Num(1), amount |-> Num(amt)], NoFields, t)\n\nSession == <<\n  Verify(1),\n  Transfer(priorAmount, 2),\n  Verify(1 + gap),\n  Transfer(currentAmount, 2 + gap)\n>>\n\nTransferAllowed == D!Decide(Session, Policies, 4, AllValues)\n\nExceedingCapWithin12hIsRefused ==\n  (gap <= Window /\\ priorAmount + currentAmount > 50000) => ~TransferAllowed\n\nExceedingCapAfter12hIsRefused ==\n  (gap > Window /\\ currentAmount > 50000) => ~TransferAllowed\n\nCompliantSessionUnderCapAllowed ==\n  (priorAmount = 20000 /\\ currentAmount = 15000 /\\ gap = 1 * Hour) => TransferAllowed\n\nCompliantSessionAfter12hAllowed ==\n  (priorAmount = 30000 /\\ currentAmount = 25000 /\\ gap = Window + 1) => TransferAllowed\n\n============================================================================="
-}
-```
-
-<details><summary>tool result (success)</summary>
-
-```
-Compiles, evaluates, and holds on this policy. Either answer is acceptable -- a property that fails has already shown it discriminates. Do NOT weaken the claim to make it hold.
-```
-
-</details>
-
-**Tool call 18** — `what_it_forbids`
-
-```json
-{
-  "config": "SPECIFICATION Spec\nINVARIANT ExceedingCapWithin12hIsRefused\nINVARIANT ExceedingCapAfter12hIsRefused\nINVARIANT CompliantSessionUnderCapAllowed\nINVARIANT CompliantSessionAfter12hAllowed\n",
-  "module": "---------------------------- MODULE CumulativeCap ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nHour == 3600\nWindow == 12 * Hour\n\nPriorAmounts == {20000, 30000, 40000}\nCurrentAmounts == {15000, 25000, 55000}\nGaps == {1 * Hour, Window, Window + 1, 24 * Hour}\n\nVARIABLES priorAmount, currentAmount, gap\n\nInit ==\n  /\\ priorAmount \\in PriorAmounts\n  /\\ currentAmount \\in CurrentAmounts\n  /\\ gap \\in Gaps\n\nNext == UNCHANGED <<priorAmount, currentAmount, gap>>\nSpec == Init /\\ [][Next]_<<priorAmount, currentAmount, gap>>\n\nVerify(t) == Ev(\"verify_identity\", \"response\", [account |-> Num(1)], [verified |-> Bool(TRUE)], t)\nTransfer(amt, t) == Ev(\"initiate_transfer\", \"request\", [account |-> Num(1), amount |-> Num(amt)], NoFields, t)\n\nSession == <<\n  Verify(1),\n  Transfer(priorAmount, 2),\n  Verify(1 + gap),\n  Transfer(currentAmount, 2 + gap)\n>>\n\nTransferAllowed == D!Decide(Session, Policies, 4, AllValues)\n\nExceedingCapWithin12hIsRefused ==\n  (gap <= Window /\\ priorAmount + currentAmount > 50000) => ~TransferAllowed\n\nExceedingCapAfter12hIsRefused ==\n  (gap > Window /\\ currentAmount > 50000) => ~TransferAllowed\n\nCompliantSessionUnderCapAllowed ==\n  (priorAmount = 20000 /\\ currentAmount = 15000 /\\ gap = 1 * Hour) => TransferAllowed\n\nCompliantSessionAfter12hAllowed ==\n  (priorAmount = 30000 /\\ currentAmount = 25000 /\\ gap = Window + 1) => TransferAllowed\n\n============================================================================="
-}
-```
-
-<details><summary>tool result (success)</summary>
-
-```
-CumulativeCap
-
-  4 claims will be checked, over 36 states:
-
-  ExceedingCapWithin12hIsRefused
-      says:     whenever gap is at most Window and priorAmount + currentAmount is
-                greater than 50000,
-                then the policy REFUSES it (TransferAllowed)
-      forbids:  gap is at most Window and priorAmount + currentAmount is greater than
-                50000,
-                and yet the policy GRANTS it (TransferAllowed)
-      applies:  to 12 of the 36 states:
-                  priorAmount = 20000, currentAmount = 55000, gap = 3600
-                  priorAmount = 20000, currentAmount = 55000, gap = 43200
-                  priorAmount = 30000, currentAmount = 25000, gap = 3600
-                  priorAmount = 30000, currentAmount = 25000, gap = 43200
-                  priorAmount = 30000, currentAmount = 55000, gap = 3600
-                  priorAmount = 30000, currentAmount = 55000, gap = 43200
-                  and 6 more
-
-  ExceedingCapAfter12hIsRefused
-      says:     whenever gap is greater than Window and currentAmount is greater than
-                50000,
-                then the policy REFUSES it (TransferAllowed)
-      forbids:  gap is greater than Window and currentAmount is greater than 50000,
-                and yet the policy GRANTS it (TransferAllowed)
-      applies:  to 6 of the 36 states:
-                  priorAmount = 20000, currentAmount = 55000, gap = 43201
-                  priorAmount = 20000, currentAmount = 55000, gap = 86400
-                  priorAmount = 30000, currentAmount = 55000, gap = 43201
-                  priorAmount = 30000, currentAmount = 55000, gap = 86400
-                  priorAmount = 40000, currentAmount = 55000, gap = 43201
-                  priorAmount = 40000, currentAmount = 55000, gap = 86400
-
-  CompliantSessionUnderCapAllowed
-      says:     whenever priorAmount is 20000 and currentAmount is 15000 and gap is 1 *
-                Hour (= 3600),
-                then the policy GRANTS it (TransferAllowed)
-      forbids:  priorAmount is 20000 and currentAmount is 15000 and gap is 1 * Hour (=
-                3600),
-                and yet the policy REFUSES it (TransferAllowed)
-      applies:  to 1 of the 36 states:
-                  priorAmount = 20000, currentAmount = 15000, gap = 3600
-
-  CompliantSessionAfter12hAllowed
-      says:     whenever priorAmount is 30000 and currentAmount is 25000 and gap is
-                Window + 1 (= 43201),
-                then the policy GRANTS it (TransferAllowed)
-      forbids:  priorAmount is 30000 and currentAmount is 25000 and gap is Window + 1 (=
-                43201),
-                and yet the policy REFUSES it (TransferAllowed)
-      applies:  to 1 of the 36 states:
-                  priorAmount = 30000, currentAmount = 25000, gap = 43201
-
-  Read the `forbids` lines before the run, not after it. Each one is the only
-  thing its claim can catch; if none of them describes something you would
-  object to, the check will pass without having tested what you meant.
-```
-
-</details>
-
-**Tool call 19** — `check_module`
-
-```json
-{
-  "config": "SPECIFICATION Spec\nINVARIANT ExceedingCapWithin12hIsRefused\nINVARIANT ExceedingCapAfter12hIsRefused\nINVARIANT CompliantSessionUnderCapAllowed\nINVARIANT CompliantSessionAfter12hAllowed\n",
-  "module": "---------------------------- MODULE CumulativeCap ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nHour == 3600\nWindow == 12 * Hour\n\nPriorAmounts == {20000, 30000, 40000}\nCurrentAmounts == {15000, 25000, 55000}\nGaps == {1 * Hour, Window, Window + 1, 24 * Hour}\n\nVARIABLES priorAmount, currentAmount, gap\n\nInit ==\n  /\\ priorAmount \\in PriorAmounts\n  /\\ currentAmount \\in CurrentAmounts\n  /\\ gap \\in Gaps\n\nNext == UNCHANGED <<priorAmount, currentAmount, gap>>\nSpec == Init /\\ [][Next]_<<priorAmount, currentAmount, gap>>\n\nVerify(t) == Ev(\"verify_identity\", \"response\", [account |-> Num(1)], [verified |-> Bool(TRUE)], t)\nTransfer(amt, t) == Ev(\"initiate_transfer\", \"request\", [account |-> Num(1), amount |-> Num(amt)], NoFields, t)\n\nSession == <<\n  Verify(1),\n  Transfer(priorAmount, 2),\n  Verify(1 + gap),\n  Transfer(currentAmount, 2 + gap)\n>>\n\nTransferAllowed == D!Decide(Session, Policies, 4, AllValues)\n\nExceedingCapWithin12hIsRefused ==\n  (gap <= Window /\\ priorAmount + currentAmount > 50000) => ~TransferAllowed\n\nExceedingCapAfter12hIsRefused ==\n  (gap > Window /\\ currentAmount > 50000) => ~TransferAllowed\n\nCompliantSessionUnderCapAllowed ==\n  (priorAmount = 20000 /\\ currentAmount = 15000 /\\ gap = 1 * Hour) => TransferAllowed\n\nCompliantSessionAfter12hAllowed ==\n  (priorAmount = 30000 /\\ currentAmount = 25000 /\\ gap = Window + 1) => TransferAllowed\n\n============================================================================="
+  "config": "SPECIFICATION Spec\nINVARIANT ExceedingCapIsBlocked\nINVARIANT CompliantTransferIsAllowed",
+  "module": "---------------------------- MODULE CumulativeCap ----------------------------\nEXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest\n\nD == INSTANCE DogwoodSemantics WITH Cases <- << >>\n\nHour == 3600\nCap == 50000\nWindow == 12 * Hour\n\nPrevAmounts == {30000}\nCurrentAmounts == {20000, 20001, 50000, 50001}\nGaps == {300, Window, Window + 1}\n\nVARIABLES prevAmount, currentAmount, gap\n\nInit ==\n  /\\ prevAmount \\in PrevAmounts\n  /\\ currentAmount \\in CurrentAmounts\n  /\\ gap \\in Gaps\n\nNext == UNCHANGED <<prevAmount, currentAmount, gap>>\nSpec == Init /\\ [][Next]_<<prevAmount, currentAmount, gap>>\n\nSession == <<\n  Ev(\"verify_identity\", \"response\", [account |-> Num(1)], [verified |-> Bool(TRUE)], 100),\n  Ev(\"initiate_transfer\", \"request\", [amount |-> Num(prevAmount), account |-> Num(1)], NoFields, 100),\n  Ev(\"verify_identity\", \"response\", [account |-> Num(1)], [verified |-> Bool(TRUE)], 100 + gap),\n  Ev(\"initiate_transfer\", \"request\", [amount |-> Num(currentAmount), account |-> Num(1)], NoFields, 100 + gap)\n>>\n\nTransferAllowed == D!Decide(Session, Policies, 4, AllValues)\n\nExceedingCapIsBlocked ==\n  ((gap <= Window /\\ prevAmount + currentAmount > Cap) \\/ (gap > Window /\\ currentAmount > Cap)) => ~TransferAllowed\n\nCompliantTransferIsAllowed ==\n  (gap = 300 /\\ prevAmount = 30000 /\\ currentAmount = 20000) => TransferAllowed\n\n============================================================================="
 }
 ```
 
@@ -1333,53 +1241,43 @@ EXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest
 D == INSTANCE DogwoodSemantics WITH Cases <- << >>
 
 Hour == 3600
+Cap == 50000
 Window == 12 * Hour
 
-PriorAmounts == {20000, 30000, 40000}
-CurrentAmounts == {15000, 25000, 55000}
-Gaps == {1 * Hour, Window, Window + 1, 24 * Hour}
+PrevAmounts == {30000}
+CurrentAmounts == {20000, 20001, 50000, 50001}
+Gaps == {300, Window, Window + 1}
 
-VARIABLES priorAmount, currentAmount, gap
+VARIABLES prevAmount, currentAmount, gap
 
 Init ==
-  /\ priorAmount \in PriorAmounts
+  /\ prevAmount \in PrevAmounts
   /\ currentAmount \in CurrentAmounts
   /\ gap \in Gaps
 
-Next == UNCHANGED <<priorAmount, currentAmount, gap>>
-Spec == Init /\ [][Next]_<<priorAmount, currentAmount, gap>>
-
-Verify(t) == Ev("verify_identity", "response", [account |-> Num(1)], [verified |-> Bool(TRUE)], t)
-Transfer(amt, t) == Ev("initiate_transfer", "request", [account |-> Num(1), amount |-> Num(amt)], NoFields, t)
+Next == UNCHANGED <<prevAmount, currentAmount, gap>>
+Spec == Init /\ [][Next]_<<prevAmount, currentAmount, gap>>
 
 Session == <<
-  Verify(1),
-  Transfer(priorAmount, 2),
-  Verify(1 + gap),
-  Transfer(currentAmount, 2 + gap)
+  Ev("verify_identity", "response", [account |-> Num(1)], [verified |-> Bool(TRUE)], 100),
+  Ev("initiate_transfer", "request", [amount |-> Num(prevAmount), account |-> Num(1)], NoFields, 100),
+  Ev("verify_identity", "response", [account |-> Num(1)], [verified |-> Bool(TRUE)], 100 + gap),
+  Ev("initiate_transfer", "request", [amount |-> Num(currentAmount), account |-> Num(1)], NoFields, 100 + gap)
 >>
 
 TransferAllowed == D!Decide(Session, Policies, 4, AllValues)
 
-ExceedingCapWithin12hIsRefused ==
-  (gap <= Window /\ priorAmount + currentAmount > 50000) => ~TransferAllowed
+ExceedingCapIsBlocked ==
+  ((gap <= Window /\ prevAmount + currentAmount > Cap) \/ (gap > Window /\ currentAmount > Cap)) => ~TransferAllowed
 
-ExceedingCapAfter12hIsRefused ==
-  (gap > Window /\ currentAmount > 50000) => ~TransferAllowed
-
-CompliantSessionUnderCapAllowed ==
-  (priorAmount = 20000 /\ currentAmount = 15000 /\ gap = 1 * Hour) => TransferAllowed
-
-CompliantSessionAfter12hAllowed ==
-  (priorAmount = 30000 /\ currentAmount = 25000 /\ gap = Window + 1) => TransferAllowed
+CompliantTransferIsAllowed ==
+  (gap = 300 /\ prevAmount = 30000 /\ currentAmount = 20000) => TransferAllowed
 
 =============================================================================
 ===CONFIG===
 SPECIFICATION Spec
-INVARIANT ExceedingCapWithin12hIsRefused
-INVARIANT ExceedingCapAfter12hIsRefused
-INVARIANT CompliantSessionUnderCapAllowed
-INVARIANT CompliantSessionAfter12hAllowed
+INVARIANT ExceedingCapIsBlocked
+INVARIANT CompliantTransferIsAllowed
 
 ## the review
 
@@ -1393,66 +1291,46 @@ INVARIANT CompliantSessionAfter12hAllowed
 > 
 > CumulativeCap
 > 
->   4 claims will be checked, over 36 states:
->       priorAmount = 20000, currentAmount = 15000, gap = 3600
->       priorAmount = 20000, currentAmount = 15000, gap = 43200
->       priorAmount = 20000, currentAmount = 15000, gap = 43201
->       priorAmount = 20000, currentAmount = 15000, gap = 86400
->       priorAmount = 20000, currentAmount = 25000, gap = 3600
->       priorAmount = 20000, currentAmount = 25000, gap = 43200
->       priorAmount = 20000, currentAmount = 25000, gap = 43201
->       priorAmount = 20000, currentAmount = 25000, gap = 86400
->       and 28 more
+>   Every value each variable takes -- nothing else is checked:
+>       prevAmount     30000
+>       currentAmount  20000, 20001, 50000, 50001
+>       gap            300, 43200, 43201
 > 
->   ExceedingCapWithin12hIsRefused
->       says:     whenever gap is at most Window and priorAmount + currentAmount is
->                 greater than 50000,
+>   2 claims will be checked, over 12 states:
+>       prevAmount = 30000, currentAmount = 20000, gap = 300
+>       prevAmount = 30000, currentAmount = 20000, gap = 43200
+>       prevAmount = 30000, currentAmount = 20000, gap = 43201
+>       prevAmount = 30000, currentAmount = 20001, gap = 300
+>       prevAmount = 30000, currentAmount = 20001, gap = 43200
+>       prevAmount = 30000, currentAmount = 20001, gap = 43201
+>       prevAmount = 30000, currentAmount = 50000, gap = 300
+>       prevAmount = 30000, currentAmount = 50000, gap = 43200
+>       and 4 more
+> 
+>   ExceedingCapIsBlocked
+>       says:     whenever gap is at most Window and prevAmount + currentAmount is greater
+>                 than Cap or gap is greater than Window and currentAmount is greater than
+>                 Cap,
 >                 then the policy REFUSES it (TransferAllowed)
->       forbids:  gap is at most Window and priorAmount + currentAmount is greater than
->                 50000,
+>       forbids:  gap is at most Window and prevAmount + currentAmount is greater than Cap
+>                 or gap is greater than Window and currentAmount is greater than Cap,
 >                 and yet the policy GRANTS it (TransferAllowed)
->       applies:  to 12 of the 36 states:
->                   priorAmount = 20000, currentAmount = 55000, gap = 3600
->                   priorAmount = 20000, currentAmount = 55000, gap = 43200
->                   priorAmount = 30000, currentAmount = 25000, gap = 3600
->                   priorAmount = 30000, currentAmount = 25000, gap = 43200
->                   priorAmount = 30000, currentAmount = 55000, gap = 3600
->                   priorAmount = 30000, currentAmount = 55000, gap = 43200
->                   and 6 more
+>       applies:  to 7 of the 12 states:
+>                   prevAmount = 30000, currentAmount = 20001, gap = 300
+>                   prevAmount = 30000, currentAmount = 20001, gap = 43200
+>                   prevAmount = 30000, currentAmount = 50000, gap = 300
+>                   prevAmount = 30000, currentAmount = 50000, gap = 43200
+>                   prevAmount = 30000, currentAmount = 50001, gap = 300
+>                   prevAmount = 30000, currentAmount = 50001, gap = 43200
+>                   and 1 more
 > 
->   ExceedingCapAfter12hIsRefused
->       says:     whenever gap is greater than Window and currentAmount is greater than
->                 50000,
->                 then the policy REFUSES it (TransferAllowed)
->       forbids:  gap is greater than Window and currentAmount is greater than 50000,
->                 and yet the policy GRANTS it (TransferAllowed)
->       applies:  to 6 of the 36 states:
->                   priorAmount = 20000, currentAmount = 55000, gap = 43201
->                   priorAmount = 20000, currentAmount = 55000, gap = 86400
->                   priorAmount = 30000, currentAmount = 55000, gap = 43201
->                   priorAmount = 30000, currentAmount = 55000, gap = 86400
->                   priorAmount = 40000, currentAmount = 55000, gap = 43201
->                   priorAmount = 40000, currentAmount = 55000, gap = 86400
-> 
->   CompliantSessionUnderCapAllowed
->       says:     whenever priorAmount is 20000 and currentAmount is 15000 and gap is 1 *
->                 Hour (= 3600),
+>   CompliantTransferIsAllowed
+>       says:     whenever gap is 300 and prevAmount is 30000 and currentAmount is 20000,
 >                 then the policy GRANTS it (TransferAllowed)
->       forbids:  priorAmount is 20000 and currentAmount is 15000 and gap is 1 * Hour (=
->                 3600),
+>       forbids:  gap is 300 and prevAmount is 30000 and currentAmount is 20000,
 >                 and yet the policy REFUSES it (TransferAllowed)
->       applies:  to 1 of the 36 states:
->                   priorAmount = 20000, currentAmount = 15000, gap = 3600
-> 
->   CompliantSessionAfter12hAllowed
->       says:     whenever priorAmount is 30000 and currentAmount is 25000 and gap is
->                 Window + 1 (= 43201),
->                 then the policy GRANTS it (TransferAllowed)
->       forbids:  priorAmount is 30000 and currentAmount is 25000 and gap is Window + 1 (=
->                 43201),
->                 and yet the policy REFUSES it (TransferAllowed)
->       applies:  to 1 of the 36 states:
->                   priorAmount = 30000, currentAmount = 25000, gap = 43201
+>       applies:  to 1 of the 12 states:
+>                   prevAmount = 30000, currentAmount = 20000, gap = 300
 > 
 >   Read the `forbids` lines before the run, not after it. Each one is the only
 >   thing its claim can catch; if none of them describes something you would
@@ -1461,12 +1339,12 @@ INVARIANT CompliantSessionAfter12hAllowed
 | | |
 |---|---|
 | model | gemini-3.7-flash |
-| tokens | 1,824 |
-| seconds | 4.0 |
+| tokens | 1,687 |
+| seconds | 10.8 |
 
 VERDICT: MATCH
 
-The formal reading accurately captures the requirement to block transfers exceeding a cumulative $50,000 threshold within a 12-hour window. It correctly checks both the scenario within the 12-hour window (`priorAmount + currentAmount > 50000`) and the scenario after the window has reset (`currentAmount > 50000`), refusing transfers in both cases.
+The reading accurately reflects the requirement to block transfers when the 12-hour cumulative total exceeds $50,000. It properly includes boundary values at and just past the thresholds (43,200 and 43,201 seconds for the 12-hour window, and $50,000 and $50,001 for the cumulative cap).
 
 ## the report
 
@@ -1481,66 +1359,46 @@ The formal reading accurately captures the requirement to block transfers exceed
 > 
 > CumulativeCap
 > 
->   4 claims will be checked, over 36 states:
->   priorAmount = 20000, currentAmount = 15000, gap = 3600
->   priorAmount = 20000, currentAmount = 15000, gap = 43200
->   priorAmount = 20000, currentAmount = 15000, gap = 43201
->   priorAmount = 20000, currentAmount = 15000, gap = 86400
->   priorAmount = 20000, currentAmount = 25000, gap = 3600
->   priorAmount = 20000, currentAmount = 25000, gap = 43200
->   priorAmount = 20000, currentAmount = 25000, gap = 43201
->   priorAmount = 20000, currentAmount = 25000, gap = 86400
->   and 28 more
+>   Every value each variable takes -- nothing else is checked:
+>   prevAmount     30000
+>   currentAmount  20000, 20001, 50000, 50001
+>   gap            300, 43200, 43201
 > 
->   ExceedingCapWithin12hIsRefused
->   says:     whenever gap is at most Window and priorAmount + currentAmount is
->             greater than 50000,
+>   2 claims will be checked, over 12 states:
+>   prevAmount = 30000, currentAmount = 20000, gap = 300
+>   prevAmount = 30000, currentAmount = 20000, gap = 43200
+>   prevAmount = 30000, currentAmount = 20000, gap = 43201
+>   prevAmount = 30000, currentAmount = 20001, gap = 300
+>   prevAmount = 30000, currentAmount = 20001, gap = 43200
+>   prevAmount = 30000, currentAmount = 20001, gap = 43201
+>   prevAmount = 30000, currentAmount = 50000, gap = 300
+>   prevAmount = 30000, currentAmount = 50000, gap = 43200
+>   and 4 more
+> 
+>   ExceedingCapIsBlocked
+>   says:     whenever gap is at most Window and prevAmount + currentAmount is greater
+>             than Cap or gap is greater than Window and currentAmount is greater than
+>             Cap,
 >             then the policy REFUSES it (TransferAllowed)
->   forbids:  gap is at most Window and priorAmount + currentAmount is greater than
->             50000,
+>   forbids:  gap is at most Window and prevAmount + currentAmount is greater than Cap
+>             or gap is greater than Window and currentAmount is greater than Cap,
 >             and yet the policy GRANTS it (TransferAllowed)
->   applies:  to 12 of the 36 states:
->               priorAmount = 20000, currentAmount = 55000, gap = 3600
->               priorAmount = 20000, currentAmount = 55000, gap = 43200
->               priorAmount = 30000, currentAmount = 25000, gap = 3600
->               priorAmount = 30000, currentAmount = 25000, gap = 43200
->               priorAmount = 30000, currentAmount = 55000, gap = 3600
->               priorAmount = 30000, currentAmount = 55000, gap = 43200
->               and 6 more
+>   applies:  to 7 of the 12 states:
+>               prevAmount = 30000, currentAmount = 20001, gap = 300
+>               prevAmount = 30000, currentAmount = 20001, gap = 43200
+>               prevAmount = 30000, currentAmount = 50000, gap = 300
+>               prevAmount = 30000, currentAmount = 50000, gap = 43200
+>               prevAmount = 30000, currentAmount = 50001, gap = 300
+>               prevAmount = 30000, currentAmount = 50001, gap = 43200
+>               and 1 more
 > 
->   ExceedingCapAfter12hIsRefused
->   says:     whenever gap is greater than Window and currentAmount is greater than
->             50000,
->             then the policy REFUSES it (TransferAllowed)
->   forbids:  gap is greater than Window and currentAmount is greater than 50000,
->             and yet the policy GRANTS it (TransferAllowed)
->   applies:  to 6 of the 36 states:
->               priorAmount = 20000, currentAmount = 55000, gap = 43201
->               priorAmount = 20000, currentAmount = 55000, gap = 86400
->               priorAmount = 30000, currentAmount = 55000, gap = 43201
->               priorAmount = 30000, currentAmount = 55000, gap = 86400
->               priorAmount = 40000, currentAmount = 55000, gap = 43201
->               priorAmount = 40000, currentAmount = 55000, gap = 86400
-> 
->   CompliantSessionUnderCapAllowed
->   says:     whenever priorAmount is 20000 and currentAmount is 15000 and gap is 1 *
->             Hour (= 3600),
+>   CompliantTransferIsAllowed
+>   says:     whenever gap is 300 and prevAmount is 30000 and currentAmount is 20000,
 >             then the policy GRANTS it (TransferAllowed)
->   forbids:  priorAmount is 20000 and currentAmount is 15000 and gap is 1 * Hour (=
->             3600),
+>   forbids:  gap is 300 and prevAmount is 30000 and currentAmount is 20000,
 >             and yet the policy REFUSES it (TransferAllowed)
->   applies:  to 1 of the 36 states:
->               priorAmount = 20000, currentAmount = 15000, gap = 3600
-> 
->   CompliantSessionAfter12hAllowed
->   says:     whenever priorAmount is 30000 and currentAmount is 25000 and gap is
->             Window + 1 (= 43201),
->             then the policy GRANTS it (TransferAllowed)
->   forbids:  priorAmount is 30000 and currentAmount is 25000 and gap is Window + 1 (=
->             43201),
->             and yet the policy REFUSES it (TransferAllowed)
->   applies:  to 1 of the 36 states:
->               priorAmount = 30000, currentAmount = 25000, gap = 43201
+>   applies:  to 1 of the 12 states:
+>               prevAmount = 30000, currentAmount = 20000, gap = 300
 > 
 >   Read the `forbids` lines before the run, not after it. Each one is the only
 >   thing its claim can catch; if none of them describes something you would
@@ -1556,42 +1414,49 @@ The formal reading accurately captures the requirement to block transfers exceed
 | | |
 |---|---|
 | model | gemini-3.7-flash |
-| tokens | 3,421 |
-| seconds | 11.2 |
+| tokens | 3,193 |
+| seconds | 16.5 |
 
-### Verification Summary: `CumulativeCap.tla` on `agent-policy.dw`
+### Verification Summary
 
-All 4 claims defined in `CumulativeCap.tla` **held** across the **36 concrete states** evaluated by the model checker.
-
----
-
-### What Was Checked and What Held
-
-The check evaluated combinations of discrete values:
-* **`priorAmount`**: `20000`, `30000`, `40000`
-* **`currentAmount`**: `15000`, `25000`, `55000`
-* **`gap`**: `3600` (1h), `43200` (12h window), `43201` (12h + 1s), `86400` (24h)
-
-Across these 36 states, the following specific claims held:
-
-1. **`ExceedingCapWithin12hIsRefused` (Held across 12 applicable states)**
-   * **Rule checked**: When `gap <= 43200` and `priorAmount + currentAmount > 50000`, `TransferAllowed` is refused.
-   * **Scope**: Verified for the 12 combinations where amounts exceeded 50,000 within the 12-hour window (e.g., prior 20,000 + current 55,000; prior 30,000 + current 25,000; prior 30,000 + current 55,000; at gaps of 3,600s and 43,200s).
-
-2. **`ExceedingCapAfter12hIsRefused` (Held across 6 applicable states)**
-   * **Rule checked**: When `gap > 43200` and `currentAmount > 50000`, `TransferAllowed` is refused.
-   * **Scope**: Verified for the 6 combinations where `currentAmount = 55000` with `gap` at 43,201s or 86,400s across prior amounts of 20,000, 30,000, and 40,000.
-
-3. **`CompliantSessionUnderCapAllowed` (Held across 1 applicable state)**
-   * **Rule checked**: A session with `priorAmount = 20000`, `currentAmount = 15000`, and `gap = 3600` results in `TransferAllowed` being granted.
-
-4. **`CompliantSessionAfter12hAllowed` (Held across 1 applicable state)**
-   * **Rule checked**: A session with `priorAmount = 30000`, `currentAmount = 25000`, and `gap = 43201` results in `TransferAllowed` being granted.
+The model checker evaluated the **`CumulativeCap.tla`** property module against **`agent-policy.dw`**. All claims defined in the module **held** across the specific states evaluated.
 
 ---
 
-### Concrete Bounds and Scope Limitations
+### Concrete Bounds Checked
 
-* **Exact Value Bounds**: The verification only establishes policy behavior for the **36 discrete states** generated from the specific amounts and gap timestamps listed above.
-* **Unchecked States**: This check does not evaluate other transfer amounts (e.g., exact boundary values like 50,000, amounts below 15,000, or intermediate amounts), other time gaps (e.g., gaps between 3,600s and 43,200s, or zero gap), or negative values.
-* **Derived Analysis Not Run**: Automated exhaustive property checks were not attempted because `agent-policy.dw` accesses 6 input/output fields, exceeding the default 4-field limit for model space exploration.
+The verification was strictly limited to **12 concrete states** formed by the combinations of the following variable values:
+
+* **`prevAmount`**: `30000` (only 1 value tested)
+* **`currentAmount`**: `20000`, `20001`, `50000`, `50001` (4 values tested)
+* **`gap`**: `300`, `43200`, `43201` (3 values tested)
+
+No other values, amounts, or time gaps were checked.
+
+---
+
+### Claim Results
+
+1. **`ExceedingCapIsBlocked`** — **HELD**
+   * **What it checked:** Ensures the policy refuses `TransferAllowed` whenever the transfer exceeds the cap (either within the window when `prevAmount + currentAmount > Cap`, or outside the window when `currentAmount > Cap`).
+   * **Scope:** Applied to and held across **7 of the 12 states**:
+     * `prevAmount = 30000, currentAmount = 20001, gap = 300`
+     * `prevAmount = 30000, currentAmount = 20001, gap = 43200`
+     * `prevAmount = 30000, currentAmount = 50000, gap = 300`
+     * `prevAmount = 30000, currentAmount = 50000, gap = 43200`
+     * `prevAmount = 30000, currentAmount = 50001, gap = 300`
+     * `prevAmount = 30000, currentAmount = 50001, gap = 43200`
+     * `prevAmount = 30000, currentAmount = 50001, gap = 43201`
+
+2. **`CompliantTransferIsAllowed`** — **HELD**
+   * **What it checked:** Ensures the policy grants `TransferAllowed` for a compliant request.
+   * **Scope:** Applied to and held across **1 of the 12 states**:
+     * `prevAmount = 30000, currentAmount = 20000, gap = 300`
+
+---
+
+### Observations on Property Coverage
+
+* **Narrow positive coverage:** The claim `CompliantTransferIsAllowed` is hardcoded to a single request state (`prevAmount = 30000, currentAmount = 20000, gap = 300`). It does not verify whether compliant transfers are granted in other scenarios (such as when the window expires with `gap = 43201` and `currentAmount = 50000`, or `gap = 43200/43201` with `currentAmount = 20000`).
+* **Fixed previous amount:** `prevAmount` was never tested at any value other than `30000`. Behavior with `prevAmount = 0`, values near the cap, or values exceeding the cap was not evaluated.
+* **Derived questions omitted:** Automated derived question checks were not run because the policy reads 6 fields, exceeding the tool's default limit of 4 fields. This is an analysis limit, not a policy failure.

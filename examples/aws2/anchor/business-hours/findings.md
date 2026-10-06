@@ -22,77 +22,55 @@ WHAT WAS ACTUALLY CHECKED -- each claim, what it forbids, and how many of the st
 
 BusinessHours
 
-  3 claims will be checked, over 64 states:
-      req = [account |-> 1, amount |-> 2500, charge_id |-> 1, systemNowTime |->
-        32399999]
-      req = [account |-> 1, amount |-> 2500, charge_id |-> 1, systemNowTime |->
-        32400000]
-      req = [account |-> 1, amount |-> 2500, charge_id |-> 1, systemNowTime |->
-        61200000]
-      req = [account |-> 1, amount |-> 2500, charge_id |-> 1, systemNowTime |->
-        61200001]
-      req = [account |-> 1, amount |-> 2500, charge_id |-> 2, systemNowTime |->
-        32399999]
-      req = [account |-> 1, amount |-> 2500, charge_id |-> 2, systemNowTime |->
-        32400000]
-      req = [account |-> 1, amount |-> 2500, charge_id |-> 2, systemNowTime |->
-        61200000]
-      req = [account |-> 1, amount |-> 2500, charge_id |-> 2, systemNowTime |->
-        61200001]
-      and 56 more
+  Every value each variable takes -- nothing else is checked:
+      amount   500, 2500, 2501
+      nowTime  32399999, 32400000, 40000000, 61200000, 61200001
+
+  3 claims will be checked, over 15 states:
+      amount = 500, nowTime = 32399999
+      amount = 500, nowTime = 32400000
+      amount = 500, nowTime = 40000000
+      amount = 500, nowTime = 61200000
+      amount = 500, nowTime = 61200001
+      amount = 2500, nowTime = 32399999
+      amount = 2500, nowTime = 32400000
+      amount = 2500, nowTime = 40000000
+      and 7 more
 
   OutsideBusinessHoursRefused
-      says:     whenever req.systemNowTime is less than BusinessHoursMin or
-                req.systemNowTime is greater than BusinessHoursMax,
-                then the policy REFUSES it (RefundAllowed(req))
-      forbids:  req.systemNowTime is less than BusinessHoursMin or req.systemNowTime is
-                greater than BusinessHoursMax,
-                and yet the policy GRANTS it (RefundAllowed(req))
-      applies:  to 32 of the 64 states:
-                  req = [account |-> 1, amount |-> 2500, charge_id |-> 1, systemNowTime
-                    |-> 32399999]
-                  req = [account |-> 1, amount |-> 2500, charge_id |-> 1, systemNowTime
-                    |-> 61200001]
-                  req = [account |-> 1, amount |-> 2500, charge_id |-> 2, systemNowTime
-                    |-> 32399999]
-                  req = [account |-> 1, amount |-> 2500, charge_id |-> 2, systemNowTime
-                    |-> 61200001]
-                  req = [account |-> 1, amount |-> 2501, charge_id |-> 1, systemNowTime
-                    |-> 32399999]
-                  req = [account |-> 1, amount |-> 2501, charge_id |-> 1, systemNowTime
-                    |-> 61200001]
-                  and 26 more
+      says:     whenever nowTime is less than BusinessHoursStart or nowTime is greater
+                than BusinessHoursEnd,
+                then the policy REFUSES it (RefundAllowed(amount, nowTime))
+      forbids:  nowTime is less than BusinessHoursStart or nowTime is greater than
+                BusinessHoursEnd,
+                and yet the policy GRANTS it (RefundAllowed(amount, nowTime))
+      applies:  to 6 of the 15 states:
+                  amount = 500, nowTime = 32399999
+                  amount = 500, nowTime = 61200001
+                  amount = 2500, nowTime = 32399999
+                  amount = 2500, nowTime = 61200001
+                  amount = 2501, nowTime = 32399999
+                  amount = 2501, nowTime = 61200001
 
-  OverMaxAmountRefused
-      says:     whenever req.amount is greater than MaxAmount,
-                then the policy REFUSES it (RefundAllowed(req))
-      forbids:  req.amount is greater than MaxAmount,
-                and yet the policy GRANTS it (RefundAllowed(req))
-      applies:  to 16 of the 64 states:
-                  req = [account |-> 1, amount |-> 2501, charge_id |-> 1, systemNowTime
-                    |-> 32399999]
-                  req = [account |-> 1, amount |-> 2501, charge_id |-> 1, systemNowTime
-                    |-> 32400000]
-                  req = [account |-> 1, amount |-> 2501, charge_id |-> 1, systemNowTime
-                    |-> 61200000]
-                  req = [account |-> 1, amount |-> 2501, charge_id |-> 1, systemNowTime
-                    |-> 61200001]
-                  req = [account |-> 1, amount |-> 2501, charge_id |-> 2, systemNowTime
-                    |-> 32399999]
-                  req = [account |-> 1, amount |-> 2501, charge_id |-> 2, systemNowTime
-                    |-> 32400000]
-                  and 10 more
+  OverAmountLimitRefused
+      says:     whenever amount is greater than MaxRefundAmount,
+                then the policy REFUSES it (RefundAllowed(amount, nowTime))
+      forbids:  amount is greater than MaxRefundAmount,
+                and yet the policy GRANTS it (RefundAllowed(amount, nowTime))
+      applies:  to 5 of the 15 states:
+                  amount = 2501, nowTime = 32399999
+                  amount = 2501, nowTime = 32400000
+                  amount = 2501, nowTime = 40000000
+                  amount = 2501, nowTime = 61200000
+                  amount = 2501, nowTime = 61200001
 
   CompliantRefundAllowed
-      says:     whenever req.amount is 500 and req.systemNowTime is BusinessHoursMin and
-                req.account is 1 and req.charge_id is 1,
-                then the policy GRANTS it (RefundAllowed(req))
-      forbids:  req.amount is 500 and req.systemNowTime is BusinessHoursMin and
-                req.account is 1 and req.charge_id is 1,
-                and yet the policy REFUSES it (RefundAllowed(req))
-      applies:  to 1 of the 64 states:
-                  req = [account |-> 1, amount |-> 500, charge_id |-> 1, systemNowTime
-                    |-> 32400000]
+      says:     whenever amount is MaxRefundAmount and nowTime is BusinessHoursStart,
+                then the policy GRANTS it (RefundAllowed(amount, nowTime))
+      forbids:  amount is MaxRefundAmount and nowTime is BusinessHoursStart,
+                and yet the policy REFUSES it (RefundAllowed(amount, nowTime))
+      applies:  to 1 of the 15 states:
+                  amount = 2500, nowTime = 32400000
 
   Read the `forbids` lines before the run, not after it. Each one is the only
   thing its claim can catch; if none of them describes something you would
@@ -114,37 +92,53 @@ anchor check examples\aws2\agent-policy.dw --full --property examples\aws2\ancho
 
 ## Reported
 
+Here is the formal verification report for **`agent-policy.dw`** against the properties defined in **`BusinessHours.tla`**.
+
+---
+
 ### Verification Summary
 
-The property module **`BusinessHours.tla` held** for all 3 claims across the **64 discrete states** tested. 
+All **3 claims** in the property module **held** across the **15 concrete states** evaluated. 
 
-No counterexamples were found within this bounded set.
-
----
-
-### What Was Checked and What Held
-
-The model checker evaluated 3 properties across a specific test grid of **64 concrete request configurations** (combinations of `account` 1, `charge_id` 1 and 2, `amount` 500, 2500, and 2501, and `systemNowTime` values 32399999, 32400000, 61200000, and 61200001):
-
-1. **`OutsideBusinessHoursRefused`** (Held)
-   * **Scope:** Applied to **32 of the 64 states** where `systemNowTime` was set outside business hours (specifically testing `32399999` and `61200001`).
-   * **Result:** In all 32 tested states, the policy refused the refund request.
-
-2. **`OverMaxAmountRefused`** (Held)
-   * **Scope:** Applied to **16 of the 64 states** where `amount` was set to `2501` (exceeding the threshold of 2500).
-   * **Result:** In all 16 tested states, the policy refused the refund request.
-
-3. **`CompliantRefundAllowed`** (Held)
-   * **Scope:** Applied to **exactly 1 state**: `account = 1`, `charge_id = 1`, `amount = 500`, and `systemNowTime = 32400000`.
-   * **Result:** The policy granted the refund for this single request.
+No counterexamples were found within this test space.
 
 ---
 
-### Property Scope and Limitations
+### Bound and Scope of the Check
 
-* **Narrow Positive Test:** `CompliantRefundAllowed` tests only **one single point** (`amount = 500`, `systemNowTime = 32400000`, `account = 1`, `charge_id = 1`). It does not test whether compliant requests at other valid times (e.g., between 32400000 and 61200000) or with other compliant amounts/accounts are granted.
-* **Exact Bounds:** This run checked **only** the 64 discrete requests generated from the specific values listed above. It does not establish behavior for any unlisted timestamps, amounts, account IDs, or charge IDs.
-* **Derived Questions Not Run:** Automated exhaustive analysis across all policy inputs was **not attempted** because the policy reads 6 input/output fields, exceeding the tool's default 4-field limit.
+The verification was strictly limited to the combinations of the following specific values:
+
+* **`amount`**: `500`, `2500`, `2501`
+* **`nowTime`**: `32399999`, `32400000`, `40000000`, `61200000`, `61200001`
+
+**Total combinations checked:** 15 states.  
+Values outside this explicit set were **not checked**.
+
+---
+
+### Detailed Findings by Claim
+
+1. **`OutsideBusinessHoursRefused`** — **HELD**
+   * **What was checked:** That requests submitted outside business hours are refused.
+   * **Applicable states:** 6 of the 15 states (where `nowTime` is `32399999` or `61200001`, across amounts `500`, `2500`, and `2501`).
+   * **Result:** The policy refused the refund in all 6 evaluated states.
+
+2. **`OverAmountLimitRefused`** — **HELD**
+   * **What was checked:** That refund requests exceeding the maximum allowed amount are refused.
+   * **Applicable states:** 5 of the 15 states (where `amount = 2501`, across all 5 evaluated timestamps).
+   * **Result:** The policy refused the refund in all 5 evaluated states.
+
+3. **`CompliantRefundAllowed`** — **HELD**
+   * **What was checked:** That a refund request exactly at the maximum limit (`2500`) and exactly at the start of business hours (`32400000`) is granted.
+   * **Applicable states:** 1 of the 15 states (`amount = 2500, nowTime = 32400000`).
+   * **Result:** The policy granted the refund for this specific state.
+
+---
+
+### Observations and Exclusions
+
+* **Limited Property Scope:** The check verified only the exact boundary and sample values listed above. It does not establish policy behavior for other dollar amounts (e.g., negative amounts, 0, or values between 500 and 2500) or other timestamps during the day.
+* **Derived Questions Skipped:** Automated derived questions were **not attempted**. The policy reads 6 input/output fields, exceeding the tool's configured limit of 4 fields for exhaustive state exploration. This is a limit of the exploration tool, not a failure of the policy.
 
 Every LLM call this run made, with each tool call and its reply, is in `transcript.md` beside this file.
 
@@ -156,23 +150,23 @@ Every LLM call this run made, with each tool call and its reply, is in `transcri
 
 | | tokens in | of which cached | out | total | seconds |
 |---|---:|---:|---:|---:|---:|
-| draft round 1 | 311,718 | 221,866 | 9,387 | 321,105 | 135.7 |
-| the review | 1,629 | 0 | 648 | 2,277 | 5.6 |
-| the report | 1,776 | 0 | 1,642 | 3,418 | 11.3 |
-| **3 model call(s)** | **315,123** | **221,866** | **11,677** | **326,800** | **152.6** |
+| draft round 1 | 272,036 | 174,933 | 8,229 | 280,265 | 177.5 |
+| the review | 1,239 | 0 | 1,155 | 2,394 | 9.6 |
+| the report | 1,297 | 0 | 1,567 | 2,864 | 9.2 |
+| **3 model call(s)** | **274,572** | **174,933** | **10,951** | **285,523** | **196.3** |
 
 Time per stage, model calls and verification together:
 
 ```
   describe          0.2s
-  draft           143.3s
+  draft           187.1s
   preflight         0.0s
-  score            17.7s
-  review            5.6s
-  check             0.2s
-  answer           11.3s
+  score            21.1s
+  review            9.6s
+  check             1.5s
+  answer            9.2s
   report            0.0s
-  total           178.2s
+  total           228.7s
 ```
 
-Of which 152.6s was model calls; the rest is verification -- TLC runs in `score` and `check`, which cost no tokens.
+Of which 196.3s was model calls; the rest is verification -- TLC runs in `score` and `check`, which cost no tokens.

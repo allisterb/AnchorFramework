@@ -3,44 +3,36 @@ EXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest
 
 D == INSTANCE DogwoodSemantics WITH Cases <- << >>
 
-BusinessHoursMin == 32400000
-BusinessHoursMax == 61200000
-MaxAmount == 2500
+Approval(t) == Ev("request_approval", "response", [charge_id |-> Num(1)], [approved |-> Bool(TRUE)], t)
+Refund(t, amt, nowTime) == Ev("issue_refund", "request", [charge_id |-> Num(1), amount |-> Num(amt), systemNowTime |-> Num(nowTime), account |-> Num(1)], NoFields, t)
 
-accountValues == {1, 2}
-amountValues == {499, 500, 2500, 2501}
-charge_idValues == {1, 2}
-systemNowTimeValues == {32399999, 32400000, 61200000, 61200001}
+Session(amt, nowTime) == << Approval(1), Refund(2, amt, nowTime) >>
+RefundAllowed(amt, nowTime) == D!Decide(Session(amt, nowTime), Policies, 2, AllValues)
 
-Requests == {[account |-> account, amount |-> amount, charge_id |-> charge_id, systemNowTime |-> systemNowTime] :
-  account \in accountValues, amount \in amountValues, charge_id \in charge_idValues, systemNowTime \in systemNowTimeValues}
+BusinessHoursStart == 32400000
+BusinessHoursEnd   == 61200000
+MaxRefundAmount    == 2500
 
-RefundAllowed(r) ==
-  D!Decide(
-    <<Request("issue_refund", [
-        account |-> Num(r.account),
-        amount |-> Num(r.amount),
-        charge_id |-> Num(r.charge_id),
-        systemNowTime |-> Num(r.systemNowTime)
-      ])>>,
-    Policies,
-    1,
-    AllValues
-  )
+Amounts == {500, MaxRefundAmount, MaxRefundAmount + 1}
+Times   == {BusinessHoursStart - 1, BusinessHoursStart, 40000000, BusinessHoursEnd, BusinessHoursEnd + 1}
 
-VARIABLE req
+VARIABLES amount, nowTime
 
-Init == req \in Requests
-Next == UNCHANGED req
-Spec == Init /\ [][Next]_req
+Init ==
+    /\ amount \in Amounts
+    /\ nowTime \in Times
+
+Next == UNCHANGED <<amount, nowTime>>
+
+Spec == Init /\ [][Next]_<<amount, nowTime>>
 
 OutsideBusinessHoursRefused ==
-  (req.systemNowTime < BusinessHoursMin \/ req.systemNowTime > BusinessHoursMax) => ~RefundAllowed(req)
+    (nowTime < BusinessHoursStart \/ nowTime > BusinessHoursEnd) => ~RefundAllowed(amount, nowTime)
 
-OverMaxAmountRefused ==
-  (req.amount > MaxAmount) => ~RefundAllowed(req)
+OverAmountLimitRefused ==
+    (amount > MaxRefundAmount) => ~RefundAllowed(amount, nowTime)
 
 CompliantRefundAllowed ==
-  (req.amount = 500 /\ req.systemNowTime = BusinessHoursMin /\ req.account = 1 /\ req.charge_id = 1) => RefundAllowed(req)
+    (amount = MaxRefundAmount /\ nowTime = BusinessHoursStart) => RefundAllowed(amount, nowTime)
 
 =============================================================================

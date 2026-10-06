@@ -4,44 +4,36 @@ EXTENDS Integers, Sequences, FiniteSets, PolicyUnderTest
 D == INSTANCE DogwoodSemantics WITH Cases <- << >>
 
 Hour == 3600
+Cap == 50000
 Window == 12 * Hour
 
-PriorAmounts == {20000, 30000, 40000}
-CurrentAmounts == {15000, 25000, 55000}
-Gaps == {1 * Hour, Window, Window + 1, 24 * Hour}
+PrevAmounts == {30000}
+CurrentAmounts == {20000, 20001, 50000, 50001}
+Gaps == {300, Window, Window + 1}
 
-VARIABLES priorAmount, currentAmount, gap
+VARIABLES prevAmount, currentAmount, gap
 
 Init ==
-  /\ priorAmount \in PriorAmounts
+  /\ prevAmount \in PrevAmounts
   /\ currentAmount \in CurrentAmounts
   /\ gap \in Gaps
 
-Next == UNCHANGED <<priorAmount, currentAmount, gap>>
-Spec == Init /\ [][Next]_<<priorAmount, currentAmount, gap>>
-
-Verify(t) == Ev("verify_identity", "response", [account |-> Num(1)], [verified |-> Bool(TRUE)], t)
-Transfer(amt, t) == Ev("initiate_transfer", "request", [account |-> Num(1), amount |-> Num(amt)], NoFields, t)
+Next == UNCHANGED <<prevAmount, currentAmount, gap>>
+Spec == Init /\ [][Next]_<<prevAmount, currentAmount, gap>>
 
 Session == <<
-  Verify(1),
-  Transfer(priorAmount, 2),
-  Verify(1 + gap),
-  Transfer(currentAmount, 2 + gap)
+  Ev("verify_identity", "response", [account |-> Num(1)], [verified |-> Bool(TRUE)], 100),
+  Ev("initiate_transfer", "request", [amount |-> Num(prevAmount), account |-> Num(1)], NoFields, 100),
+  Ev("verify_identity", "response", [account |-> Num(1)], [verified |-> Bool(TRUE)], 100 + gap),
+  Ev("initiate_transfer", "request", [amount |-> Num(currentAmount), account |-> Num(1)], NoFields, 100 + gap)
 >>
 
 TransferAllowed == D!Decide(Session, Policies, 4, AllValues)
 
-ExceedingCapWithin12hIsRefused ==
-  (gap <= Window /\ priorAmount + currentAmount > 50000) => ~TransferAllowed
+ExceedingCapIsBlocked ==
+  ((gap <= Window /\ prevAmount + currentAmount > Cap) \/ (gap > Window /\ currentAmount > Cap)) => ~TransferAllowed
 
-ExceedingCapAfter12hIsRefused ==
-  (gap > Window /\ currentAmount > 50000) => ~TransferAllowed
-
-CompliantSessionUnderCapAllowed ==
-  (priorAmount = 20000 /\ currentAmount = 15000 /\ gap = 1 * Hour) => TransferAllowed
-
-CompliantSessionAfter12hAllowed ==
-  (priorAmount = 30000 /\ currentAmount = 25000 /\ gap = Window + 1) => TransferAllowed
+CompliantTransferIsAllowed ==
+  (gap = 300 /\ prevAmount = 30000 /\ currentAmount = 20000) => TransferAllowed
 
 =============================================================================

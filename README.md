@@ -28,10 +28,20 @@ Anchor's formal verification can proceed in three modes.
 mode and it does not require an LLM, but it requires an existing TLA+ property module and the knowledge to author one accurately. 
 
 * `auto` This is the autoformalization mode. The only artifact a human supplies is a natural language brief that describes the intent of the policy set. The agent is handed a vocabulary derived mechanically from
-the policy set, a knowledge article on how to write a property module using the Anchor MCP tools and the brief, and it autonomously writes the TLA+ module. It never sees the policy set's rules, so what it drafts cannot be a restatement of the policy set. Three models and four gates stand between a property module draft and a acceptance verdict. An accepted property module is model-checked against the policy set in the same run, a BROKEN one replayed in Dogwood as the session that breaks it, and the run ends with the verdicts and a `check --full` run that checks the policy set with the newly generated property module. Needs no formal methods knowledge on the user's part but requires an LLM.
+the policy set, a knowledge article on how to write a property module using the Anchor MCP tools and the brief, and it autonomously writes the TLA+ module. It is not given the policy set's rules, and is told to decide its claims from the brief before looking at the policy, though its `evaluate` tool can read the generated rule set. Three models and four gates stand between a property module draft and a acceptance verdict. An accepted property module is model-checked against the policy set in the same run, a BROKEN one replayed in Dogwood as the session that breaks it, and the run ends with the verdicts and a `check --full` run that checks the policy set with the newly generated property module. Needs no formal methods knowledge on the user's part but requires an LLM.
 
 
 * `hitl` Similar to auto mode but with one additional step: when a gate rejects a property module draft, it asks the person about the problem *requirement*, (never about TLA+), folds the answer into the brief and tries drafting the property module again. Before the property module is used, it reads the claim back in plain English for the user to confirm the intent is accurate. Needs no formal methods knowledge on the user's part but requires an LLM.
+
+> **Property-module drafting is a work in progress.** A drafted module checks exactly the values it
+> names, and nothing proves it states what you meant: the gates (compilation, the decision probe,
+> mutation scoring, and a second model comparing the claim's plain-English reading with the
+> requirement) can only reject. On the [aws2](examples/aws2) example, drafted modules caught 14 of 17
+> hand-written policy bugs (`tests/strands/semantic_mutants.py`), including every bug that lets more
+> through. The three they missed make the policy too strict: a window widened, or refunds counted
+> across accounts, with no claim that what falls outside them is still allowed. That is one sweep;
+> drafts vary from run to run. Read each module's `forbids` lines and its value list before trusting
+> a verdict.
 
 ## Architecture diagram
 ![Anchor architecture](docs/images/architecture.svg)
