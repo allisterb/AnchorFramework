@@ -197,13 +197,13 @@ docker run --rm -v "$PWD:/work" -v "$HOME/.anchor:/config:ro" public.ecr.aws/v4q
 # Windows mount $USERPROFILE\.anchor as /config in the container
 docker run --rm -v ".:/work" -v "$($env:USERPROFILE)\.anchor:/config" public.ecr.aws/v4q7x8t1/anchor:latest auto policy.dw --config /config/appsettings.json --intent "..."
 ```
-The appsettings.json file should contain the model provider and model name, as well as any necessary credentials (e.g., API keys) for the model provider. See [appsettings.json.example](docs/appsettings.json.example) for a template.
+The `appsettings.json` file should contain the model provider and model name, as well as any necessary credentials (e.g., API keys) for the model provider. See [appsettings.json.example](docs/appsettings.json.example) for a template.
 You can also specify the environment variable `ANCHOR_APPSETTINGS` as a an alternative to `--config` to point to the appsettings.json file. 
-A single `-e GEMINI_API_KEY` also works if a key is all you need for the Gemini provider. 
 A `--config` or `ANCHOR_APPSETTINGS` path that is not there is refused with exit 2. 
 
-Without either, the file is looked for beside `src/agent/` and at the repo root. Every LLM mode warns about it before its first call, even when the environment
-supplies the key, because the file's `Model` and `Region` settings then quietly stop applying.
+Without either, the `appsettings.json`file is looked for beside `src/agent/` and at the repo root. The two differ when the file is not there. A missing `--config` path is refused with exit 2. A missing `ANCHOR_APPSETTINGS` path means just no settings file is read, and the search is not used either. 
+Every LLM mode warns about that before its first call, even when the environment supplies the key, because the file's `Model` and `Region` settings then quietly stop applying.
+Credentials are read from the environment first, so a single `-e GEMINI_API_KEY` also works if a key is all you need for the Gemini provider.
 
 The command `check --full` also takes a `--config` param or `ANCHOR_SETTINGS` env var too, for the LLM that answers `questions.md`. 
 
@@ -217,7 +217,7 @@ as an alias for either the launcher script in the repo root or the Docker contai
 
 
 * A **policy** is one `permit` or `forbid` statement, and a `.dw` file is a **policy
-set**, which Dogwood's term, after Cedar's `PolicySet`. Anchor also calls a policy a **rule**, as AWS's own
+set**, which is Dogwood's term, after Cedar's `PolicySet`. Anchor also calls a policy a **rule**, as AWS's own
 Dogwood posts often do, because "the policy" is otherwise ambiguous between one statement and the
 file. Every question below is about what the whole set decides. 
 
@@ -239,6 +239,8 @@ no:
 | Can this permit ever grant anything? | live / **VACUOUS** |
 | Can this rule be deleted? | live / **REDUNDANT** / **DEAD** |
 | `--against other.dw` did this edit change a decision? | **THEY DIFFER** / no difference |
+
+`live` means the rule matters: deleting it would change at least one decision in some session, and the witness is that session.
 
 e.g.
 ```

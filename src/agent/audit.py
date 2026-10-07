@@ -461,7 +461,7 @@ def report(plan: Plan, results: dict, findings: list[str], *, model_used: bool,
                   "search — so no rule here could have been reported inert even if it were. See",
                   "the note below.", ""]
     elif plan.properties:
-        lines += ["**Nothing found.** Every rule is load-bearing and every stated intention holds,",
+        lines += ["**Nothing found.** Every rule is live and every stated intention holds,",
                   "within the bounds each check reports.", ""]
     else:
         # NOT "every stated intention holds" -- there are none, so that sentence is vacuously

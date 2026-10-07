@@ -559,6 +559,14 @@
       "given": false,
       "claims": {
         "module": "SuccessfulRead.tla",
+        "ranges": {
+          "scenario": [
+            "\"completedRead\"",
+            "\"deniedRead\"",
+            "\"failedRead\"",
+            "\"noRead\""
+          ]
+        },
         "states": [
           "scenario = \"completedRead\"",
           "scenario = \"deniedRead\"",
@@ -686,6 +694,14 @@
       "given": false,
       "claims": {
         "module": "SuccessfulReadGuide.tla",
+        "ranges": {
+          "scenario": [
+            "\"completedRead\"",
+            "\"deniedRead\"",
+            "\"failedRead\"",
+            "\"noRead\""
+          ]
+        },
         "states": [
           "scenario = \"completedRead\"",
           "scenario = \"deniedRead\"",

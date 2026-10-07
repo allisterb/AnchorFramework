@@ -182,7 +182,10 @@ def settings_warning() -> str | None:
     if _settings_warned or not (named := missing_settings()):
         return None
     _settings_warned = True
-    return (f"$ANCHOR_APPSETTINGS names {named}, which does not exist, so no settings file was read,")
+    return (f"$ANCHOR_APPSETTINGS names {named}, which does not exist, so no settings file was read, "
+            f"and the search in src/agent/ and at the Anchor root is not used when it is set. A key "
+            f"from the environment still works, but the file's Gemini:Model, Bedrock:Region and "
+            f"Google settings do not apply.")
 
 
 def settings_note() -> str:

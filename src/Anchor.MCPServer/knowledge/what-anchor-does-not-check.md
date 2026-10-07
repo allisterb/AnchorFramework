@@ -22,7 +22,7 @@ this is TLC, and TLC checks a model.
 ## It does not check that the policy is correct
 
 The three built-in findings are *derivable* — statable without knowing intent. They would all pass a
-firewall policy that let the whole internet in. "Every rule is load-bearing" is not "the policy is
+firewall policy that let the whole internet in. "Every rule is live" is not "the policy is
 right". For intent you must state it yourself: see `writing-a-property-module`.
 
 ## It does not replace the gateway's validator

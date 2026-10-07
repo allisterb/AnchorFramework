@@ -5,7 +5,7 @@
 \*   "After 15 minutes without advisor interaction, the agent loses access to write operations."
 \*
 \* THE BUILT-IN QUESTIONS CANNOT EVALUATE THAT SENTENCE, and they say so cheerfully: the derived
-\* run on this file reports "every rule is load-bearing within 3 attempts". True, and no comfort
+\* run on this file reports "every rule is live within 3 attempts". True, and no comfort
 \* at all -- a permit that fires is a permit that fires, whichever way round its condition is.
 \*
 \* THIS CLAIM IS TEMPORAL, so it is not the one-request shape the skeleton offers. A session is

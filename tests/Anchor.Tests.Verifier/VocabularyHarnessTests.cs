@@ -183,7 +183,7 @@ public class VocabularyHarnessTests : TestsRuntime
             "src/checker/properties.py", "tests/policies/firewall_ip_narrow.dw");
 
         Assert.True(builtin.ExitCode == 0, builtin.Output);
-        Assert.Contains("every rule is load-bearing", builtin.Output);
+        Assert.Contains("every rule is live", builtin.Output);
     }
 
     /// <summary>
@@ -363,7 +363,8 @@ public class VocabularyHarnessTests : TestsRuntime
             "src/checker/properties.py", "tests/policies/business_hours_converted.dw");
 
         Assert.True(converted.ExitCode == 0, converted.Output);
-        Assert.Equal(3, System.Text.RegularExpressions.Regex.Matches(converted.Output, @"\blive\b").Count);
+        // Verdict lines, `live` and its witness: the summary says "every rule is live" too.
+        Assert.Equal(3, System.Text.RegularExpressions.Regex.Matches(converted.Output, @"\blive\s+witness:").Count);
         Assert.DoesNotContain("VACUOUS", converted.Output);
 
         // Three rules past the end of the day. The 25h one was reported live while the clock's

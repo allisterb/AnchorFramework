@@ -1822,7 +1822,7 @@ def main() -> int:
             if verdict in seen:
                 print(legend[verdict])
     elif not unknown:
-        print(f"every rule is load-bearing within {args.attempts} attempts.\n"
+        print(f"every rule is live within {args.attempts} attempts.\n"
               "That is not a proof of correctness -- only that none of them is inert.")
 
     # Vacuity is a finding, not an error. The exit code says whether the run ANSWERED.
