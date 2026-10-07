@@ -137,8 +137,9 @@ public class PythonProcess : Runtime
             Kill(process);
             return Failure<PythonRun>(
                 $"{script} did not finish within {(timeout ?? TimeSpan.FromMinutes(10)).TotalMinutes:0.#} minutes. " +
-                $"A checker run is one TLC invocation per rule, so a large policy or a high --attempts " +
-                $"bound legitimately takes longer; raise the timeout or lower the bound.");
+                $"A checker run is one TLC invocation per rule, so a large policy set or a high " +
+                $"--attempts bound legitimately takes longer. Raise the timeout (--timeout SECONDS), or " +
+                $"add --smoke N to search N random sessions instead of all of them.");
         }
         catch (OperationCanceledException)
         {
@@ -221,7 +222,7 @@ public class PythonProcess : Runtime
 
     /// <summary>Importable, not merely installed — a broken install is not a usable one.</summary>
     public static bool CanImport(string module, string? python = null) =>
-        imports.GetOrAdd($"{python} {module}", _ =>
+        imports.GetOrAdd($"{python}\0{module}", _ =>
             FindPython(python).Succeeded(out var exe) && Execute(exe.Value, $"import {module}") is not null);
 
     static void Kill(Process process)

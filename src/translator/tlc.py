@@ -76,9 +76,101 @@ def run_tlc(module: str, cwd: Path, scratch: Path | None = None,
                "-config", f"{module}.cfg", f"{module}.tla"]
         if os.environ.get("ANCHOR_PROGRESS"):
             return relay_progress(cmd, cwd)
-        proc = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, encoding="utf-8",
-                              errors="replace")
+        proc = run_java(cmd, cwd)
         return proc.returncode == 0, proc.stdout + proc.stderr
+
+
+def run_java(cmd: list[str], cwd: Path) -> subprocess.CompletedProcess:
+    """`subprocess.run(cmd, capture_output=True, text=True)` for a JVM, which dies with us.
+
+    TLC OUTLIVED ITS CALLER. On a timeout `PythonProcess` kills the checker's process tree, but on
+    Windows the venv's `python.exe` is a launcher with the real interpreter as its child; .NET kills
+    the root first, the launcher's job takes the interpreter down at once, and by the time .NET
+    looks for the interpreter's children it is gone and so is the link to java. One TLC run on
+    aws1's 12-rule policy set kept a core and 2.7 GB for fifteen hours. `bound_popen` ties the JVM
+    to this process instead, so it ends however this one does.
+    """
+    with bound_popen(cmd, cwd) as proc:
+        try:
+            out, err = proc.communicate()
+        except BaseException:
+            proc.kill()                     # what subprocess.run does: Ctrl+C must not leave it
+            raise
+    return subprocess.CompletedProcess(cmd, proc.returncode, out, err)
+
+
+def bound_popen(cmd: list[str], cwd: Path) -> subprocess.Popen:
+    """A Popen with text pipes, in this process's kill-on-close job on Windows; plain elsewhere."""
+    proc = subprocess.Popen(cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                            encoding="utf-8", errors="replace")
+    if sys.platform == "win32":
+        _bind(proc.pid)
+    return proc
+
+
+_job = None
+
+
+def _bind(pid: int) -> bool:
+    """Put `pid` in a job that Windows kills when this process's last handle to it closes.
+
+    THE HANDLE IS NEVER CLOSED BY US, which is the mechanism: it closes when this process exits,
+    however it exits -- TerminateProcess included, which no handler or `atexit` survives.
+
+    NOT FATAL WHEN IT FAILS. The run's answer does not depend on it, and refusing to check a policy
+    because a cleanup guarantee could not be set up would be the wrong trade. It fails only where
+    the job cannot be nested, which Windows 8 and later allow.
+    """
+    import ctypes
+    from ctypes import wintypes
+
+    global _job
+    k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    k32.CreateJobObjectW.restype = wintypes.HANDLE
+    k32.OpenProcess.restype = wintypes.HANDLE
+    k32.SetInformationJobObject.argtypes = [wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p,
+                                            wintypes.DWORD]
+    k32.AssignProcessToJobObject.argtypes = [wintypes.HANDLE, wintypes.HANDLE]
+    k32.CloseHandle.argtypes = [wintypes.HANDLE]
+
+    if _job is None:
+        class Basic(ctypes.Structure):
+            _fields_ = [("PerProcessUserTimeLimit", ctypes.c_int64),
+                        ("PerJobUserTimeLimit", ctypes.c_int64),
+                        ("LimitFlags", wintypes.DWORD),
+                        ("MinimumWorkingSetSize", ctypes.c_size_t),
+                        ("MaximumWorkingSetSize", ctypes.c_size_t),
+                        ("ActiveProcessLimit", wintypes.DWORD),
+                        ("Affinity", ctypes.c_size_t),
+                        ("PriorityClass", wintypes.DWORD),
+                        ("SchedulingClass", wintypes.DWORD)]
+
+        class Extended(ctypes.Structure):
+            _fields_ = [("BasicLimitInformation", Basic),
+                        ("IoInfo", ctypes.c_uint64 * 6),
+                        ("ProcessMemoryLimit", ctypes.c_size_t),
+                        ("JobMemoryLimit", ctypes.c_size_t),
+                        ("PeakProcessMemoryUsed", ctypes.c_size_t),
+                        ("PeakJobMemoryUsed", ctypes.c_size_t)]
+
+        job = k32.CreateJobObjectW(None, None)
+        if not job:
+            return False
+        info = Extended()
+        info.BasicLimitInformation.LimitFlags = 0x2000          # JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+        if not k32.SetInformationJobObject(job, 9, ctypes.byref(info), ctypes.sizeof(info)):
+            k32.CloseHandle(job)                                # 9: JobObjectExtendedLimitInformation
+            return False
+        _job = job
+
+    process = k32.OpenProcess(0x0100 | 0x0001, False, pid)      # PROCESS_SET_QUOTA | _TERMINATE
+    if not process:
+        return False
+    try:
+        return bool(k32.AssignProcessToJobObject(_job, process))
+    finally:
+        k32.CloseHandle(process)
+
 
 def relay_progress(cmd: list[str], cwd: Path) -> tuple[bool, str]:
     """`run_tlc` for a caller that asked for progress: TLC's own `Progress(...)` lines are echoed to
@@ -87,8 +179,7 @@ def relay_progress(cmd: list[str], cwd: Path) -> tuple[bool, str]:
     TLC prints one about once a minute on a long search, which is the only sign a ten-minute run is
     alive. stderr is read on a thread so that neither pipe can fill while the other is being read.
     """
-    proc = subprocess.Popen(cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
-                            encoding="utf-8", errors="replace")
+    proc = bound_popen(cmd, cwd)
     errors: list[str] = []
     reader = threading.Thread(target=lambda: errors.append(proc.stderr.read()), daemon=True)
     reader.start()
@@ -118,10 +209,9 @@ def run_sany(module: str, cwd: Path) -> tuple[bool, str]:
     absence of data.
     """
     with tempfile.TemporaryDirectory(prefix="anchor-sany-") as tmp:
-        proc = subprocess.run(
+        proc = run_java(
             ["java", *JAVA_UTF8, *java_options(), f"-Djava.io.tmpdir={tmp}",
-             "-cp", str(find_jar()), "tla2sany.SANY", f"{module}.tla"],
-            cwd=cwd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+             "-cp", str(find_jar()), "tla2sany.SANY", f"{module}.tla"], cwd)
 
     out = proc.stdout + proc.stderr
     broken = ("*** Errors" in out or "*** Abort" in out or "Could not parse" in out
@@ -193,12 +283,11 @@ def run_eval(expr: str, extends: str, cwd: Path, spec: str | None = "Spec") -> t
     (cwd / f"{name}.cfg").write_text(f"SPECIFICATION {spec}\n" if spec else "", encoding="utf-8")
 
     with tempfile.TemporaryDirectory(prefix="anchor-eval-") as tmp:
-        proc = subprocess.run(
+        proc = run_java(
             ["java", *JAVA_UTF8, *java_options(), f"-Djava.io.tmpdir={tmp}",
              "-cp", str(find_jar()), "tlc2.TLC", "-deadlock", "-cleanup",
              "-metadir", str(Path(tmp) / "states"),
-             "-config", f"{name}.cfg", f"{name}.tla"],
-            cwd=cwd, capture_output=True, text=True, encoding="utf-8", errors="replace")
+             "-config", f"{name}.cfg", f"{name}.tla"], cwd)
 
     out = proc.stdout + proc.stderr
     lines = out.splitlines()

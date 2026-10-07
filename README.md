@@ -257,6 +257,19 @@ the obvious response is to delete it. It is falsification-tested rather than mer
 anything that is not an answer like a parse error, an unsupported construct  raises an error. Constructs outside the modelled subset are refused with a reason, never
 approximated.
 
+**Raising `--attempts` gets expensive fast.** Every extra attempt multiplies the sessions to search by
+every request the policy set can see, and a rule that turns out REDUNDANT or DEAD can only be called
+that once all of them have been searched. On the 12-rule [`examples/aws1/agent-policy.dw`](examples/aws1/agent-policy.dw),
+`--attempts 5` spent over 8 minutes on a single rule, and the policy set did not finish within
+`check`'s default limit of 10 minutes per policy set (raise it with `--timeout SECONDS`; not with
+`--full`). For a large policy set, add `--smoke 1000`:
+```bash
+anchor check examples/aws1 --attempts 4 --smoke 1000
+```
+`--smoke N` checks N random sessions instead of all of them. A rule it finds a witness for is `live`
+for certain, but it never concludes VACUOUS, REDUNDANT or DEAD: a rule with no witness comes back
+`unknown`, which is not a finding. Only an exhaustive run can say "never".
+
 
 ###  Check audit mode
 
