@@ -106,7 +106,7 @@ live, and the rest I could not settle".
 ## Intentional properties
 
 ```bash
-anchor check firewall.dw --property firewall.tla
+anchor check tests/policies/firewall.dw --property tests/policies/firewall.tla
 ```
 
 A property module is a TLA+ spec that extends the generated `PolicyUnderTest` spec, stating what the
@@ -118,7 +118,7 @@ records; the only difference is that it explores sessions and a per-request clai
 
 ### Why the derivable property checks are not enough
 
-`firewall_open.dw` drops a `forbid` and widens a permit, letting the whole internet connect on port
+`tests/policies/firewall_open.dw` drops a `forbid` and widens a permit, letting the whole internet connect on port
 22. The built-in checks do not miss it silently — they report
 
 ```
@@ -200,7 +200,7 @@ every one of them however carefully it names its values, and needs at least one 
 must be **allowed** before this gate means anything. The complaint says so.
 
 
-## What is this value? — `--eval`
+## `--eval`: Evaluate a policy expression
 
 ```bash
 anchor check policy.dw --property Claim.tla --eval "TradeAllowed(960)"
@@ -227,7 +227,7 @@ this**: it parses and resolves and never evaluates, and in-process TLC is not vi
 
 **A value is not a verdict.** That the policy grants one session says nothing about the others.
 
-## Is it even a Dogwood policy? — `--syntax`
+## `--syntax`: Check if a policy is valid Dogwood syntax
 
 This checker reads a **subset** of Dogwood, so its refusals carry two meanings under one message:
 *the construct is outside the subset*, or *the policy is broken*. Those need opposite responses —
@@ -269,7 +269,7 @@ A policy that parses cleanly draws no such comment — a second opinion on a hea
 and would train a reader to ignore it on the file that needs it. Both need the `dogwood` binary,
 and both say so and carry on without it.
 
-## The counterexample, in Dogwood — `--witness`
+## `--witness`: generate the counterexample in Dogwood
 
 A broken claim ends in a TLA+ state:
 
@@ -283,7 +283,7 @@ output is a variable belonging to a TLA+ module a tool may have drafted, holding
 units are not written down. `--witness` carries it back:
 
 ```bash
-python src/checker/properties.py policy.dw --property TrustDecay.tla --witness
+anchor check policy.dw --property TrustDecay.tla --witness
 ```
 
 ```
@@ -316,7 +316,7 @@ the decision assumed each way, and the assumption that makes it *false* is what 
 neither does, this reader and TLC disagree about what a counterexample is, and it says so and
 claims nothing rather than guessing.
 
-### The evidence is portable
+## `--keep DIR`: for keeping evidence
 
 `--keep DIR` writes everything the engine consumes into `DIR/witness/`, so the finding can be
 checked by someone who does not have this checkout — or does not trust it:
@@ -330,7 +330,7 @@ checked by someone who does not have this checkout — or does not trust it:
 | `README.md` | what each file is, the exact command, and how to read the result |
 
 ```bash
-cd traces/07-trust-decay-TrustDecay10/witness
+cd examples/aws1/traces/07-trust-decay-TrustDecay10/witness
 dogwood replay --policy-schema generated.cedarschema --trace LosesWriteAfter10m.log 07-trust-decay.dw
 ```
 ```
@@ -347,10 +347,10 @@ tidiness. A universal pin changes what history a temporal predicate can see, so 
 TLC found under a pinned reading against the engine's default answers a question nobody asked —
 confidently, with the reference implementation's authority behind it.
 
-`--witness` needs the `dogwood` binary, which is not in the repo. Without it the session is still
+`--witness` needs the `dogwood` binary, without it the session is still
 printed — only the engine's confirmation is missing.
 
-## `ANCHOR_TLC_JAVA_OPTS`, and why it has no default
+## The `ANCHOR_TLC_JAVA_OPTS` environment variable
 
 Extra JVM flags for every TLC run, honoured by both the Python runner and `TLCProcess`. Unset, so
 a run started by hand gets the JVM's own defaults.
@@ -376,12 +376,3 @@ one, so the default is the JVM's. The **test suite** sets it, in
 classes compete for the machine; it took the suite from 8m46 to 3m30 together with the class split.
 
 Set it yourself if you are running many small checks at once — a directory sweep, or CI.
-
-## Why it is not part of `translator`
-
-Translating a policy and reasoning about one are different jobs with different failure modes, and
-the MCP server will want them separately — "what does this policy say" is a question you can answer
-without ever starting a JVM.
-
-The seam between them is `PolicyUnderTest.tla`, which [`translator/policy_module.py`](../translator/policy_module.py)
-generates. Everything here extends it, and so does every property anyone writes.
