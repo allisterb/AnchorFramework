@@ -185,7 +185,9 @@ public class CheckOptions : Options
     // --- bounds and tuning ------------------------------------------------------------------------
 
     [Option("attempts", Required = false,
-        HelpText = "Session length bound (default 3). This is the number that makes a VACUOUS verdict provisional.")]
+        HelpText = "Attempts per session: every session of up to this many attempts is checked (default 3). " +
+                   "Each attempt multiplies the sessions to search, so a large policy set may need --smoke. " +
+                   "This is the number that makes a VACUOUS verdict provisional.")]
     public int? Attempts { get; set; }
 
     /// <summary>

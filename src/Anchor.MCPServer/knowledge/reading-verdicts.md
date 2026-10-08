@@ -11,7 +11,7 @@ every answer is either **a witness session** or **a bounded no**.
 
 | verdict | means | what to do |
 |---|---|---|
-| `live` | the rule changes some verdict; the witness names the session that proves it | nothing. It is load-bearing |
+| `live` | the rule changes some verdict; the witness names the session that proves it | nothing. It matters |
 | `VACUOUS` | a permit that never grants anything in any session searched | treat as a **bug**. Whatever it was meant to allow is unreachable |
 | `REDUNDANT` | a permit that fires, but another permit always would too | it can be deleted without changing behaviour |
 | `DEAD` | a forbid that never denies anything the rest of the set would have allowed | it can be deleted without changing behaviour |
@@ -33,6 +33,10 @@ So when you report one of these, report the bound with it. "Vacuous within 3 att
 "vacuous" alone overstates what was checked. Raising `attempts` trades runtime for confidence.
 
 A `live` verdict has no such caveat: a witness exists, and it was exhibited.
+
+Each extra attempt multiplies the sessions searched by every request the policy set can see, so
+raising it is not cheap: a 12-rule set that settles at 3 attempts may not finish at 5. If a check
+times out, use `smoke` rather than a lower `attempts`.
 
 ## The witness, and the session under it
 

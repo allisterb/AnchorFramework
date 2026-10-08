@@ -1389,7 +1389,9 @@ def main() -> int:
                          "policy is MORE PERMISSIVE, LESS PERMISSIVE, EQUIVALENT or INCOMPARABLE "
                          "to it, with a witness session for each direction, rather than checking "
                          "each rule")
-    ap.add_argument("--attempts", type=int, default=3, help="session length bound (default 3)")
+    ap.add_argument("--attempts", type=int, default=3,
+                    help="attempts per session: every session of up to this many attempts is checked "
+                         "(default 3). Each attempt multiplies the sessions to search")
     ap.add_argument("--amount", type=int, default=2,
                     help="numeric domain for input fields, 1..N (default 2)")
     ap.add_argument("--max-fields", type=int, default=4, metavar="N",

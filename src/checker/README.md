@@ -71,6 +71,52 @@ answer, because a bounded no is not a proof and should not read like one.
 There is no fourth derivable check. Without being told what a policy is *for*, there is nothing
 further to say about it.
 
+### How a check runs
+
+Each question is one TLC run over [`Vacuity.tla`](../../specs/policy/TemporalPolicy/Vacuity.tla), which
+models a session: every step, the agent makes **one attempt** at any action with any input, and the
+attempt appends two events, the request and its outcome (`response` if allowed, `error` if denied).
+The attempt is not conditioned on being allowed, since a denied request is still on the record.
+Every claim is written to FAIL, so a violation is the witness, and a clean run is the bounded no.
+
+**Per rule, in this order:**
+
+| run | question | how |
+|---|---|---|
+| `NeverMatters` | does deleting it change any decision? | the model carries the set twice, as written and without rule `Target`. TLC drives each session with the set as written and asks both for every decision. The first disagreement is the witness: deleting the rule either lets through something it refused, or refuses something it granted |
+| `NeverFires` | permits only: does it ever grant? | a permit has fired when it matched AND the request was allowed. Matching but always overridden by a forbid does not count |
+
+The verdict: a `NeverMatters` witness gives `live`. Otherwise a permit that never fired is
+**VACUOUS**, and anything else is **REDUNDANT** (permit) or **DEAD** (forbid). A permit takes both
+runs, so a set of 12 permits is 24 runs.
+
+**One history is enough for both sets.** They make the same decisions until they first disagree,
+so a session driven by the set as written reaches that point if it exists. After it the histories
+are no longer comparable, so each session yields at most one difference, and its direction is sound.
+`--against` is the same run with the second file in place of "without rule `Target`", once for
+the whole set.
+
+**Then, only for an inert rule, the culprit search** (`blame`), which prints the `because:` line:
+one more run with the rule's condition removed (still inert means the condition is not why, and it
+says so), then one run per term, dropping each term that the rule stays inert without. What
+remains is a set of terms that together make it inert: minimal, not smallest. Skipped under
+`--smoke` and `--no-blame`.
+
+**Cost.** Each attempt chooses from *b* = actions × input combinations × output combinations ×
+callers (2 when the schema pins the principal, Dogwood's default), and the history is part of every
+state, so a run may visit up to 1 + *b* + *b*² + … + *b*^`attempts` sessions. TLC stops at the first
+violation, so `live` comes back quickly; a claim of absence searches all of them. On aws1:
+
+| `--attempts` | `05-human-approval.dw`, 1 rule, *b* = 24 | `agent-policy.dw`, 12 rules, *b* = 216 |
+|---|---:|---:|
+| 3 | 14,425 | 10.1 million |
+| 4 | 346,201 | 2.2 billion |
+| 5 | 8.3 million | 472 billion |
+
+That is why the 12-rule set does not finish exhaustively at 4 or 5, and the reason
+[the smoke tier](#the-smoke-tier-and-why-its-polarity-is-backwards-from-every-other-smoke-test)
+exists. `anchor check` gives each policy set 10 minutes (`--timeout SECONDS` to change it).
+
 ### Intentional — `--property`
 
 ```bash

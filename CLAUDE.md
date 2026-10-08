@@ -47,7 +47,7 @@
   riding along in a copied project, source generators and analyzers, and
   `[ModuleInitializer]`, `DllImport`, `Process.Start`, `Assembly.Load`, `Marshal.`
   or `unsafe` in the code itself. `reference/README.md` carries the commands.
-- **Untrusted *binary* data — images, videos, capture files, fonts,  —
+- **Untrusted *binary* data — images, videos, capture files, fonts —
   is a third category.** It carries no instructions, so the scan above says nothing
   about it; what matters is the robustness of the parser reading it. In managed
   code a malformed file is a crash rather than a compromise, so prefer a clear
@@ -59,7 +59,7 @@ Anchor is a formal verification framework for Amazon Strands SDK multi-agent wor
 Anchor allows humans and agents to generate TLA+ models for verifying Strands agent logic and to use Dafny to write verifiable agent workflows that is translated into Python using the Strands SDK.
 The goal is to model the agent workflow as a formally verifiable state machine that, given the right assumptions hold, can be used to make agent code more reliable.
 
-Anchir is an entry into the Amazon Agents for Humans Hackathon: https://agentsforhumans.devpost.com
+Anchor is an entry into the Amazon Agents for Humans Hackathon: https://agentsforhumans.devpost.com
 
 ## Project structure
 * Anchor is written in C# and Python and organized into the following sub-projects: 
