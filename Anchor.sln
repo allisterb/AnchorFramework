@@ -49,6 +49,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "TemporalPolicy", "TemporalP
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "TemporalPolicy", "TemporalPolicy", "{64265074-44E7-4EED-BC6B-4CBD1DA19D61}"
+	ProjectSection(SolutionItems) = preProject
+		specs\policy\TemporalPolicy\Vacuity.tla = specs\policy\TemporalPolicy\Vacuity.tla
+	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Anchor.MCPServer", "src\Anchor.MCPServer\Anchor.MCPServer.csproj", "{99F0C558-1134-4CD2-AE56-D0AA75EFD83C}"
 EndProject

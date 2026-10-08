@@ -1,13 +1,11 @@
-# `translator` — source artefacts to TLA+
+# `translator`: source artefacts to TLA+
 
-Two things get translated here, and they exist for the same reason: **a model written by reading
-something is a paraphrase, and nothing checks a paraphrase.** In both cases the artefact itself is
-the input.
+This module provides deterministic parsing from source artefacts to TLA+ specs
 
 | | from | to |
 |---|---|---|
 | **policies** | Dogwood `.dw` text | the records `DogwoodSemantics!Decide` evaluates |
-| **workflows** | a live Strands `Graph` | the definitions `DependencyDAG.tla` checks |
+| **workflows** | a live Strands Agents `Graph` | the definitions `DependencyDAG.tla` checks |
 
 ```
 .dw text ──> parse ──> policy dicts ──> emit ──> TLA+ records ──┐
@@ -27,7 +25,7 @@ GraphBuilder ──> Graph ──> strands_graph_to_tla ──> Workflow.tla ┘
 | `strands_graph_to_tla.py` | walks a live Strands `Graph` into `Workflow.tla`. `GraphBuilder` is the construction API, so the graph **is** the workflow the runtime executes — walking it is translation, not inference. |
 | `dw_to_tla.py` | the script: regenerates `specs/policy/TemporalPolicy/RotationPolicies.tla`. `--check` fails if it has drifted from the `.dw` sources. |
 
-## What a graph translation refuses to pretend
+## Strands Agents graph translation limitations
 
 An edge condition is an opaque Python callable, and `strands_graph_to_tla` does not guess what one
 means. `meaning()` in [`annotations`](../annotations) decides that, and this module reports what it was told:

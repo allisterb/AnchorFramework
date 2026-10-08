@@ -271,8 +271,8 @@ def check_one(work: Path, target: int, attempts: int, amount: int,
               smoke: int | None = None) -> tuple[bool | None, str]:
     """Returns (a witness exists, TLC output). Raises if TLC could not answer.
 
-    `NeverFires`   a witness means the permit CAN grant something -- it is live.
-    `NeverMatters` a witness means deleting the rule WOULD change a verdict -- it is load-bearing.
+    `NeverFires`   a witness means the permit CAN grant something -- it is not VACUOUS.
+    `NeverMatters` a witness means deleting the rule WOULD change a verdict -- it is live.
 
     THREE answers, not two:
 

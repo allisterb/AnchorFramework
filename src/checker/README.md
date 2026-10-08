@@ -1,7 +1,6 @@
-# `checker` — what follows from a policy
+# `checker`: model-checking Dogwood policies using TLC
 
-[`translator`](../translator) decides what a policy set *says*. This decides what follows from it, by
-asking TLC questions the policy text cannot answer about itself.
+The [`translator`](../translator) module parses a policy set into TLA+. This module determines what follows from a policy set using the TLC model checker.
 
 **Vocabulary.** A *policy* is one `permit` or `forbid` statement and a `.dw` file is a *policy set*,
 which is Dogwood's term (see
@@ -13,49 +12,22 @@ the history of related requests a temporal condition can see. Every verdict here
 sessions up to `--attempts` attempts long (3 by default), which is the bound a VACUOUS verdict is
 provisional on.
 
-Also reachable as `anchor check`, which finds the interpreter and the Anchor tree itself and
-passes the exit code straight through — see [`Anchor.CLI`](../Anchor.CLI).
-
 ```bash
-python src/checker/properties.py tests/policies/docs_trading.dw
-python src/checker/properties.py a.dw --against b.dw
-python src/checker/properties.py firewall.dw --property firewall.tla
-python src/checker/properties.py firewall.dw --describe    # what a --property module may name
-python src/checker/properties.py big.dw --smoke 1000      # random walk, for a model too big to exhaust
+anchor check tests/policies/docs_trading.dw
+anchor check a.dw --against b.dw
+anchor check firewall.dw --property firewall.tla
+anchor check firewall.dw --describe    # what a --property module may name
+anchor check big.dw --smoke 1000      # random walk, for a model too big to exhaust
 ```
 
-## The smoke tier, and why its polarity is backwards from every other smoke test
-
-`--smoke N` runs TLC as a random walk of N behaviours instead of exhausting the state space. The
-usual reason to do that is a sound NEGATIVE: find a counterexample and the spec is broken, find none
-and you have learnt nothing.
-
-**Here it is the other way round.** This checker already reads TLC backwards -- a violation is the
-GOOD outcome, the witness proving a rule does something. So a random walk gives a sound POSITIVE:
-
-| smoke says | means | sound? |
-|---|---|---|
-| `live` | a witness was found, so the rule really does change a verdict | **yes** -- a witness is a witness however it was reached |
-| `unknown` | this walk did not reach a session where the rule matters | it is **not a verdict**, and never means the rule is inert |
-
-So a smoke run can report `live`, and **can never report VACUOUS, REDUNDANT or DEAD**. Those three
-are claims of ABSENCE, a random walk cannot establish absence, and each of them tells someone to
-delete a rule.
-
-**What it is for is not speed on the cases exhaustive already handles.** Exhaustive search stops at
-the first violation, so a live rule is found quickly either way. It is for models where exhaustive
-does not finish at all -- which is exactly what raising `--attempts` to gain confidence in a VACUOUS
-verdict produces. There, smoke turns "no answer about anything" into "these rules are definitely
-live, and the rest I could not settle".
-
-## Two kinds of property, and the difference is who can state it
+## Derivable vs. Intentional Properties
 
 | | |
 |---|---|
-| **derivable** | statable from the policy alone. We write these for you |
-| **intentional** | only the author knows it. You write it, we check it |
+| **derivable** | mechanically derivable from the policy alone. |
+| **intentional** | only the policy author knows its intent. |
 
-### Derivable — the three that come in the box
+## Derivable properties
 
 | question | verdict | meaning |
 |---|---|---|
@@ -64,14 +36,11 @@ live, and the rest I could not settle".
 | | **DEAD** | this forbid never denies anything the rest of the set would have allowed. |
 | Do two versions ever disagree? | `--against` | a session they decide differently, or a bounded no. |
 
-They are one question underneath — *does deleting or changing this rule change some verdict* — and
-every answer is either **a witness session** or **a bounded no**. The bound is printed with the
+Each property is really one question underneath: *does deleting or changing this rule change some verdict*.
+Every answer is either **a witness session** or **a bounded no**. The bound is printed with the
 answer, because a bounded no is not a proof and should not read like one.
 
-There is no fourth derivable check. Without being told what a policy is *for*, there is nothing
-further to say about it.
-
-### How a check runs
+## How a check runs
 
 Each question is one TLC run over [`Vacuity.tla`](../../specs/policy/TemporalPolicy/Vacuity.tla), which
 models a session: every step, the agent makes **one attempt** at any action with any input, and the
@@ -113,24 +82,41 @@ violation, so `live` comes back quickly; a claim of absence searches all of them
 | 4 | 346,201 | 2.2 billion |
 | 5 | 8.3 million | 472 billion |
 
-That is why the 12-rule set does not finish exhaustively at 4 or 5, and the reason
-[the smoke tier](#the-smoke-tier-and-why-its-polarity-is-backwards-from-every-other-smoke-test)
+That is why the 12-rule set does not finish exhaustively at 4 or 5, and the reason `--smoke`
 exists. `anchor check` gives each policy set 10 minutes (`--timeout SECONDS` to change it).
 
-### Intentional — `--property`
+## `--smoke`
+
+`--smoke N` runs TLC as a random walk of N behaviours instead of exhausting the state space. 
+
+| smoke says | means | sound? |
+|---|---|---|
+| `live` | a witness was found, so the rule really does change a verdict | **yes** -- a witness is a witness however it was reached |
+| `unknown` | this walk did not reach a session where the rule matters | it is **not a verdict**, and never means the rule is inert |
+
+So a smoke run can report `live`, and but **can never report VACUOUS, REDUNDANT or DEAD**. Those three
+are claims of ABSENCE, a random walk cannot establish absence, and each of them tells someone to
+delete a rule.
+
+Exhaustive search stops at the first violation, so a live rule is found quickly either way. `--smoke` is for models where exhaustive
+does not finish at all, which is exactly what raising `--attempts` to gain confidence in a VACUOUS
+verdict produces. There, smoke turns "no answer about anything" into "these rules are definitely
+live, and the rest I could not settle".
+
+## Intentional properties
 
 ```bash
-python src/checker/properties.py firewall.dw --property firewall.tla
+anchor check firewall.dw --property firewall.tla
 ```
 
-A property module is TLA+ of your own extending the generated `PolicyUnderTest`, stating what the
+A property module is a TLA+ spec that extends the generated `PolicyUnderTest` spec, stating what the
 policy is supposed to mean. It needs a companion `.cfg` naming its invariants — naming them is
 deliberate, because a property nobody listed is a property nobody checked.
 
 **One mechanism, not two.** `Vacuity.tla` is itself a property module extending the same generated
 records; the only difference is that it explores sessions and a per-request claim does not.
 
-#### Why the derivable checks are not enough
+### Why the derivable property checks are not enough
 
 `firewall_open.dw` drops a `forbid` and widens a permit, letting the whole internet connect on port
 22. The built-in checks do not miss it silently — they report
@@ -150,7 +136,7 @@ BROKEN  Invariant OutsideIsRefused is violated by the initial state:
         req = [port |-> [k |-> "n", v |-> 22], origin |-> [k |-> "s", v |-> "external"]]
 ```
 
-#### State the requests your claim is about
+### State the requests your claim is about
 
 `PolicyUnderTest` deliberately offers **no** `Inputs`. The request space derivable from a policy
 comes from that policy's own literals, so a claim about a value it never mentions ranges over no
@@ -164,14 +150,13 @@ lines fix it, and they belong to the claim:
 Requests == {[port |-> Num(p), origin |-> Str(o)] : p \in {22, 2222}, o \in {"local", "external"}}
 ```
 
-#### And that failure is now detected rather than described — `anchor explain`
+### `anchor explain`
 
-The paragraph above is a warning that was only ever enforced by whoever read it. `explain` reads
-the module instead, and says what each claim forbids and how many of the states it ranges over its
+`anchor explain` reads the property module instead, and says what each claim forbids and how many of the states it ranges over its
 condition even applies to:
 
 ```bash
-python src/checker/explain.py examples/aws1/TrustDecay10.tla
+anchor explain examples/aws1/TrustDecay10.tla
 anchor check policy.dw --property TrustDecay10.tla --explain   # the same, before the verdict
 ```
 
@@ -214,27 +199,11 @@ make the policy refuse *more*. So a property whose claims only say what must be 
 every one of them however carefully it names its values, and needs at least one claim about what
 must be **allowed** before this gate means anything. The complaint says so.
 
-## The answer this must never get wrong
-
-A false **VACUOUS** tells someone to delete a rule that works. Everything else the checker can get
-wrong wastes a reader's time; that one changes their policy.
-
-It has been got wrong twice, and both are pinned as fixtures rather than described:
-
-- `tests/policies/string_output.dw` — every output field was modelled as boolean, so a gate on a
-  string output could never match. Eight output binds in Dogwood's own corpus compare against a
-  string.
-- `tests/policies/like_impossible.dw` — where the checker cannot construct a value satisfying two
-  `like` patterns at once, it **refuses** rather than reporting VACUOUS, because "no such string
-  exists" and "the search was not clever enough" are indistinguishable from in here.
-
-The rule that falls out: when this cannot decide, it refuses and names what is missing. A refusal
-is a correct answer; a false VACUOUS is not.
 
 ## What is this value? — `--eval`
 
 ```bash
-python src/checker/properties.py policy.dw --property Claim.tla --eval "TradeAllowed(960)"
+anchor check policy.dw --property Claim.tla --eval "TradeAllowed(960)"
 ```
 
 Evaluates a TLA+ expression in the policy's own semantics and prints the value. About two seconds,
@@ -266,7 +235,7 @@ one is a limitation to work around, the other is a bug to go and fix — and our
 them apart, because it is the thing whose coverage is in question.
 
 ```bash
-python src/checker/properties.py policy.dw --syntax
+anchor check policy.dw --syntax
 ```
 
 ```
