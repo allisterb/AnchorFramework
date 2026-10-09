@@ -182,6 +182,21 @@ public class CheckOptions : Options
                    "Exits 2 (no verdict). ~35ms; skipped with a note when the binary is not built.")]
     public bool Syntax { get; set; }
 
+    [Option("eval", Required = false, MetaValue = "EXPRESSION",
+        HelpText = "POLICY SET FILE, WITHOUT --full. Instead of checking, evaluate one TLA+ expression in " +
+                   "the policy set's own semantics and print its value: `Len(Policies)`, or with " +
+                   "--property that module's definitions too, e.g. \"<<TradeAllowed(900), " +
+                   "TradeAllowed(901)>>\". Seconds. A value is not a verdict. Exits 0 if it evaluated, " +
+                   "2 if not. Takes --property, --event-schema and --max-fields.")]
+    public string Eval { get; set; } = string.Empty;
+
+    [Option("describe", Required = false,
+        HelpText = "POLICY SET FILE, WITHOUT --full. Instead of checking, print as JSON everything a " +
+                   "--property module may name for this policy set -- actions, fields and their " +
+                   "values, pin keys, rules -- and a skeleton module that already runs. Parses only, " +
+                   "no TLC. Takes --event-schema, --amount and --max-fields.")]
+    public bool Describe { get; set; }
+
     // --- bounds and tuning ------------------------------------------------------------------------
 
     [Option("attempts", Required = false,

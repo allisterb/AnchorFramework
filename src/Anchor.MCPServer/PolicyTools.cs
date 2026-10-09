@@ -414,12 +414,14 @@ public partial class PolicyTools : Runtime
         [Description("The TLA+ expression. Anything the context defines: `Session(960)`, `TradeAllowed(960)`, `Len(Policies)`, `<<A, B>>` to ask two things at once.")] string expression,
         [Description("Optional .tla property module to evaluate inside, so ITS definitions are in scope too. Without it only the generated vocabulary is.")] string? property = null,
         [Description("Path to the .dwschema event schema, if one exists. It changes the generated vocabulary and so can change the value.")] string? eventSchema = null,
+        [Description("Refuse a policy reading more than N input/output fields (default 4). Raise it for a policy set the checker refuses as too wide.")] int? maxFields = null,
         CancellationToken cancellationToken = default)
     {
         var args = new List<string> { Resolve(policy, nameof(policy)), "--eval", expression };
 
         Add(args, "--property", property, nameof(property));
         Add(args, "--event-schema", eventSchema, nameof(eventSchema));
+        if (maxFields is int f) args.AddRange(["--max-fields", f.ToString()]);
 
         // One TLC start and one evaluation, not a model check. Generous against a cold JVM.
         var r = await PythonProcess.RunAsync(CheckerScript, [.. args], root: AnchorRoot,

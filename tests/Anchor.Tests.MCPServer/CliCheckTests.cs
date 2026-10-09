@@ -168,7 +168,18 @@ public class CliCheckTests : TestsRuntime
                      (new[] { "check", "examples/aws1", "--full", "--keep", "x" },
                       "--keep applies to a check without --full"),
                      (new[] { "check", "examples/aws1", "--full", "--property", "x.tla" },
-                      "--property applies to a single policy set file, not a directory")
+                      "--property applies to a single policy set file, not a directory"),
+                     // --eval and --describe ask a question, so nothing that shapes a check applies.
+                     (new[] { "check", "tests/policies/dead_forbid.dw", "--eval", "1", "--attempts", "4" },
+                      "--attempts does not apply with --eval"),
+                     (new[] { "check", "tests/policies/dead_forbid.dw", "--describe", "--property", "x.tla" },
+                      "--property does not apply with --describe"),
+                     (new[] { "check", "tests/policies/dead_forbid.dw", "--eval", "1", "--describe" },
+                      "--eval and --describe are separate questions"),
+                     (new[] { "check", "examples/aws1", "--describe" },
+                      "--describe applies to a single policy set file, not a directory"),
+                     (new[] { "check", "tests/policies/dead_forbid.dw", "--eval", "1", "--full" },
+                      "--eval applies to a check without --full")
                  })
         {
             var (exit, _, stderr) = await RunAsync(args);
@@ -176,6 +187,46 @@ public class CliCheckTests : TestsRuntime
             Assert.True(exit == 2, $"{string.Join(' ', args)} exited {exit}: {stderr}");
             Assert.Contains(why, stderr);
         }
+    }
+
+    /// <summary>
+    /// `--eval` prints the value and nothing else on stdout, through the same method as the MCP
+    /// server's EvaluateExpression. It was a checker-only option, so a container user, who has only
+    /// `anchor`, could not reach it at all.
+    /// </summary>
+    [CliPolicyFact]
+    public async Task AnExpressionIsEvaluatedAndPrintedAlone()
+    {
+        var (exit, stdout, stderr) = await RunAsync("check", "examples/aws1/07-trust-decay.dw",
+            "--property", "examples/aws1/TrustDecay10.tla", "--eval", "<<TradeAllowed(900), TradeAllowed(901)>>");
+
+        Assert.True(exit == 0, stderr);
+        // Denied at 900s and allowed at 901s: the window's boundary, in one question.
+        Assert.Equal("<<FALSE, TRUE>>", stdout.Trim());
+
+        // A policy set wider than the default field bound is refused unless it is raised, and
+        // --max-fields reaches the evaluation. EvaluateExpression did not pass it at all.
+        var (refused, _, why) = await RunAsync("check", "examples/aws2/agent-policy.dw", "--eval", "Len(Policies)");
+        Assert.Equal(2, refused);
+        Assert.Contains("raise with --max-fields", why);
+
+        var (raised, rules, _) = await RunAsync("check", "examples/aws2/agent-policy.dw",
+            "--eval", "Len(Policies)", "--max-fields", "8");
+        Assert.Equal(0, raised);
+        Assert.Equal("7", rules.Trim());
+    }
+
+    /// <summary>`--describe` prints the vocabulary as JSON a script can read, and nothing else.</summary>
+    [CliPolicyFact]
+    public async Task DescribePrintsTheVocabularyAsJson()
+    {
+        var (exit, stdout, stderr) = await RunAsync("check", "tests/policies/firewall.dw", "--describe");
+
+        Assert.True(exit == 0, stderr);
+        var doc = System.Text.Json.JsonDocument.Parse(stdout).RootElement;
+        Assert.Equal("firewall.dw", doc.GetProperty("source").GetString());
+        Assert.True(doc.GetProperty("rules").GetArrayLength() > 0);
+        Assert.Contains("MODULE", doc.GetProperty("skeleton").GetString());
     }
 
     /// <summary>

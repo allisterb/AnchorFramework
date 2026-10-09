@@ -17,8 +17,8 @@ anchor check tests/policies/firewall_open.dw --property tests/policies/firewall.
 anchor check tests/policies/syntax_broken.dw --syntax
 # a random walk, for a policy set too large to search exhaustively (12 rules)
 anchor check examples/aws1/agent-policy.dw --attempts 4 --smoke 1000
-# what a property module may name. A checker option, not an `anchor check` one
-python src/checker/properties.py tests/policies/firewall.dw --describe
+# what a property module may name, as JSON
+anchor check tests/policies/firewall.dw --describe
 ```
 
 ## Vocabulary
@@ -56,14 +56,14 @@ TLC checks one by visiting every reachable state within the bounds its `.cfg` se
 first state that breaks it together with the behaviour that got there (*Specifying Systems*, §14.3).
 Within those bounds the answer is exhaustive, not sampled; beyond them it says nothing.
 
-**For a Dogwood policy set**, the system is the policy set deciding requests, a state is a session
+For a Dogwood policy set, the system is the policy set deciding requests, a state is a session
 (or one request held still), and every property Anchor checks is a safety property stated as an
 invariant. Anchor calls one such invariant a **claim**, and the `.tla` file holding them a
 **property module**: "a transfer is refused unless the same account was verified within the last 15
 minutes". There is no liveness side, because a policy set only answers the requests put to it and has
 nothing it must eventually do.
 
-**Questions of the form "can this ever happen?" are not invariants**, because an invariant is about
+Questions of the form "can this ever happen?" are not invariants, because an invariant is about
 *every* behaviour and TLA+ has no way to say "some behaviour". So they are asked the other way round:
 claim it never happens, and read TLC's counterexample as the example. That is how the derivable
 checks below work, and why a violation is their good outcome. Logics that do have "some behaviour"
@@ -298,8 +298,8 @@ must be **allowed** before this gate means anything. The complaint says so.
 ## `--eval`: Evaluate a policy expression
 
 ```bash
-# a checker option, not an `anchor check` one. Prints <<FALSE, TRUE>>: denied at 900s, allowed at 901s
-python src/checker/properties.py examples/aws1/07-trust-decay.dw --property examples/aws1/TrustDecay10.tla --eval "<<TradeAllowed(900), TradeAllowed(901)>>"
+# prints <<FALSE, TRUE>>: denied at 900s, allowed at 901s
+anchor check examples/aws1/07-trust-decay.dw --property examples/aws1/TrustDecay10.tla --eval "<<TradeAllowed(900), TradeAllowed(901)>>"
 ```
 
 Evaluates a TLA+ expression in the policy's own semantics and prints the value. About two seconds,

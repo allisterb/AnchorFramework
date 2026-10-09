@@ -202,6 +202,11 @@ public static class Program
                 ?? await CheckDirectoryAsync(opts);
         }
 
+        if (opts.Describe || !string.IsNullOrWhiteSpace(opts.Eval))
+        {
+            return await QueryAsync(opts);
+        }
+
         if (File.Exists(opts.Policy))
         {
             Console.Error.WriteLine(Announce(opts, 1));
@@ -332,8 +337,101 @@ public static class Program
         ("--explain", o.Explain),
         ("--witness", o.Witness),
         ("--trace", o.Trace),
-        ("--keep", !string.IsNullOrWhiteSpace(o.Keep))
+        ("--keep", !string.IsNullOrWhiteSpace(o.Keep)),
+        ("--eval", !string.IsNullOrWhiteSpace(o.Eval)),
+        ("--describe", o.Describe)
     ];
+
+    /// <summary>
+    /// What a question about the policy set (--eval, --describe) does not take: everything that
+    /// shapes a CHECK. Refused rather than ignored, as everywhere else here.
+    /// </summary>
+    static (string, bool)[] CheckOnly(CheckOptions o) =>
+    [
+        ("--against", !string.IsNullOrWhiteSpace(o.Against)),
+        ("--explain", o.Explain),
+        ("--witness", o.Witness),
+        ("--trace", o.Trace),
+        ("--keep", !string.IsNullOrWhiteSpace(o.Keep)),
+        ("--syntax", o.Syntax),
+        ("--attempts", o.Attempts is not null),
+        ("--smoke", o.Smoke is not null),
+        ("--verbose", o.Verbose),
+        ("--timeout", o.Timeout is not null),
+        ("--pinned", o.Pinned),
+        ("--unpinned", o.Unpinned)
+    ];
+
+    /// <summary>
+    /// --eval or --describe: a question about one policy set, answered by the same PolicyTools
+    /// methods the MCP server exposes as EvaluateExpression and DescribePolicyModule, so the CLI and
+    /// an agent cannot get different answers. The value or the JSON goes to stdout, nothing else.
+    /// </summary>
+    static async Task<int> QueryAsync(CheckOptions opts)
+    {
+        var eval = !string.IsNullOrWhiteSpace(opts.Eval);
+        if (eval && opts.Describe)
+        {
+            Console.Error.WriteLine("--eval and --describe are separate questions; pass one.");
+            return BadUsage;
+        }
+        var flag = eval ? "--eval" : "--describe";
+        if (Refused(CheckOnly(opts), $"does not apply with {flag}, which checks nothing") is int refused)
+        {
+            return refused;
+        }
+        if (opts.Describe && Refused([("--property", !string.IsNullOrWhiteSpace(opts.Property))],
+                "does not apply with --describe, which describes the policy set a module is written against")
+            is int noModule)
+        {
+            return noModule;
+        }
+        if (eval && Refused([("--amount", opts.Amount is not null)], "does not apply with --eval") is int noAmount)
+        {
+            return noAmount;
+        }
+
+        var tools = new PolicyTools(Blank(opts.ProjectDir), Blank(opts.AnchorRoot));
+        try
+        {
+            if (eval)
+            {
+                var v = await tools.EvaluateExpressionAsync(opts.Policy, opts.Eval, property: Blank(opts.Property),
+                    eventSchema: Blank(opts.EventSchema), maxFields: opts.MaxFields);
+                if (!v.Answered)
+                {
+                    Console.Error.WriteLine(v.Error);
+                    return BadUsage;
+                }
+                Console.WriteLine(v.Value);
+                return Ok;
+            }
+
+            var d = await tools.DescribePolicyModuleAsync(opts.Policy, eventSchema: Blank(opts.EventSchema),
+                amount: opts.Amount, maxFields: opts.MaxFields);
+            if (!d.Answered || d.Module is not { } module)
+            {
+                Console.Error.WriteLine(d.Error);
+                return BadUsage;
+            }
+            Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(module, Indented));
+            return Ok;
+        }
+        catch (ArgumentException e)
+        {
+            // A path that escaped --project-dir, which is only reachable when one was given.
+            Console.Error.WriteLine(e.Message);
+            return BadUsage;
+        }
+    }
+
+    // Relaxed escaping: this is read in a terminal, not embedded in HTML, and the default turns every
+    // apostrophe in the checker's prose into '.
+    static readonly System.Text.Json.JsonSerializerOptions Indented = new()
+    {
+        WriteIndented = true,
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+    };
 
     /// <summary>
     /// What an audit does not take: the single-set options it replaces with its own witnesses and
