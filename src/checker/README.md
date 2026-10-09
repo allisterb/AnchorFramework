@@ -1,16 +1,22 @@
-# `checker`: model-checking Dogwood policies using TLC
+# `checker`: model-checking Dogwood policies and their behaviors using TLC
 
 The [`translator`](../translator) module parses a policy set into TLA+. This module determines what follows from a policy set using the TLC model checker.
 
-**Vocabulary.** A *policy* is one `permit` or `forbid` statement and a `.dw` file is a *policy set*,
+## Vocabulary
+A *policy* is one `permit` or `forbid` statement and a `.dw` file is a *policy set*,
 which is Dogwood's term (see
 [TemporalPolicy](../../specs/policy/TemporalPolicy/README.md) for the sources). This README says
 *rule* for one policy, as AWS's own Dogwood posts often do, because every verdict here is about one
-statement's effect on the whole set. A *session* is one AgentCore
+statement's effect on the whole set. 
+
+A *session* is one AgentCore
 [*policy session*](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/policy-temporal.html):
 the history of related requests a temporal condition can see. Every verdict here ranges over all
 sessions up to `--attempts` attempts long (3 by default), which is the bound a VACUOUS verdict is
 provisional on.
+
+A *property* is a formal statement about the policy set's behaviour, written in TLA+ and checked by TLC. A *property module* is a
+`.tla` file holding one or more properties.
 
 ```bash
 anchor check tests/policies/docs_trading.dw
@@ -19,6 +25,43 @@ anchor check firewall.dw --property firewall.tla
 anchor check firewall.dw --describe    # what a --property module may name
 anchor check big.dw --smoke 1000      # random walk, for a model too big to exhaust
 ```
+
+## TLA+ states and properties
+
+A TLA+ specification describes a system by the **behaviours** it allows. A behaviour is a sequence of
+**states**, and a state is a value for every variable (Lamport, *Specifying Systems*, §2.1). A
+**property** is a statement about behaviours, and a system has it when every behaviour it allows
+satisfies it. There are two kinds (*Specifying Systems*, ch. 8):
+
+- **safety**: something bad never happens. A violation happens at a particular point, so the
+  evidence is a finite trace you can read step by step.
+- **liveness**: something good eventually happens. It needs fairness assumptions, and its evidence
+  is an infinite behaviour.
+
+The commonest safety property is an **invariant**: a condition true in every state the system can
+reach (Lamport, [*Proving Safety Properties*](https://lamport.azurewebsites.net/tla/proving-safety.pdf)).
+TLC checks one by visiting every reachable state within the bounds its `.cfg` sets, and reports the
+first state that breaks it together with the behaviour that got there (*Specifying Systems*, §14.3).
+Within those bounds the answer is exhaustive, not sampled; beyond them it says nothing.
+
+**For a Dogwood policy set**, the system is the policy set deciding requests, a state is a session
+(or one request held still), and every property Anchor checks is a safety property stated as an
+invariant. Anchor calls one such invariant a **claim**, and the `.tla` file holding them a
+**property module**: "a transfer is refused unless the same account was verified within the last 15
+minutes". There is no liveness side, because a policy set only answers the requests put to it and has
+nothing it must eventually do.
+
+**Questions of the form "can this ever happen?" are not invariants**, because an invariant is about
+*every* behaviour and TLA+ has no way to say "some behaviour". So they are asked the other way round:
+claim it never happens, and read TLC's counterexample as the example. That is how the derivable
+checks below work, and why a violation is their good outcome. Logics that do have "some behaviour"
+state such questions directly; Allegrini et al.
+([arXiv:2510.14133](https://arxiv.org/abs/2510.14133)) catalogue 30 properties of agent systems that
+way, in CTL, and their reachability properties are exactly the kind TLA+ asks in reverse.
+
+*Specifying Systems* is free for personal use from [Lamport's site](https://lamport.azurewebsites.net/tla/book.html). See [here](../../EXISTING-RESEARCH.md) 
+for other work on TLA+ and formal verification.
+
 
 ## Derivable vs. Intentional Properties
 
@@ -32,7 +75,7 @@ anchor check big.dw --smoke 1000      # random walk, for a model too big to exha
 | question | verdict | meaning |
 |---|---|---|
 | Can this permit ever grant? | **VACUOUS** | it never fires — whatever it was meant to allow is unreachable. A bug, not untidiness. |
-| Is this rule load-bearing? | **REDUNDANT** | it fires, but another permit always would too. |
+| Does this rule matter? | **REDUNDANT** | it fires, but another permit always would too. |
 | | **DEAD** | this forbid never denies anything the rest of the set would have allowed. |
 | Do two versions ever disagree? | `--against` | a session they decide differently, or a bounded no. |
 
@@ -115,6 +158,46 @@ deliberate, because a property nobody listed is a property nobody checked.
 
 **One mechanism, not two.** `Vacuity.tla` is itself a property module extending the same generated
 records; the only difference is that it explores sessions and a per-request claim does not.
+
+### How a property check runs
+
+The same path whether the module was written by hand or drafted by `auto`/`hitl`. In a temporary
+`anchor-prove-*` folder:
+
+1. `PolicyUnderTest.tla` is generated from the policy set, as for the derivable checks, and
+   `DogwoodSemantics.tla` is copied in. `Vacuity.tla` is not used.
+2. The module and its own `.cfg` are copied in. Nothing is generated for the config:
+   ```
+   SPECIFICATION Spec
+   INVARIANT Over500WithoutApprovalRefused
+   INVARIANT CompliantApprovalAllowed
+   INVARIANT CompliantUnder500Allowed
+   ```
+3. SANY parses it (`tla2sany.SANY SupervisorApproval.tla`). A module that does not compile is
+   reported as such, never as a verdict.
+4. One TLC run checks every claim at once, with the same JVM flags as every other run:
+   `tlc2.TLC -cleanup -metadir <tmp>/states -config SupervisorApproval.cfg SupervisorApproval.tla`.
+
+| | derivable checks | property module |
+|---|---|---|
+| model | `Vacuity.tla` | the module |
+| config | generated per run | the module's own `.cfg` |
+| TLC runs | up to 2 per rule, plus the culprit search | one |
+| result | read backwards: a violation is the witness | read normally: a violation is the counterexample, reported as BROKEN with the claim quoted |
+| searched | every session up to `--attempts` | exactly the states the module's `Init` names. `--attempts` does not apply |
+
+The last row is why a property check is quick even on a policy set too large to exhaust: the module
+holds one state still (`Next == UNCHANGED`), so TLC checks the combinations its variables range over
+and nothing else. 192 for aws2's `SupervisorApproval.tla`, the same count `anchor explain` prints.
+
+**A module that dies while TLC evaluates it is not BROKEN.** A field name that does not exist on a
+record compiles and then fails at run time, and TLC exits non-zero either way. Without an actual
+violated invariant the checker reports `COMPILED BUT DID NOT EVALUATE` and exits 2.
+
+Two flags add runs on top. `--decision-probe` asks whether the policy's decision varies at all
+across those states, in two TLC runs; if it never does, every claim holds without testing anything,
+and it exits 4. `--mutation-score` runs the module once more per broken version of the policy set,
+against a mutated `PolicyUnderTest.tla`; see the table under `anchor explain` below.
 
 ### Why the derivable property checks are not enough
 

@@ -1,11 +1,5 @@
 # Existing research
 
-Published work that inspired Anchor's approach: AI agents writing formal specifications, with a model
-checker or prover checking them, and the checker's output driving the next attempt. Each entry says
-what was taken from it and where it shows up in this repository. Articles are written for a general technical reader and are the place to start. Papers are
-the research behind them. The TLA+ section lists the TLA+ references Anchor uses.
-
-
 ## Articles
 
 ### Formal Verification in the Age of AI
