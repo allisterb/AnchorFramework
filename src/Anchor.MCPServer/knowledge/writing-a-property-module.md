@@ -356,7 +356,7 @@ The two are complementary; neither replaces the other.
 ## Then ask whether the policy ever ANSWERS differently
 
 ```bash
-anchor check policy.dw --property Intent.tla --decision-probe
+python src/checker/properties.py policy.dw --property Intent.tla --decision-probe
 ```
 
 ```

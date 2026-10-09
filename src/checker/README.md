@@ -2,6 +2,25 @@
 
 The [`translator`](../translator) module parses a policy set into TLA+. This module determines what follows from a policy set using the TLC model checker.
 
+```bash
+# the derivable checks, rule by rule: both permits live, with their witness sessions
+anchor check tests/policies/docs_trading.dw
+# a VACUOUS permit and a DEAD forbid, each with the terms to blame
+anchor check tests/policies/vacuous_two_terms.dw
+# what an edit changed: MORE PERMISSIVE, with the session it now allows
+anchor check tests/policies/edit_diverges_both_ways.dw --against tests/policies/edit_diverges_both_ways_old.dw
+# an intentional check whose claims hold...
+anchor check tests/policies/firewall.dw --property tests/policies/firewall.tla
+# ...and the same claims against a policy set that lets the internet in: BROKEN, exit 1
+anchor check tests/policies/firewall_open.dw --property tests/policies/firewall.tla
+# is it Dogwood at all? A syntax error from the reference implementation, exit 2
+anchor check tests/policies/syntax_broken.dw --syntax
+# a random walk, for a policy set too large to search exhaustively (12 rules)
+anchor check examples/aws1/agent-policy.dw --attempts 4 --smoke 1000
+# what a property module may name. A checker option, not an `anchor check` one
+python src/checker/properties.py tests/policies/firewall.dw --describe
+```
+
 ## Vocabulary
 A *policy* is one `permit` or `forbid` statement and a `.dw` file is a *policy set*,
 which is Dogwood's term (see
@@ -18,13 +37,6 @@ provisional on.
 A *property* is a formal statement about the policy set's behaviour, written in TLA+ and checked by TLC. A *property module* is a
 `.tla` file holding one or more properties.
 
-```bash
-anchor check tests/policies/docs_trading.dw
-anchor check a.dw --against b.dw
-anchor check firewall.dw --property firewall.tla
-anchor check firewall.dw --describe    # what a --property module may name
-anchor check big.dw --smoke 1000      # random walk, for a model too big to exhaust
-```
 
 ## TLA+ states and properties
 
@@ -286,7 +298,8 @@ must be **allowed** before this gate means anything. The complaint says so.
 ## `--eval`: Evaluate a policy expression
 
 ```bash
-anchor check policy.dw --property Claim.tla --eval "TradeAllowed(960)"
+# a checker option, not an `anchor check` one. Prints <<FALSE, TRUE>>: denied at 900s, allowed at 901s
+python src/checker/properties.py examples/aws1/07-trust-decay.dw --property examples/aws1/TrustDecay10.tla --eval "<<TradeAllowed(900), TradeAllowed(901)>>"
 ```
 
 Evaluates a TLA+ expression in the policy's own semantics and prints the value. About two seconds,
