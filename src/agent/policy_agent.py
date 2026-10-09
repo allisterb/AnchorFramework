@@ -1,10 +1,10 @@
 """An agent that reviews authorization policies, and reports what was actually established.
 
     python src/agent/policy_agent.py tests/policies/dead_forbid.dw
-    python src/agent/policy_agent.py a.dw --against b.dw
+    python src/agent/policy_agent.py tests/policies/edit_diverges_both_ways.dw --against tests/policies/edit_diverges_both_ways_old.dw
 
-WHAT IT IS FOR. Everything else in this repository answers a question precisely and narrowly: is
-this rule load-bearing, within this bound, under this reading of history. None of that is useful to
+WHAT IT IS FOR. Everything else in this repository answers a question precisely and narrowly: does
+this rule matter, within this bound, under this reading of history. None of that is useful to
 a person unless the answer reaches them with its qualifications attached. The agent is the part that
 talks to the person, and its job is not to be persuasive -- it is to not overstate.
 

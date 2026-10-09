@@ -1,7 +1,7 @@
 """The bounded repair loop: propose, check, feed back, revise -- with the checker as the oracle.
 
     python src/agent/repair.py tests/policies/dead_forbid.dw --ask "delete the rule that does nothing"
-    python src/agent/repair.py firewall.dw --ask "also open RDP" --against firewall.dw --no-widening
+    python src/agent/repair.py tests/policies/firewall.dw --ask "also open RDP" --against tests/policies/firewall.dw --no-widening
 
 WHY THE LOOP IS CODE AND THE MODEL IS NOT. The pattern the field has converged on -- AutoRocq
 against Rocq (arXiv:2511.17330), Baldur against Isabelle, neuro-formal verification against Dafny

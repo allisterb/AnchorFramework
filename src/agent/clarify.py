@@ -1,6 +1,6 @@
 """Ambiguity reporting: when a request admits more than one policy, say so before writing one.
 
-    python src/agent/clarify.py firewall.dw --ask "also open RDP in addition to SSH"
+    python src/agent/clarify.py tests/policies/firewall.dw --ask "also open RDP in addition to SSH"
 
 THE PROBLEM THIS ADDRESSES IS THE ONE NOTHING ELSE IN THE PIPELINE CAN. A verifier answers
 questions about a policy that exists. It cannot tell you that the *request* was ambiguous, because

@@ -5,20 +5,17 @@ The [`translator`](../translator) module parses a policy set into TLA+. This mod
 ```bash
 # the derivable checks, rule by rule: both permits live, with their witness sessions
 anchor check tests/policies/docs_trading.dw
-# a VACUOUS permit and a DEAD forbid, each with the terms to blame
-anchor check tests/policies/vacuous_two_terms.dw
+
 # what an edit changed: MORE PERMISSIVE, with the session it now allows
 anchor check tests/policies/edit_diverges_both_ways.dw --against tests/policies/edit_diverges_both_ways_old.dw
+
 # an intentional check whose claims hold...
 anchor check tests/policies/firewall.dw --property tests/policies/firewall.tla
 # ...and the same claims against a policy set that lets the internet in: BROKEN, exit 1
 anchor check tests/policies/firewall_open.dw --property tests/policies/firewall.tla
-# is it Dogwood at all? A syntax error from the reference implementation, exit 2
-anchor check tests/policies/syntax_broken.dw --syntax
+
 # a random walk, for a policy set too large to search exhaustively (12 rules)
 anchor check examples/aws1/agent-policy.dw --attempts 4 --smoke 1000
-# what a property module may name, as JSON
-anchor check tests/policies/firewall.dw --describe
 ```
 
 ## Vocabulary
@@ -41,7 +38,7 @@ A *property* is a formal statement about the policy set's behaviour, written in 
 ## TLA+ states and properties
 
 A TLA+ specification describes a system by the **behaviours** it allows. A behaviour is a sequence of
-**states**, and a state is a value for every variable (Lamport, *Specifying Systems*, §2.1). A
+**states**, and a state is a value for every variable (Lamport, [*Specifying Systems*](https://lamport.azurewebsites.net/tla/book.html), §2.1). A
 **property** is a statement about behaviours, and a system has it when every behaviour it allows
 satisfies it. There are two kinds (*Specifying Systems*, ch. 8):
 
@@ -66,21 +63,16 @@ nothing it must eventually do.
 Questions of the form "can this ever happen?" are not invariants, because an invariant is about
 *every* behaviour and TLA+ has no way to say "some behaviour". So they are asked the other way round:
 claim it never happens, and read TLC's counterexample as the example. That is how the derivable
-checks below work, and why a violation is their good outcome. Logics that do have "some behaviour"
-state such questions directly; Allegrini et al.
-([arXiv:2510.14133](https://arxiv.org/abs/2510.14133)) catalogue 30 properties of agent systems that
-way, in CTL, and their reachability properties are exactly the kind TLA+ asks in reverse.
+checks below work, and why a violation is their good outcome.
 
-*Specifying Systems* is free for personal use from [Lamport's site](https://lamport.azurewebsites.net/tla/book.html). See [here](../../EXISTING-RESEARCH.md) 
+*Specifying Systems* is free for personal use from [Lamport's site](https://lamport.azurewebsites.net/tla/book.html) and see [here](../../EXISTING-RESEARCH.md) 
 for other work on TLA+ and formal verification.
 
 
 ## Derivable vs. Intentional Properties
 
-| | |
-|---|---|
-| **derivable** | mechanically derivable from the policy alone. |
-| **intentional** | only the policy author knows its intent. |
+Anchor lets you check two kinds of properties: derivable and intentional.
+A **derivable** property is mechanically derivable from the policy alone. An **intentional** property is one where only the policy author knows its intent.
 
 ## Derivable properties
 
@@ -95,7 +87,7 @@ Each property is really one question underneath: *does deleting or changing this
 Every answer is either **a witness session** or **a bounded no**. The bound is printed with the
 answer, because a bounded no is not a proof and should not read like one.
 
-## How a check runs
+### How a derivable property check runs
 
 Each question is one TLC run over [`Vacuity.tla`](../../specs/policy/TemporalPolicy/Vacuity.tla), which
 models a session: every step, the agent makes **one attempt** at any action with any input, and the
@@ -140,7 +132,7 @@ violation, so `live` comes back quickly; a claim of absence searches all of them
 That is why the 12-rule set does not finish exhaustively at 4 or 5, and the reason `--smoke`
 exists. `anchor check` gives each policy set 10 minutes (`--timeout SECONDS` to change it).
 
-## `--smoke`
+### `--smoke`
 
 `--smoke N` runs TLC as a random walk of N behaviours instead of exhausting the state space. 
 
@@ -165,13 +157,12 @@ anchor check tests/policies/firewall.dw --property tests/policies/firewall.tla
 ```
 
 A property module is a TLA+ spec that extends the generated `PolicyUnderTest` spec, stating what the
-policy is supposed to mean. It needs a companion `.cfg` naming its invariants — naming them is
-deliberate, because a property nobody listed is a property nobody checked.
+policy is supposed to mean. It needs a companion `.cfg` naming its invariants so they can be checked.
 
-**One mechanism, not two.** `Vacuity.tla` is itself a property module extending the same generated
+Anchor uses one mechanism, not two for property checking. `Vacuity.tla` is itself a property module extending the same generated
 records; the only difference is that it explores sessions and a per-request claim does not.
 
-### How a property check runs
+### How an intentional property check runs
 
 The same path whether the module was written by hand or drafted by `auto`/`hitl`. In a temporary
 `anchor-prove-*` folder:
@@ -190,9 +181,9 @@ The same path whether the module was written by hand or drafted by `auto`/`hitl`
 4. One TLC run checks every claim at once, with the same JVM flags as every other run:
    `tlc2.TLC -cleanup -metadir <tmp>/states -config SupervisorApproval.cfg SupervisorApproval.tla`.
 
-| | derivable checks | property module |
+| | derivable checks | intentional checks |
 |---|---|---|
-| model | `Vacuity.tla` | the module |
+| model | `Vacuity.tla` | the property module |
 | config | generated per run | the module's own `.cfg` |
 | TLC runs | up to 2 per rule, plus the culprit search | one |
 | result | read backwards: a violation is the witness | read normally: a violation is the counterexample, reported as BROKEN with the claim quoted |
@@ -211,41 +202,11 @@ across those states, in two TLC runs; if it never does, every claim holds withou
 and it exits 4. `--mutation-score` runs the module once more per broken version of the policy set,
 against a mutated `PolicyUnderTest.tla`; see the table under `anchor explain` below.
 
-### Why the derivable property checks are not enough
+*Derivable property checks are never enough for formal verification.* You must write a property module that
+expresses the intent of your policy to obtain the benefits of formal verification. Use Anchor's [agent](../agent/README.md) module
+to allow agents to help you with this task.
 
-`tests/policies/firewall_open.dw` drops a `forbid` and widens a permit, letting the whole internet connect on port
-22. The built-in checks do not miss it silently — they report
-
-```
-REDUNDANT permit #1   it fires, but another permit always would too
-```
-
-which is **true**, and whose advice — delete the redundant rule — shrinks the policy set and leaves
-the hole exactly where it was. The redundancy is a *symptom* of the over-broad permit, and a check
-that cannot know what the policy set was for cannot tell you which of the two rules is the mistake.
-
-The property can, because it was told:
-
-```
-BROKEN  Invariant OutsideIsRefused is violated by the initial state:
-        req = [port |-> [k |-> "n", v |-> 22], origin |-> [k |-> "s", v |-> "external"]]
-```
-
-### State the requests your claim is about
-
-`PolicyUnderTest` deliberately offers **no** `Inputs`. The request space derivable from a policy
-comes from that policy's own literals, so a claim about a value it never mentions ranges over no
-such request — it holds **vacuously** and reports success having looked at nothing.
-
-That is not hypothetical: it is what the first version of `firewall.tla` did. Drop the `forbid` and
-`"external"` leaves the vocabulary, so `OutsideIsRefused` passed against the broken policy. Two
-lines fix it, and they belong to the claim:
-
-```tla
-Requests == {[port |-> Num(p), origin |-> Str(o)] : p \in {22, 2222}, o \in {"local", "external"}}
-```
-
-### `anchor explain`
+## `anchor explain`
 
 `anchor explain` reads the property module instead, and says what each claim forbids and how many of the states it ranges over its
 condition even applies to:

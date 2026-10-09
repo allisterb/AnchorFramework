@@ -1,19 +1,36 @@
-# `agent` — the part that talks to a person
+# `agent`: Using LLMs to draft TLA+ property modules for verifying Dogwood policies
 
-[`checker`](../checker) answers precisely and narrowly: is this rule load-bearing, within this
-bound, under this reading of history. None of that helps anyone unless the answer reaches them with
-its qualifications attached. This is the part that talks to the person, and its job is **not to
-overstate**.
+The [`checker`](../checker) module answers precisely and narrowly: does this rule matter, within this bound,
+under this reading of history.This module is the part of Anchor that uses an LLM: it drafts property modules from
+a requirement written in natural language, and reports what was checked, without overstatement.
+
+```bash
+# draft a property module from a requirement, and check the policy set against it, unattended
+anchor auto examples/aws1/07-trust-decay.dw --intent "After 15 minutes without advisor interaction, the agent loses write access."
+
+# the same, with you answering when a gate turns a draft away. The requirement is read from
+# examples/aws1/intents.md, under the policy set's own heading
+anchor hitl examples/aws1/07-trust-decay.dw
+```
+
+Every command in this README calls an LLM, so it needs a model configured (see
+[Configuration](#configuration)) and each run costs tokens. See
+[three modes](#three-modes-and-the-axis-they-differ-on) for how `auto` and `hitl` relate to `check`.
+
+## The review agent: `policy_agent.py`
 
 ```bash
 python src/agent/policy_agent.py tests/policies/dead_forbid.dw
-python src/agent/policy_agent.py a.dw --against b.dw
-python src/agent/policy_agent.py firewall.dw --ask "does this let anything in from outside?"
+python src/agent/policy_agent.py tests/policies/edit_diverges_both_ways.dw --against tests/policies/edit_diverges_both_ways_old.dw
+python src/agent/policy_agent.py tests/policies/firewall_open.dw --ask "does this let anything in from outside?"
 ```
 
-It is a [Strands](https://github.com/strands-agents) agent whose tools are the
-[`Anchor.MCPServer`](../Anchor.MCPServer) tools, reached by launching `anchor server` over stdio —
-the same wiring an MCP host uses.
+**It has no `anchor` verb**; it is a Python entry point. It is a
+[Strands](https://github.com/strands-agents) agent that starts `anchor server` over stdio and is an
+MCP client of it, the same wiring an MCP host such as Claude Desktop uses, so its only tools are the
+[`Anchor.MCPServer`](../Anchor.MCPServer) tools and knowledge articles. It drafts nothing: it
+answers questions about a policy set, and exists to test whether a model given that knowledge base,
+and almost nothing else, reports a verdict with its caveats intact.
 
 ## The system prompt is thin, and that is the experiment
 
@@ -54,8 +71,8 @@ the transport every host actually uses was broken. See `AToolThatSpawnsAChildPro
 ## The repair loop
 
 ```bash
-python src/agent/repair.py firewall.dw --ask "also open RDP" --rounds 3
-python src/agent/repair.py policy.dw --ask "tighten this" --no-widening --property claim.tla
+python src/agent/repair.py tests/policies/firewall.dw --ask "also open RDP" --rounds 3
+python src/agent/repair.py tests/policies/firewall.dw --ask "tighten this" --no-widening --property tests/policies/firewall.tla
 ```
 
 `propose → check → feedback → repair`, with [`properties.py`](../checker) as the oracle. The
@@ -244,7 +261,8 @@ C#-fronted. The launcher is where the two halves meet, and it is one dispatch ta
 second copy of every option.
 
 Nothing is hidden by it: `anchor auto ...` and `python src/agent/pipeline.py ...` are the same run,
-and the Python form is what the rest of this file writes.
+as are `anchor hitl ...` and `python src/agent/hitl.py ...`. Below the opening example this file
+writes the Python form, because most of what it describes has no verb at all.
 
 ## `hitl` — the same pipeline with a person as one of the gates
 
@@ -386,7 +404,7 @@ saying what they meant, and the step between is the one nothing verifies.
 ## Ambiguity, before a policy exists
 
 ```bash
-python src/agent/clarify.py firewall.dw --ask "also open RDP in addition to SSH"
+python src/agent/clarify.py tests/policies/firewall.dw --ask "also open RDP in addition to SSH"
 ```
 
 A verifier answers questions about a policy that exists. It cannot tell you the **request** was
