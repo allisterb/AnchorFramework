@@ -19,7 +19,7 @@ A `forbid` is only meaningful beside the `permit` it carves an exception out of,
 which they can be true or false.
 
 ```bash
-python src/agent/pipeline.py examples/aws2/agent-policy.dw --intents examples/aws2/requirements.md
+anchor auto examples/aws2/agent-policy.dw --intents examples/aws2/requirements.md --max-fields 8
 ```
 
 One property module per requirement, named from its heading, in `anchor/<heading>/`.

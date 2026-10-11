@@ -1,121 +1,59 @@
 # `agent`: Using LLMs to draft TLA+ property modules for verifying Dogwood policies
 
-The [`checker`](../checker) module answers precisely and narrowly: does this rule matter, within this bound,
-under this reading of history.This module is the part of Anchor that uses an LLM: it drafts property modules from
-a requirement written in natural language, and reports what was checked, without overstatement.
+This module is the part of Anchor that uses an LLM: it drafts property modules from
+a requirement written in natural language, and reports what was checked without overstatement.
 
 ```bash
 # draft a property module from a requirement, and check the policy set against it, unattended
 anchor auto examples/aws1/07-trust-decay.dw --intent "After 15 minutes without advisor interaction, the agent loses write access."
 
-# the same, with you answering when a gate turns a draft away. The requirement is read from
+# the same, with the user answering when a gate turns a draft away. The requirement is read from
 # examples/aws1/intents.md, under the policy set's own heading
 anchor hitl examples/aws1/07-trust-decay.dw
 ```
 
 Every command in this README calls an LLM, so it needs a model configured (see
-[Configuration](#configuration)) and each run costs tokens. See
-[three modes](#three-modes-and-the-axis-they-differ-on) for how `auto` and `hitl` relate to `check`.
+[Configuration](#configuration)). See [three modes](#three-modes-and-the-axis-they-differ-on) for how the `auto` and `hitl` verbs relate to `check`.
 
-## The review agent: `policy_agent.py`
+## Model configuration
 
-```bash
-python src/agent/policy_agent.py tests/policies/dead_forbid.dw
-python src/agent/policy_agent.py tests/policies/edit_diverges_both_ways.dw --against tests/policies/edit_diverges_both_ways_old.dw
-python src/agent/policy_agent.py tests/policies/firewall_open.dw --ask "does this let anything in from outside?"
-```
-
-**It has no `anchor` verb**; it is a Python entry point. It is a
-[Strands](https://github.com/strands-agents) agent that starts `anchor server` over stdio and is an
-MCP client of it, the same wiring an MCP host such as Claude Desktop uses, so its only tools are the
-[`Anchor.MCPServer`](../Anchor.MCPServer) tools and knowledge articles. It drafts nothing: it
-answers questions about a policy set, and exists to test whether a model given that knowledge base,
-and almost nothing else, reports a verdict with its caveats intact.
-
-## The system prompt is thin, and that is the experiment
-
-The server ships six knowledge articles saying what each verdict does and does not establish: that
-VACUOUS is bounded by `attempts` rather than absolute, that a REFUSAL is not a clean result, that
-`unknown` from a smoke run is never grounds for deleting a rule, that without an event schema every
-answer assumes a reading which is not the deployed one.
-
-Those articles were written for a model to read. **Until this agent existed, no model ever had.**
-
-So the prompt does not restate them. It says the knowledge base exists and must be consulted before
-a verdict is reported. Restating the caveats there would guarantee a well-qualified answer while
-proving nothing about whether the knowledge base works — and the knowledge base is what an agent we
-did not write would have to rely on.
-
-If a review comes back missing the bound or the reading, that is a finding about the articles or the
-tool descriptions. It is not a reason to thicken the prompt.
-
-## The model is isolated, deliberately
-
-A review needs credentials, a network call and a bill. Everything underneath it does not — and that
-"everything" is where the mistakes actually live. So it is split:
-
-| | needs a model? | what it proves |
+| | taken by | |
 |---|---|---|
-| [`tests/strands/agent_wiring.py`](../../tests/strands/agent_wiring.py) | no | the server launches, every tool is advertised, every article is reachable both as a tool and as a resource, a real check runs, containment holds, a refusal is still a refusal — and Bedrock builds a client without reading `~/.aws`, signing with the bearer token, which is what keeps a native dependency out of the lock |
-| [`tests/strands/repair_loop.py`](../../tests/strands/repair_loop.py) | no | the repair loop's mechanics: a defect is caught, the objection reaches the next round, the bound bounds, a refusal is data rather than a crash, and `no_widening` is enforced in code |
-| [`tests/strands/clarify_readings.py`](../../tests/strands/clarify_readings.py) | no | that a proposed ambiguity is VERIFIED before anyone is asked: readings deciding every session alike are not raised, and an uncheckable one is not counted as agreement |
-| `policy_agent.py` | yes | whether a model given only a thin prompt reports honestly |
-| `repair.py` | yes | whether a model can act on a counterexample |
-| `clarify.py` | yes | whether a model notices that a request admits more than one policy |
+| `--config` | `auto`, `hitl` | the settings file holding the model configuration and API key. Sets `ANCHOR_APPSETTINGS`, so there is one answer to which file that is; unlike the variable it refuses a path that is not there, because somebody who typed it named a file. Exit 2 |
+| `ANCHOR_APPSETTINGS` | every entry point | the same thing from the environment, for something that wrote the file on your behalf. When set, the usual search (beside `src/agent/`, then the repo root) is not used: a path that is not there means no settings file, never a different one. Every LLM mode warns about it before its first call, even when the environment supplies the key, since the file's `Model` and `Region` then stop applying |
+| `--provider` | `auto`, `hitl`, `policy_agent.py` | `auto`, `bedrock` or `gemini`. `auto` picks Gemini when a key is present and Bedrock otherwise — an API key in config was put there deliberately, whereas `~/.aws` exists on most machines whether or not the account can call a model |
+| `--llm` | `auto`, `hitl`, `policy_agent.py` | the LLM's model id. Defaults to the provider's `Model` setting (`Gemini:Model`, `Bedrock:Model`), then the provider's own default. See [model-providers.md](../../docs/model-providers.md#choosing-the-model) |
+| `--project-dir` | `policy_agent.py` only | the directory policy paths resolve inside; a path escaping it is refused. Defaults to the repo. Only the review agent takes it, because only it reaches the checker through `anchor server`, which it starts with this flag: the containment is the MCP server's, and a model choosing paths is exactly the caller it exists for. `auto` and `hitl` call the checker directly and refuse it as an unrecognized argument |
 
-That split earned itself immediately. Building the agent found a bug nothing else had: **`CheckPolicy`
-hung forever over stdio** — five seconds over HTTP, never over stdio — because `PythonProcess` did
-not redirect the child's stdin, so the checker inherited the MCP protocol pipe. Every test passed;
-the transport every host actually uses was broken. See `AToolThatSpawnsAChildProcessAnswersOverStdio`.
+`repair.py`, `clarify.py` and `author.py` take none of the flags: they use `--provider auto` and the
+model from the settings file (`ANCHOR_APPSETTINGS`, or the usual search).
 
-## The repair loop
+### Model provider
 
-```bash
-python src/agent/repair.py tests/policies/firewall.dw --ask "also open RDP" --rounds 3
-python src/agent/repair.py tests/policies/firewall.dw --ask "tighten this" --no-widening --property tests/policies/firewall.tla
-```
-
-`propose → check → feedback → repair`, with [`properties.py`](../checker) as the oracle. The
-division is the point:
+Currently **Amazon Bedrock** or **Google Gemini** are supported `--provider auto|bedrock|gemini`.
+Documentation is in: **[`docs/model-providers.md`](../../docs/model-providers.md)**. The short version:
 
 | | |
 |---|---|
-| the model | proposes policy **text**, and nothing else |
-| `repair.py` | decides what is checked, with what bounds, and whether the result is acceptable |
+| Gemini | a key in `ApiKeys:GoogleAgentPlatform`. An *Agent Platform* key also needs the `Google` block — without it, `403 API_KEY_SERVICE_BLOCKED` |
+| Bedrock | a bearer token in the environment (`AWS_BEARER_TOKEN_BEDROCK`), which `ApiKeys:AmazonBedrock` is put into for you, plus a **region** — with a key, `~/.aws` is not read, so nothing supplies one. Ordinary AWS credentials work too |
 
-**The acceptance criteria are arguments, evaluated after the model has spoken.** `--no-widening`,
-`--property` and the defect checks are never shown to it as something it may change. That is not
-caution for its own sake: a repair loop with nothing held fixed lets the model change what it is
-checked against (measured by Lahiri, arXiv:2608.21516: rewritten code, restated goals, bare assumptions). The structural defence is
-that the property is not an input it can reach.
+Copy [`appsettings.json.example`](appsettings.json.example) to `appsettings.json` here. It is
+gitignored by `**/*appsettings.json`; the `.example` is not.
 
-`repair()` takes its proposer as an argument, which is what lets the loop be tested without
-credentials. A scripted proposer returns known-bad text then known-good text, and the harness pins
-what a green loop can silently lack — that the objection actually **reaches** the next round.
+## The three Anchor modes for agentic formal verification
 
-**Watch it fail.** Asked to make approvals permitted again under `--no-widening`, which cannot both
-be done and not widen:
+The main diffrentiator between the three modes is *how much of the formalization is yours.* Nothing else about them differs: `hitl` is the
+`auto` graph with one node added, and both run the same model-checker `check` does.
 
-```
---- round 1: rejected ---
-  this is MORE PERMISSIVE than the policy it replaces, and it was required not to add
-  permissions. It newly allows:
-  1. ApproveSale(stock = 1)  allowed  (approved = false)
+| | who provides the property module | how to run it |
+|---|---|---|
+| `check` | the user | `anchor check policy.dw --property claim.tla`, or `--full` to audit a policy set or a directory |
+| `auto` | the agent, autonomously | `anchor auto policy.dw --intent "..."` |
+| `hitl` | the agent, with user input | `anchor hitl policy.dw` |
 
---- round 2: rejected ---
-  the checker could not produce a verdict... policy body starts with 'where', not when/unless
-
-NO ACCEPTED CANDIDATE after 2 round(s).
-```
-
-Round 2 is the interesting one: pressed by an objection it could not satisfy, the model produced
-something invalid. The loop reported that and stopped, rather than accepting a plausible-looking
-answer — and the run exits 1. **A loop that cannot fail is a loop that will not stop.**
-
-## The pipeline, as the graph that runs it
-
-[`pipeline.py`](pipeline.py) is the whole of the above wired as a Strands `Graph`:
-
+## `auto` mode
+Anchor's auto mode runs the entire property module authoring pipeline autonomously, as a Strands Agents `Graph`:
 ```
 describe ─┬─> draft ─> preflight ─┬─> score ─┬─> review ─┬─> check ─> answer ─> report
           │                        │          │           │                        ^
@@ -123,43 +61,24 @@ describe ─┬─> draft ─> preflight ─┬─> score ─┬─> review ─�
                  every rejection still reports, and nothing raises
 ```
 
-**The agent that drafts the property is not the agent that answers with it.** Asked for both an
-artifact and its specification, a model finds a trivial specification the cheapest way to pass —
-so these are two agents, and `GraphBuilder` enforces it: one `Agent` instance cannot be two nodes,
-and neither sees the other's context. Only `draft` and `answer` are models. The other five are
-`Computed` — ordinary Python behind the `Model` interface, so the graph is uniform while the
+**The agent that drafts the property module is not the agent that answers with it.** Asked for both an
+artifact and its specification, a model finds a trivial specification the cheapest way to pass. So the draft and answer nodes are
+so are two separate agents, and Strands `GraphBuilder` enforces it: one `Agent` instance cannot be two nodes,
+and neither sees the other's context. Only `draft` and `answer` are model calls. The other five graph nodes are
+`Computed` nodes — ordinary Python behind the `Model` interface, so the graph is uniform while the
 criteria stay in code.
 
-**The drafter has tools; nothing else does.** It was writing TLA+ blind — one prompt in, a module
-out, and it found out what was wrong a whole round-trip later. It now holds three
-[mechanical checks](drafting.py): `check_module` (does it compile, does it evaluate),
+The drafter agent is the only graph node with tools. It holds three
+[mechanical checks](drafting.py): `check_module` (does the TLA+ property module compile, does it evaluate),
 `what_it_forbids` (the plain-English reading and the state counts) and `evaluate` (the value of one
 expression). Local `@tool` functions calling the same Python the gates call — not MCP, which would
 add a server process and break the hermetic harness.
 
-**What it deliberately cannot reach is `score`.** A model that can run mutation scoring will tune
+**What the drafter agent deliberately cannot reach is `score`.** A model that can run mutation scoring will tune
 the property until it catches a mutant — optimising against the gate instead of stating the
-requirement, a documented failure mode in agentic verification. The reviewer is absent for the same
-reason. So nothing new is checked before `score`; what changes is who drives the loop and how fast
-the answer arrives. `check_module` reports in one call the failure that ended three live sessions.
+requirement, a documented failure mode in agentic verification. 
 
-**A gate that rejects is not a failed node.** It completes, writes its verdict into its own result,
-and a [`verdict()`](../annotations) pair routes on it — declared as *one* decision, so exactly one
-arm fires. A rejection costs nothing downstream (no TLC, no second model call) and still reports.
-
-**The retry is inside `draft`, not in the graph**, and that is a constraint rather than a
-preference. A retry is a cycle, and neither model can express one: `oracle` is chosen in `Init` and
-never changes, so a retry edge cannot mean "again, then stop", and `StrandsGraph`'s `StartBatch`
-increments `runs` with no guard, so a cycle breaks `TypeOK`. Keeping the loop in one node keeps the
-graph acyclic and every property proved about it true — at the price that the rounds are invisible
-to the model. Only the cheap checks are in the loop: SANY (~1s) and `preflight` (milliseconds).
-`score` runs TLC per mutant and stays outside, one shot.
-
-**Limits are ours to set, and two of them end a run with no report.** `--max-node-executions` and
-`--execution-timeout` make the executor set `FAILED` and return from the batch loop; `--node-timeout`
-fails a node, which fail-fasts. None of those reaches `report`. So the cap is set above what the
-graph can use and `--rounds` is what actually bounds the work — running out of rounds still reports.
-
+`auto` options:
 | flag | default | note |
 |---|---|---|
 | `--rounds` | 3 | drafting attempts. One model call plus ~1s of SANY each |
@@ -170,59 +89,20 @@ graph can use and `--rounds` is what actually bounds the work — running out of
 | `--node-timeout` | none | a timed-out node fail-fasts the run |
 | `--mutants` | 8 | how many broken policies the `score` gate tries |
 
-**A tripped cap does not look like a failure.** Strands returns it as a `stop_reason`
-(`limit_turns`, `limit_total_tokens`, `limit_output_tokens`) with the agent returning normally, and
+A tripped token cap is returned by Strands it as a `stop_reason`
+(`limit_turns`, `limit_total_tokens`, `limit_output_tokens`) with the agent returning normally.
 `Graph` maps only `"interrupt"` to a non-completed status — so a capped node is `COMPLETED` with a
-truncated answer. Two places that matters, both handled: a cut-off **draft** is treated as a failed
-round rather than reaching the gates as a half-written module (where it would be rejected for a
-syntax error that was really a budget), and a cut-off **report** says so in its own text, because a
-truncated report that doesn't reads as a complete one. Any cap that fires is also printed to stderr
+truncated answer. A tripped token cap that leads to cut-off **draft** or **report** is treated as a failed
+round. Any token cap that fires is also printed to stderr
 as `CAP:` and leads findings.md.
-
-`policy_agent.py` takes the same three flags. It is the agent that holds the MCP tools, so it is the
-one that can loop.
-
-## What a run cost
 
 findings.md ends with a table: tokens in/out/total and seconds per model call, then wall clock per
 stage. The same totals go to stderr.
 
-**The graph's own totals are not used and cannot be.** Every stage is an `Agent` whose model is
-`Computed`, which reports zero tokens because it makes no model call — the two real calls happen
-*inside* those nodes. `result.accumulated_usage` is therefore zero for this pipeline, and reporting
-it would say the run was free.
-
-**Tokens are read per call, not from the running total.** `metrics.accumulated_usage` is cumulative
-across every invocation of the same `Agent` object, and the drafter is reused each round — so
-reading it per call bills round 1 again on round 2. Measured here: 15, 30, 45 across three calls
-that each cost 15, against a flat 15 from `metrics.agent_invocations[-1].usage`, which is what this
-uses. The same trap is recorded in [`tests/strands/shared_budget.py`](../../tests/strands/shared_budget.py);
-this is the second place it has come up.
-
-Most of the wall clock is TLC, in `score` and `check`, and costs no tokens — so the report says
-which part of the total was model calls.
-
-The shape was chosen by checking four properties against four wirings in
-[`tests/strands/anchor_workflow.py`](../../tests/strands/anchor_workflow.py), and
-[`tests/strands/pipeline_run.py`](../../tests/strands/pipeline_run.py) re-proves `AlwaysReports`
-over the graph `build()` actually returns — so the shape that was checked and the object that runs
-are the same object rather than two things that agree today.
-
-```bash
-python src/agent/pipeline.py examples/aws1/07-trust-decay.dw \
-    --intent "After 15 minutes without advisor interaction, the agent loses write access."
-```
-
-**Nothing aborts it.** A node that raises ends the run with no findings.md at all — and that is the
-hole `AlwaysReports` cannot cover, since it is stated over `phase = "DONE"` and the property cannot
-be strengthened (the model lets *any* node fail). So the obligation is discharged in code: every
-stage catches, an unreadable policy is a `describe` gate rejection rather than an exception, and a
-stage that crashes anyway says in findings.md that **Anchor** failed — not the policy.
-
 ## Sweeping a directory
 
 ```bash
-python src/agent/pipeline.py examples/aws2 --intents examples/aws2/intents.md
+anchor auto examples/aws2 --intents examples/aws2/intents.md
 ```
 
 One pipeline per policy with a **stated intent**, read from `intents.md` — `## <policy>.dw`
@@ -237,37 +117,11 @@ it the generated vocabulary and nothing else.
 
 Writes `anchor/<policy>/findings.md` per policy and `anchor/summary.md` over the set.
 
-## Three modes, and the axis they differ on
-
-**How much of the formalization is yours.** Nothing else about them differs — `hitl` is the
-`auto` graph with one node added, and both check what `check` checks.
-
-| | who writes the property module | how to run it |
-|---|---|---|
-| `check` | you | `anchor check policy.dw --property claim.tla`, or `--full` to audit a policy set or a directory |
-| `auto` | the agent, unattended | `anchor auto policy.dw --intent "..."` |
-| `hitl` | the agent, with you | `anchor hitl policy.dw` |
-
-`anchor` is the launcher at the repo root — `./anchor` on Linux and macOS, `./anchor.ps1` under
-PowerShell. It dispatches on the verb, forwards the rest verbatim and passes the exit code through.
-
-**Only the first of those three is a CLI verb; `auto` and `hitl` are Python entry points, and that
-is deliberate.** A verb for either would be a passthrough: the C# would re-declare every flag
-`argparse` already has — so each option would live in two places, and adding one to the Python
-would leave it unreachable — and then spawn Python anyway. The process hop buys nothing, and the
-extra layer is what makes stdio behave differently than expected, which matters most for the mode
-that reads answers from a terminal. `check` and `server` stay in the CLI because they are genuinely
-C#-fronted. The launcher is where the two halves meet, and it is one dispatch table rather than a
-second copy of every option.
-
-Nothing is hidden by it: `anchor auto ...` and `python src/agent/pipeline.py ...` are the same run,
-as are `anchor hitl ...` and `python src/agent/hitl.py ...`. Below the opening example this file
-writes the Python form, because most of what it describes has no verb at all.
 
 ## `hitl` — the same pipeline with a person as one of the gates
 
 ```bash
-python src/agent/hitl.py examples/aws1/07-trust-decay.dw \
+anchor hitl examples/aws1/07-trust-decay.dw \
     --intent "After 15 minutes without advisor interaction, the agent loses write access."
 ```
 
@@ -361,6 +215,138 @@ credits the person only where they actually reached the checkpoint. It refuses t
 terminal, because a mode that asks questions and reads EOF as an answer would spend a model call
 per attempt talking to nobody.
 
+## The policy review agent: `policy_agent.py`
+
+```bash
+python src/agent/policy_agent.py tests/policies/dead_forbid.dw
+python src/agent/policy_agent.py tests/policies/edit_diverges_both_ways.dw --against tests/policies/edit_diverges_both_ways_old.dw
+python src/agent/policy_agent.py tests/policies/firewall_open.dw --ask "does this let anything in from outside?"
+```
+
+It is a [Strands](https://github.com/strands-agents) agent that starts `anchor server` over stdio
+and is an MCP client of it, the same wiring an MCP host such as Claude Desktop uses, so its only
+tools are the [`Anchor.MCPServer`](../Anchor.MCPServer) tools and knowledge articles. It drafts
+nothing: it answers questions about a policy set, and exists to test whether a model given that
+knowledge base, and almost nothing else, reports a verdict with its caveats intact.
+
+**Where it runs.** It is not a stage of `auto` or `hitl`. It runs in two places:
+
+- **`anchor check --full`**, once per question in a `questions.md` beside the policy sets:
+  [`audit.py`](audit.py) calls its `review()` and writes each answer, with every tool call it made,
+  into `transcript.md` beside the report; `findings.md` counts how many were answered. This is the
+  LLM that `--no-llm` skips.
+- **On its own**, as above. It has no `anchor` verb; it is a Python entry point.
+
+**Not to be confused with the pipeline's `review` stage**, the second model that judges a drafted
+claim against the requirement. That one has no tools and sees two texts. The shared word is a
+coincidence of naming, nothing more.
+
+`pipeline.py` and `hitl.py` import `policy_agent` too, but only for its plumbing: building the model
+(`build_model`), checking it can be reached (`readiness`), `--config` and error messages. All of the
+model-provider setup lives in this file, so everything that calls a model goes through it, without
+running the review agent.
+
+### Every model in Anchor, and what it can call
+
+```
+anchor auto / hitl ──> pipeline.py: describe ─> draft ─> preflight ─> score ─> review ─> check ─> answer ─> report
+                                                  │                              │                  │
+                                            local tools                       no tools           no tools
+
+anchor check --full ──> audit.py ──> each question in questions.md ──> policy_agent.review()
+                                                                             │
+                                                                 MCP tools, via `anchor server`
+```
+
+| model | runs in | tools |
+|---|---|---|
+| the drafter | `auto`/`hitl`, the `draft` stage | three **local Python functions** in [`drafting.py`](drafting.py) (`check_module`, `what_it_forbids`, `evaluate`) calling the checker directly. **Not MCP**: no server process, and the harness runs the pipeline with scripted models and no server. Never the gates that judge it |
+| the reviewer | `auto`/`hitl`, the `review` stage | **none**. Shown only the requirement and the plain-English reading of the claims |
+| the answerer | `auto`/`hitl`, the `answer` stage | **none**. Handed the verdicts, writes them up |
+| the review agent (`policy_agent.py`) | `check --full` for `questions.md`, or on its own | **the MCP tools** and knowledge articles, through `anchor server` |
+| `repair.py`, `clarify.py`, `author.py` | on their own | none of their own; the scripts call the checker around the model |
+
+## The system prompt is thin, and that is the experiment
+
+The server ships six knowledge articles saying what each verdict does and does not establish: that
+VACUOUS is bounded by `attempts` rather than absolute, that a REFUSAL is not a clean result, that
+`unknown` from a smoke run is never grounds for deleting a rule, that without an event schema every
+answer assumes a reading which is not the deployed one.
+
+Those articles were written for a model to read. **Until this agent existed, no model ever had.**
+
+So the prompt does not restate them. It says the knowledge base exists and must be consulted before
+a verdict is reported. Restating the caveats there would guarantee a well-qualified answer while
+proving nothing about whether the knowledge base works — and the knowledge base is what an agent we
+did not write would have to rely on.
+
+If a review comes back missing the bound or the reading, that is a finding about the articles or the
+tool descriptions. It is not a reason to thicken the prompt.
+
+## The model is isolated, deliberately
+
+A review needs credentials, a network call and a bill. Everything underneath it does not — and that
+"everything" is where the mistakes actually live. So it is split:
+
+| | needs a model? | what it proves |
+|---|---|---|
+| [`tests/strands/agent_wiring.py`](../../tests/strands/agent_wiring.py) | no | the server launches, every tool is advertised, every article is reachable both as a tool and as a resource, a real check runs, containment holds, a refusal is still a refusal — and Bedrock builds a client without reading `~/.aws`, signing with the bearer token, which is what keeps a native dependency out of the lock |
+| [`tests/strands/repair_loop.py`](../../tests/strands/repair_loop.py) | no | the repair loop's mechanics: a defect is caught, the objection reaches the next round, the bound bounds, a refusal is data rather than a crash, and `no_widening` is enforced in code |
+| [`tests/strands/clarify_readings.py`](../../tests/strands/clarify_readings.py) | no | that a proposed ambiguity is VERIFIED before anyone is asked: readings deciding every session alike are not raised, and an uncheckable one is not counted as agreement |
+| `policy_agent.py` | yes | whether a model given only a thin prompt reports honestly |
+| `repair.py` | yes | whether a model can act on a counterexample |
+| `clarify.py` | yes | whether a model notices that a request admits more than one policy |
+
+That split earned itself immediately. Building the agent found a bug nothing else had: **`CheckPolicy`
+hung forever over stdio** — five seconds over HTTP, never over stdio — because `PythonProcess` did
+not redirect the child's stdin, so the checker inherited the MCP protocol pipe. Every test passed;
+the transport every host actually uses was broken. See `AToolThatSpawnsAChildProcessAnswersOverStdio`.
+
+## The repair loop
+
+```bash
+python src/agent/repair.py tests/policies/firewall.dw --ask "also open RDP" --rounds 3
+python src/agent/repair.py tests/policies/firewall.dw --ask "tighten this" --no-widening --property tests/policies/firewall.tla
+```
+
+`propose → check → feedback → repair`, with [`properties.py`](../checker) as the oracle. The
+division is the point:
+
+| | |
+|---|---|
+| the model | proposes policy **text**, and nothing else |
+| `repair.py` | decides what is checked, with what bounds, and whether the result is acceptable |
+
+**The acceptance criteria are arguments, evaluated after the model has spoken.** `--no-widening`,
+`--property` and the defect checks are never shown to it as something it may change. That is not
+caution for its own sake: a repair loop with nothing held fixed lets the model change what it is
+checked against (measured by Lahiri, arXiv:2608.21516: rewritten code, restated goals, bare assumptions). The structural defence is
+that the property is not an input it can reach.
+
+`repair()` takes its proposer as an argument, which is what lets the loop be tested without
+credentials. A scripted proposer returns known-bad text then known-good text, and the harness pins
+what a green loop can silently lack — that the objection actually **reaches** the next round.
+
+**Watch it fail.** Asked to make approvals permitted again under `--no-widening`, which cannot both
+be done and not widen:
+
+```
+--- round 1: rejected ---
+  this is MORE PERMISSIVE than the policy it replaces, and it was required not to add
+  permissions. It newly allows:
+  1. ApproveSale(stock = 1)  allowed  (approved = false)
+
+--- round 2: rejected ---
+  the checker could not produce a verdict... policy body starts with 'where', not when/unless
+
+NO ACCEPTED CANDIDATE after 2 round(s).
+```
+
+Round 2 is the interesting one: pressed by an objection it could not satisfy, the model produced
+something invalid. The loop reported that and stopped, rather than accepting a plausible-looking
+answer — and the run exits 1. **A loop that cannot fail is a loop that will not stop.**
+
+
 ## Drafting a property, and the two gates on it
 
 ```bash
@@ -439,41 +425,3 @@ only one of them is reassuring.
 Exit codes: **3** when a person should choose, 0 when there is nothing to ask — so a script can
 branch on "needs a human" without parsing prose.
 
-## Configuration
-
-| | |
-|---|---|
-| `--config` | the settings file holding the model configuration and API key. Sets `ANCHOR_APPSETTINGS`, so there is one answer to which file that is; unlike the variable it refuses a path that is not there, because somebody who typed it named a file. Exit 2 |
-| `ANCHOR_APPSETTINGS` | the same thing from the environment, for something that wrote the file on your behalf. When set, the usual search (beside `src/agent/`, then the repo root) is not used: a path that is not there means no settings file, never a different one. Every LLM mode warns about it before its first call, even when the environment supplies the key, since the file's `Model` and `Region` then stop applying |
-| `ANCHOR_CLI` | path to `Anchor.CLI.dll`, or to a self-contained executable. Otherwise a Release build is preferred, then Debug |
-| `--project-dir` | the directory policy paths resolve inside; a path escaping it is refused. Defaults to the repo, and the agent is exactly the caller containment exists for |
-| `--provider` | `auto`, `bedrock` or `gemini`. `auto` picks Gemini when a key is present and Bedrock otherwise — an API key in config was put there deliberately, whereas `~/.aws` exists on most machines whether or not the account can call a model |
-| `--llm` | the LLM's model id. Defaults to the provider's `Model` setting (`Gemini:Model`, `Bedrock:Model`), then the provider's own default. See [model-providers.md](../../docs/model-providers.md#choosing-the-model) |
-
-## The model: Amazon or Google
-
-Either **Amazon Bedrock** or **Google Gemini** — `--provider auto|bedrock|gemini`. Nothing else in
-Anchor changes when you switch; only this last step needs an account.
-
-Configuration, the setup each provider needs, and what each is verified to do live in one place:
-**[`docs/model-providers.md`](../../docs/model-providers.md)**. The short version:
-
-| | |
-|---|---|
-| Gemini | a key in `ApiKeys:GoogleAgentPlatform`. An *Agent Platform* key also needs the `Google` block — without it, `403 API_KEY_SERVICE_BLOCKED` |
-| Bedrock | a bearer token in the environment (`AWS_BEARER_TOKEN_BEDROCK`), which `ApiKeys:AmazonBedrock` is put into for you, plus a **region** — with a key, `~/.aws` is not read, so nothing supplies one. Ordinary AWS credentials work too |
-
-Two facts belong beside the code rather than in that document, because they are why
-`build_bedrock_model` looks the way it does:
-
-**botocore resolves the credential chain when the CLIENT is built** — before the bearer token is
-consulted, and then discards it, because bearer auth supersedes SigV4 at signing. Walking the chain
-can therefore only fail, never help. `keyed_session` points a scoped session at `os.devnull` for both
-AWS config files when a key is present, which is what keeps `botocore[crt]` out of the dependency
-list: the provider that needs it is never reached.
-
-**`BedrockModel` refuses `region_name` beside `boto_session`.** A configured profile and a
-configured region is an ordinary combination, so the region rides on the `Session`.
-
-Copy [`appsettings.json.example`](appsettings.json.example) to `appsettings.json` here. It is
-gitignored by `**/*appsettings.json`; the `.example` is not, because the pattern ends at `.json`.
