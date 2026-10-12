@@ -1,4 +1,4 @@
-# Existing research
+# Existing Research
 
 ## Articles
 

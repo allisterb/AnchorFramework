@@ -3,20 +3,14 @@
 ## About
 This directory holds TLA+ specs that model Dogwood temporal policies.
 
-**What they found.** A permit gated on an approval's `::response` is silently killed by an
-unrelated `forbid` on the approval: it still parses and validates, and grants nothing
-([The finding this reproduces](#the-finding-this-reproduces)). The same gate written on
-`::request` survives that `forbid`, and opens on the refused attempts instead
-([One word apart](#one-word-apart-opposite-security-properties)).
-
-**In use: what `anchor check`, the MCP server and the drafting agent run on.**
+**In use: `DogwoodSemantics.tla` and `Vacuity.tla` are what `anchor check`, the MCP server, and the drafting agent run on.**
 
 | file | what it is |
 |---|---|
 | `DogwoodSemantics.tla` | the evaluator: our reading of Dogwood's temporal operators, differential-tested against the corpus. `Decide` gives the verdict for one decision in a trace |
 | `Vacuity.tla` | the session model `anchor check` runs: every session up to `--attempts`, over the generated `PolicyUnderTest.tla`, each decision by `DogwoodSemantics!Decide` |
 
-**Current, and standalone: the session-rotation finding.** Uses `DogwoodSemantics`, so it reads
+**Current and standalone: the session-rotation finding.** Uses `DogwoodSemantics`, so it reads
 policies the same way the checker does, but no Anchor command runs it; the spec tests do.
 
 | file | what it is |
@@ -41,13 +35,6 @@ the spec tests run it: it is the hand-built version of the `::request` finding.
 | `Vacuous_ForbiddenApproval.cfg` | approvals forbidden, same permit. **Vacuous** |
 | `RequestGated_SurvivesForbid.cfg` | approvals forbidden, permit gated on `::request`. **Satisfiable — and that is the bad news** |
 
-Run a spec from this folder, since TLC looks for the module in the current directory and fails with
-"Cannot find source file" when given a path from elsewhere:
-
-```bash
-cd specs/policy/TemporalPolicy
-java -cp ../../../lib/tla2tools-1.7.4.jar tlc2.TLC -cleanup -config SessionRotation.cfg SessionRotation.tla
-```
 
 ## How these specs verify a policy set
 
@@ -113,7 +100,7 @@ The sharpest claims are often not "x must be permitted" but **"these two session
 same"**. A requirement that says *transferred* is violated by a policy set that counts *attempts*,
 and the way to say so is that a refused attempt must leave the verdict unchanged.
 
-## Read the result backwards
+## Reading TLC's verdict: a violation is the witness
 
 `Vacuity.tla`'s questions are written to **fail**. `NeverFires` claims a permit never grants;
 `NeverMatters` claims deleting a rule never changes a decision (see

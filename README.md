@@ -1,7 +1,7 @@
 # Anchor
 
 ## About
-Anchor is an agentic formal verification framework that uses the [TLA+](https://lamport.azurewebsites.net/tla/tla.html) formal specification language and model checker to formally verify AWS [Dogwood](https://aws.amazon.com/blogs/opensource/introducing-dogwood-runtime-verification-for-ai-agents/) temporal policies. It provides a [Strands Agents SDK](https://strandsagents.com/) agent that assists humans in writing specifications for formal verification of these policies using natural language prompts and questions, without the user having to know the technical details of the formal verification language or tools or theory.
+Anchor is an agentic formal verification framework that uses the [TLA+](https://lamport.azurewebsites.net/tla/tla.html) formal specification language and model checker to formally verify AWS [Dogwood](https://aws.amazon.com/blogs/opensource/introducing-dogwood-runtime-verification-for-ai-agents/) temporal policies. It provides a [Strands Agents](https://strandsagents.com/) agent that assists humans in writing specifications for formal verification of these policies using natural language prompts and questions, without the user having to know the technical details of the formal verification language or tools or theory.
 
 Anchor's objective is to increase the reliability of Dogwood policies while allowing developers and engineers and administrators to use the benefits of formal verification without always requiring the specialized knowledge and skills formal methods typically demand. It uses a graph-based Strands multi-agent workflow to try to improve the correctness and address the [known issues](EXISTING-RESEARCH.md) in agentic formal verification.
 
@@ -12,16 +12,18 @@ Anchor provides:
 * A [model property checker](https://github.com/allisterb/AnchorFramework/tree/master/src/checker) that checks:
      * *derivable* property checks, which can be mechanically derived from all policies e.g. "is this policy vacuous or redundant?"
      * *intentional* property checks where a human or agent authors a *property module* to explicitly capture the intent or requirements of a policy e.g. "Does this Dogwood policy forbid all trades without a human interaction for more than 15 minutes?"
-* An [input scanner](src/checker/scan.py) that reads a policy's inputs for hidden characters, look-alike names, instructions aimed at a model and markup, before an agent, a browser or a terminal is shown them.
-* A self-contained [HTML report](#auditing-a-directory), `findings.html`, that draws each broken policy claim as the session that breaks it, with the reference Dogwood engine's verdict on every decision.
 * An [MCP server](https://github.com/allisterb/AnchorFramework/tree/master/src/Anchor.MCPServer) that provides the following tools to agents:
     * The TLA+ SANY parser and a TLA+ evaluator to assist in code generation
     * The Dogwood to TLA+ translator and model property checker 
     * Knowledge resources that an agent can use to author TLA+ specifications and property modules.
-* A Strands [agentic workflow](https://github.com/allisterb/Anchor/tree/master/src/agent) for autonomous and HITL generation of Dogwood policy property modules.
+* A Strands [agentic workflow](https://github.com/allisterb/AnchorFramework/tree/master/src/agent) for autonomous and HITL generation of Dogwood policy property modules.
 
-* A [CLI](https://github.com/allisterb/Anchor/tree/master/src/Anchor.CLI) that provides command-line access to the framework tools and MCP server and agent workflow launcher .
+* An [input scanner](src/checker/scan.py) that reads a policy's inputs for hidden characters, look-alike names, instructions aimed at a model and markup, before an agent, a browser or a terminal is shown them.
 
+* A self-contained markdown `findings.md` and HTML `findings.html` report, that draws each broken policy claim as the session that breaks it, with the reference Dogwood engine's verdict on every decision.
+
+* A CLI that provides command-line access to the framework tools and MCP server and agent workflow launcher.
+ 
 Anchor's formal verification can proceed in three modes. 
 
 * `check` Checks a Dogwood policy set file against a mechanically translated base policy specification and an existing TLA+ property module that captures the intent of the policy set. The most precise
@@ -83,7 +85,7 @@ docker run --rm -v "$PWD:/work" public.ecr.aws/v4q7x8t1/anchor:latest check my-p
 docker run --rm -v ".:/work" public.ecr.aws/v4q7x8t1/anchor:latest check my-policy.dw
 ```
 
-See [Running](###running) for more info and examples of running Anchor.
+See [Running](https://github.com/allisterb/AnchorFramework/blob/master/README.md#running) for more info and examples of running Anchor.
 
 ## Building
 ### Building Prerequisites
@@ -96,7 +98,7 @@ If you want to build from source, you need:
 ### Building
 
 ```
-git clone --recursive https://github.com/allisterb/Anchor   # or: git submodule update --init
+git clone --recursive https://github.com/allisterb/AnchorFramework   # or: git submodule update --init
 ./build.sh -t                                               # Linux, macOS, or git bash on Windows
 ./build.ps1 -Test                                           # PowerShell
 ```
@@ -223,7 +225,7 @@ file. Every question below is about what the whole set decides.
 
 * A **session** is one AgentCore [*policy session*](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/policy-temporal.html):
 the history of related requests a temporal condition can see. Anchor checks every possible session
-up to `--attempts` attempts long (3 by default), not one that was recorded.
+up to `--attempts` attempts long (3 by default).
 
 
 ### Check mode
@@ -271,7 +273,7 @@ for certain, but it never concludes VACUOUS, REDUNDANT or DEAD: a rule with no w
 `unknown`, which is not a finding. Only an exhaustive run can say "never".
 
 
-###  Check audit mode
+### Check audit mode
 
 ```bash
 [./]anchor check examples/aws1 --full                    # every policy set in the directory
@@ -339,10 +341,6 @@ with exit 2. In an audit (`check --full`) the checks still run in full — they 
 risk from text aimed at a model — and only the model's questions are withheld. It is a heuristic, and
 says so: a comment that *discusses* prompt injection will trip it, so `--allow-flagged-input`
 proceeds anyway, for findings you have read, and every report records that it was used.
-
-
-
-
 
 
 ## Project Layout

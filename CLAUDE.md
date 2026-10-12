@@ -1,4 +1,4 @@
-﻿# About: Anchor - a formal verification framework for Amazon Strands SDK agents
+﻿# Anchor: a formal verification framework for Amazon Dogwood policies
 
 ## Project guardrails
 - **Do not ** commit any changes automatically, always prompt the user to commit changes manually.
@@ -55,10 +55,8 @@
   data".
 
 ## Project Overview
-Anchor is a formal verification framework for Amazon Strands SDK multi-agent workflows that uses the Microsoft Dafny language and the TLA+ verifier.
-Anchor allows humans and agents to generate TLA+ models for verifying Strands agent logic and to use Dafny to write verifiable agent workflows that is translated into Python using the Strands SDK.
-The goal is to model the agent workflow as a formally verifiable state machine that, given the right assumptions hold, can be used to make agent code more reliable.
-
+Anchor is a formal verification framework for Amazon Dogwood policies and Strands SDK multi-agent workflows that uses the TLA+ verifier and Microsoft Dafny language.
+Anchor allows humans and agents to generate TLA+ models for verifying Dogwood policies and to use Dafny to write verifiable agent workflows that is translated into Python using the Strands SDK.
 Anchor is an entry into the Amazon Agents for Humans Hackathon: https://agentsforhumans.devpost.com
 
 ## Project structure
