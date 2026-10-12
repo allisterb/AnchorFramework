@@ -20,7 +20,7 @@ against a real engine rather than only against their documentation.
 | | |
 |---|---|
 | [`cedar/`](policy/cedar/README.md) | a differential test between a TLA+ model of Cedar and the real engine. |
-| [`TemporalPolicy/`](policy/TemporalPolicy/README.md) | session-aware (Dogwood) policies, and three questions about any `.dw` file: can this permit ever grant anything, is this rule load-bearing, and did this edit change a decision? Catches a permit killed by an unrelated rule elsewhere in the set, and a gate that opens on refused attempts. Its semantics are differential-tested against Dogwood's own corpus. |
+| [`TemporalPolicy/`](policy/TemporalPolicy/README.md) | session-aware (Dogwood) policies, and three questions about any `.dw` file: can this permit ever grant anything, does this rule matter, and did this edit change a decision? Catches a permit killed by an unrelated rule elsewhere in the set, and a gate that opens on refused attempts. Its semantics are differential-tested against Dogwood's own corpus. |
 
 **The split between the two groups is deliberate and the seam is worth naming.** `policy/cedar`
 asks whether a policy *says* what its author meant; `strands/ToolExecutor` asks whether the thing
@@ -98,19 +98,22 @@ directions, and neither is a refinement of the other.
 
 | `TemporalPolicy/` | |
 |---|---|
-| `TemporalPolicy.tla` | the session model. Checks `NeverFires`, and **means it to fail** — a violation is the witness, silence means the permit is vacuous. |
-| `DogwoodSemantics.tla` | our reading of Dogwood's temporal operators — `formerly`, `previous`, `since`, the `count`/`sum` aggregations, and the partitioning an event schema's `pin` imposes. Differential-tested against Dogwood's own corpus on 911 pairs. |
-| `Policies.tla` | the schema and policy set, swappable like `Workflow.tla`. |
-| `Vacuity.tla` | **the generic checker** — any parsed `.dw`, any rule. Compares two policy sets across every session: the full set against itself-minus-a-rule (is it load-bearing?) or against a second file (did the edit change anything?). Driven by `src/checker/properties.py`. |
-| `TemporalPolicy.cfg` | approvals permitted, gate on `::response`. Satisfiable. |
-| `Vacuous_ForbiddenApproval.cfg` | approvals forbidden. **Vacuous** — a permit killed by an unrelated rule. |
-| `RequestGated_SurvivesForbid.cfg` | same forbid, gate on `::request`. Satisfiable, **and that is the bad news**. |
+| ***In use*** | ***what `anchor check`, the MCP server and the drafting agent run on*** |
+| `DogwoodSemantics.tla` | the evaluator: our reading of Dogwood's temporal operators — `formerly`, `previous`, `since`, the `count`/`sum` aggregations, and the partitioning an event schema's `pin` imposes. Differential-tested against Dogwood's own corpus on 911 pairs. |
+| `Vacuity.tla` | **the session model the checker runs** — any parsed `.dw`, any rule. Compares two policy sets across every session: the full set against itself-minus-a-rule (does the rule matter?) or against a second file (did the edit change anything?), and asks whether each permit ever grants. Its questions are **meant to fail**: a violation is the witness. Runs on the `PolicyUnderTest.tla` that `src/checker/properties.py` generates from the `.dw`. |
+| ***Current, standalone*** | ***the session-rotation finding: uses `DogwoodSemantics`, run by the spec tests, not by any Anchor command*** |
 | `SessionRotation.tla` | a caller who controls the session id. Rotation defeats an aggregate cap and cannot touch an approval gate — the two shapes fail in opposite directions. |
 | `rotation_aggregate.dw`, `rotation_approval.dw` | the policies, as **real Dogwood text**. |
 | `RotationPolicies.tla` | generated from those by `src/translator/dw_to_tla.py`, using the parser validated against Dogwood's corpus. The suite fails if it drifts from the `.dw` sources. |
 | `SessionRotation.cfg` | aggregate cap, rotation allowed. **Cap violated** in three steps. |
 | `NoRotation_CapHolds.cfg` | the control: same policy, rotation disabled. Cap holds — which also proves the aggregate is live. |
 | `Rotation_ApprovalGateHolds.cfg` | approval gate, rotation allowed. Gate holds. |
+| ***The original prototype*** | ***no longer used by any Anchor command, superseded by `Vacuity.tla` + `DogwoodSemantics.tla`; kept because the spec tests run it*** |
+| `TemporalPolicy.tla` | the first session model, with its own evaluator (`PermitFires`) where `Vacuity.tla` uses `DogwoodSemantics`. Checks `NeverFires` only. |
+| `Policies.tla` | the hand-written schema and policy set it runs on. Nothing else uses it. |
+| `TemporalPolicy.cfg` | approvals permitted, gate on `::response`. Satisfiable. |
+| `Vacuous_ForbiddenApproval.cfg` | approvals forbidden. **Vacuous** — a permit killed by an unrelated rule. |
+| `RequestGated_SurvivesForbid.cfg` | same forbid, gate on `::request`. Satisfiable, **and that is the bad news**. |
 
 ## BoundedRetry
 
