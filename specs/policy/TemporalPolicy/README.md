@@ -3,6 +3,12 @@
 ## About
 This directory holds TLA+ specs that model Dogwood temporal policies.
 
+**What they found.** A permit gated on an approval's `::response` is silently killed by an
+unrelated `forbid` on the approval: it still parses and validates, and grants nothing
+([The finding this reproduces](#the-finding-this-reproduces)). The same gate written on
+`::request` survives that `forbid`, and opens on the refused attempts instead
+([One word apart](#one-word-apart-opposite-security-properties)).
+
 **In use: what `anchor check`, the MCP server and the drafting agent run on.**
 
 | file | what it is |
