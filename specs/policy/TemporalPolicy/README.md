@@ -1,101 +1,63 @@
 # TemporalPolicy
 
-**Three questions about a session-aware authorization policy set**, each answered by exploring every
-session a bounded run can have and reporting either a **witness** or a bounded no:
+## About
+This directory holds TLA+ specs that model Dogwood temporal policies.
 
-| question | answer |
-|---|---|
-| Can this permit ever grant anything? | a witness session, or **VACUOUS** |
-| Is this rule load-bearing, or can it be deleted? | a witness, or **REDUNDANT** / **DEAD** |
-| Did this edit change any decision? | a witness, or **no difference** |
-
-The first is the one AWS says their tooling does not answer: a permit that can never fire is a
-silent deny-everything. It reads correctly, it validates, it deploys, and the capability it exists
-to allow is simply gone. The other two came out of the same machinery, because all three are
-really "compare what these policies decide, across every session".
-
-**Vocabulary, because Dogwood inherits Cedar's and it reliably trips people up.** A
-**policy** is one `permit` or `forbid` statement; a `.dw` file is a **policy set**. This README
-says *rule* wherever *policy* would be ambiguous, and *policy set* for the file. The distinction is
-the point of all three questions above: each is about what the **set** decides, and none of them
-can be answered by reading a statement on its own.
-
-*Policy set* is Dogwood's own term, not ours: its CLI guide says every command "takes the policy
-set as a positional argument (a `.dw` file"
-([`dogwood-docs/guide/12-cli.md`](https://github.com/dogwood-policy/dogwood/blob/c6237c88099b3f492ecc5fcee42df06a19224b97/dogwood-docs/guide/12-cli.md),
-at the commit `ext/dogwood` pins), and its parser produces a `ParsedPolicySet` and a
-`LoweredPolicySet`, after Cedar's `PolicySet`. AWS's AgentCore posts say *policy document* for the
-natural-language text a policy set is authored *from* — the brief here — never for the `.dw` file.
-
-A **session** is one AgentCore
-[*policy session*](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/policy-temporal.html):
-"a sequence of related Gateway invocations grouped under one session ID", whose history is all a
-temporal condition can see. The specs here range over every possible session up to a bound
-(`--attempts`, 3 by default), never over one recorded session. Within a session Dogwood can narrow
-the history further: its default event schema pins `callerPrincipal`, which is what `--pinned`
-models.
-
-**Point it at any `.dw` file:**
-
-```bash
-./anchor check tests/policies/docs_trading_forbidden.dw
-```
-```
-docs_trading_forbidden.dw: 1 permit(s), 1 forbid(s), bound 3 attempts
-
-  forbid #1  action == ApproveSale   DEAD      deleting it changes no verdict in any session
-  permit #2  action == SellShares    VACUOUS   no session of up to 3 attempts makes it grant
-      because: formerly within 1h ApproveSale::response{ input.stock: 'stock', output.approved: True }
-```
-
-Nothing about that policy set is hand-modelled — see
-[the checker](#the-checker-takes-arbitrary-policy-text) below.
+**In use: what `anchor check`, the MCP server and the drafting agent run on.**
 
 | file | what it is |
 |---|---|
-| `Vacuity.tla` | **the generic checker**: any parsed policy, any permit, evaluated by `DogwoodSemantics` |
-| `TemporalPolicy.tla` | the original, hand-written: its own session model and its own decision engine |
-| `DogwoodSemantics.tla` | our reading of `formerly within`, checked against the reference corpus |
-| `Policies.tla` | the policy set — swappable, like `Workflow.tla` under [`DependencyDAG`](../../strands/DependencyDAG) |
-| `TemporalPolicy.cfg` | approvals permitted; the sell permit gated on `::response`. **Satisfiable** |
-| `Vacuous_ForbiddenApproval.cfg` | approvals forbidden, same permit. **Vacuous** |
-| `RequestGated_SurvivesForbid.cfg` | approvals forbidden, permit gated on `::request`. **Satisfiable — and that is the bad news** |
+| `DogwoodSemantics.tla` | the evaluator: our reading of Dogwood's temporal operators, differential-tested against the corpus. `Decide` gives the verdict for one decision in a trace |
+| `Vacuity.tla` | the session model `anchor check` runs: every session up to `--attempts`, over the generated `PolicyUnderTest.tla`, each decision by `DogwoodSemantics!Decide` |
+
+**Current, and standalone: the session-rotation finding.** Uses `DogwoodSemantics`, so it reads
+policies the same way the checker does, but no Anchor command runs it; the spec tests do.
+
+| file | what it is |
+|---|---|
 | `SessionRotation.tla` | what a caller who controls the session id can do |
 | `SessionRotation.cfg` | aggregate cap, rotation allowed. **Cap violated** |
 | `NoRotation_CapHolds.cfg` | the control: same policy, rotation disabled. Cap holds |
 | `Rotation_ApprovalGateHolds.cfg` | approval gate, rotation allowed. Gate holds |
+| `rotation_aggregate.dw`, `rotation_approval.dw` | the two policies, as real Dogwood text |
+| `RotationPolicies.tla` | **generated** from those by `src/translator/dw_to_tla.py`. A test fails if it drifts from them |
 
-And the policy inputs — real Dogwood text, checked in, which is what the tooling reads:
+**The original prototype: no longer used by any Anchor command.** A hand-written policy set with its
+own evaluator (`PermitFires`), superseded by `Vacuity.tla` and `DogwoodSemantics.tla`, which take
+the policies from the `.dw` text and share one evaluator validated against the engine. Kept because
+the spec tests run it: it is the hand-built version of the `::request` finding.
 
-| `.dw` file | what it demonstrates |
+| file | what it is |
 |---|---|
-| [`docs_trading.dw`](../../../tests/policies/docs_trading.dw) | the AgentCore docs' own trading example. Both permits live |
-| [`docs_trading_forbidden.dw`](../../../tests/policies/docs_trading_forbidden.dw) | one line different. **The sell permit is vacuous** |
-| [`approval_gate_response.dw`](../../../tests/policies/approval_gate_response.dw) | gated on a completed approval. **Vacuous** on its own |
-| [`approval_gate_request.dw`](../../../tests/policies/approval_gate_request.dw) | one word different. Live |
-| [`approval_gate_error.dw`](../../../tests/policies/approval_gate_error.dw) | matches the denial itself. Live |
-| [`overridden_permit.dw`](../../../tests/policies/overridden_permit.dw) | matches everything, grants nothing. **Vacuous**, second shape |
-| [`rotation_aggregate.dw`](rotation_aggregate.dw) | the spend cap `SessionRotation` defeats |
-| [`rotation_approval.dw`](rotation_approval.dw) | the approval gate it cannot |
+| `TemporalPolicy.tla` | its session model and decision engine |
+| `Policies.tla` | the hand-written policy set it runs on. Nothing else uses it |
+| `TemporalPolicy.cfg` | approvals permitted; the sell permit gated on `::response`. **Satisfiable** |
+| `Vacuous_ForbiddenApproval.cfg` | approvals forbidden, same permit. **Vacuous** |
+| `RequestGated_SurvivesForbid.cfg` | approvals forbidden, permit gated on `::request`. **Satisfiable — and that is the bad news** |
 
-New to TLA+? [`specs/strands/DependencyDAG/README.md`](../../strands/DependencyDAG/README.md) has a notation primer.
+Run a spec from this folder, since TLC looks for the module in the current directory and fails with
+"Cannot find source file" when given a path from elsewhere:
 
 ```bash
-java -cp lib/tla2tools-1.7.4.jar tlc2.TLC -cleanup \
-    -config specs/policy/TemporalPolicy/TemporalPolicy.cfg specs/policy/TemporalPolicy/TemporalPolicy.tla
+cd specs/policy/TemporalPolicy
+java -cp ../../../lib/tla2tools-1.7.4.jar tlc2.TLC -cleanup -config SessionRotation.cfg SessionRotation.tla
 ```
 
 ## How these specs verify a policy set
 
 Nothing here models one policy. These specs model the **engine**, and a policy set is data fed to
-it. Three pieces, and which are generated matters:
+it. Four pieces, and which are generated matters:
 
 | piece | who writes it | what it holds |
 |---|---|---|
 | `DogwoodSemantics.tla` | by hand, once | what the engine does with *any* policy set |
-| `Policies.tla` | by hand | the policy set the hand-written spec runs on -- swappable |
-| `PolicyUnderTest.tla` | **generated** from a `.dw` | that file's rules, as a TLA+ sequence |
-| a property module + `.cfg` | by hand, per requirement | the claim, and the sessions to check it over |
+| `PolicyUnderTest.tla` | **generated** from a `.dw` by `anchor check`, per run | that file's rules, as a TLA+ sequence, and the vocabulary its conditions read. Regenerated every run; the copies under `traces/` folders are kept evidence (`--keep`, `--full`), never an input |
+| `Vacuity.tla` | by hand, once | the session model and the derivable questions (`NeverFires`, `NeverMatters`), asked of `PolicyUnderTest` |
+| a property module + `.cfg` | by hand or drafted, per requirement | an intentional claim, and the sessions to check it over. Extends `PolicyUnderTest` in place of `Vacuity.tla` |
+
+The prototype's `Policies.tla` was a hand-written stand-in for `PolicyUnderTest.tla`; nothing current
+uses it. `RotationPolicies.tla` is the one generated policy module that is checked in, because
+`SessionRotation.tla` is a finding about those two policies specifically.
 
 **The set is combined mechanically, in one operator.** `DogwoodSemantics!Decide` quantifies over
 every rule in it:
@@ -150,21 +112,24 @@ and the way to say so is that a refused attempt must leave the verdict unchanged
 
 ## Read the result backwards
 
-This spec checks `NeverFires`, and **means it to fail**:
+`Vacuity.tla`'s questions are written to **fail**. `NeverFires` claims a permit never grants;
+`NeverMatters` claims deleting a rule never changes a decision (see
+[the checker](../../../src/checker/README.md#how-a-check-runs) for how the two combine into a verdict):
 
 | TLC says | means |
 |---|---|
-| **Invariant violated** | the permit is **satisfiable**, and the counterexample is the *witness session* proving it |
-| **No error found** | the permit is **vacuous**. This is the bad outcome, and it is the quiet one |
+| **Invariant violated** | a witness exists: the permit can grant, or the rule matters. The counterexample is the *witness session* proving it |
+| **No error found** | the permit is **vacuous**, or the rule is redundant or dead. This is the bad outcome, and it is the quiet one |
 
 TLA+ is linear-time and has no `EF`, so reachability is posed as the negation of an invariant and
 the trace is read as the witness. Everywhere else in this repo that is a workaround; here it is the
 whole tool.
 
-**The configs are only meaningful together.** A check that can only ever report "no violation"
-proves nothing — a broken engine in which nothing ever fires would pass the vacuity check trivially.
-The two satisfiable configs are the control: they demonstrate the machinery *can* find a witness,
-which is what makes the absence of one in `Vacuous_ForbiddenApproval` informative.
+**The prototype's configs are only meaningful together.** A check that can only ever report "no
+violation" proves nothing — a broken engine in which nothing ever fires would pass the vacuity check
+trivially. In `TemporalPolicy.tla`, which asks `NeverFires` alone, the two satisfiable configs are
+the control: they demonstrate the machinery *can* find a witness, which is what makes the absence of
+one in `Vacuous_ForbiddenApproval` informative.
 
 ## Why this exists
 
@@ -1265,3 +1230,5 @@ makes the cap bite at the right point rather than one trade late.
 - **Rotation is modelled as free.** In reality a caller must be able to set the header, and a
   deployment that derives the session id server-side would not have this exposure at all. Whether
   that is possible is a deployment question this spec cannot see.
+
+  

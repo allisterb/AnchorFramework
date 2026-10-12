@@ -12,16 +12,6 @@ graph is translated into a model.
 The three groups answer different questions, and **no spec depends on one in another group** — every
 `EXTENDS` and `INSTANCE` resolves inside its own directory.
 
-### `strands/` — what the SDK actually does
-
-Models of Strands' own behaviour, each tied to code in the SDK rather than to its documentation.
-
-| | |
-|---|---|
-| [`DependencyDAG/`](strands/DependencyDAG/README.md) | several tasks in outline: HP10 from arXiv:2510.14133 Table 1. The target of the Strands graph translator. |
-| [`StrandsGraph/`](strands/StrandsGraph/README.md) | the Strands executor **as it actually runs** — batch, await, recompute readiness, fail fast, stop. Catches a workflow that reports success having skipped a node. |
-| [`ToolExecutor/`](strands/ToolExecutor/README.md) | the `before_tool_call` hook under concurrent tool execution — a rate limit that holds only because a synchronous callback has no suspension point. |
-
 ### `policy/` — what an authorization decision means
 
 Models of the policy languages an agent's tool calls are authorized against. Both are validated
@@ -36,6 +26,16 @@ against a real engine rather than only against their documentation.
 asks whether a policy *says* what its author meant; `strands/ToolExecutor` asks whether the thing
 *enforcing* it does what the policy assumes. A policy analyser cannot see the second, by
 construction. Both have to hold, and they fail independently.
+
+### `strands/` — what the SDK actually does
+
+Models of Strands' own behaviour, each tied to code in the SDK rather than to its documentation.
+
+| | |
+|---|---|
+| [`DependencyDAG/`](strands/DependencyDAG/README.md) | several tasks in outline: HP10 from arXiv:2510.14133 Table 1. The target of the Strands graph translator. |
+| [`StrandsGraph/`](strands/StrandsGraph/README.md) | the Strands executor **as it actually runs** — batch, await, recompute readiness, fail fast, stop. Catches a workflow that reports success having skipped a node. |
+| [`ToolExecutor/`](strands/ToolExecutor/README.md) | the `before_tool_call` hook under concurrent tool execution — a rate limit that holds only because a synchronous callback has no suspension point. |
 
 ### `foundations/` — properties any agent has
 
