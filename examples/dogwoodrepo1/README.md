@@ -107,3 +107,48 @@ dogwood replay --policy-schema generated.cedarschema --event-schema pinned.dwsch
 | `SuccessfulReadGuide.tla` / `.cfg` | the same claims against `guide-set.dw`: the control |
 | `tables/` | the decision tables and their results, for both sets |
 | `findings.md`, `findings.html`, `results.json`, `traces/` | the report `anchor check` generated |
+
+## Reproduce with Dogwood alone, from Dogwood's own files
+
+The shortest reproduction: no Anchor, no read rules of ours, three files. Run from a Dogwood
+checkout.
+
+`policy.dw` is the skill's section 2b, verbatim:
+
+```
+// Permit a Write only if this user read the same document within the last hour.
+@id("write_after_read")
+permit ( principal, action == Drupe::Action::"Write", resource )
+when temporal {
+    formerly within 1h Drupe::Action::"Read"::request{
+        input.user: context.input.user,
+        input.document: context.input.document
+    }
+};
+```
+
+`schema.cedarschema` is `dogwood-docs/examples/write_after_read_formerly/schema.cedarschema`,
+unchanged (the copy in this directory is the same file). `trace.log` has alice's Read of doc1
+refused, then her Write of doc1:
+
+```
+@0 scope(principal: Drupe::OAuthUser::"alice", resource: Drupe::Gateway::"gw1") request_context(input: { document: "doc1", user: "alice" }) Drupe::Action::"Read"::request(input: { document: "doc1", user: "alice" }, callerPrincipal: Drupe::OAuthUser::"alice", callerResource: Drupe::Gateway::"gw1", requestId: "u1")
+@1 scope(principal: Drupe::OAuthUser::"alice", resource: Drupe::Gateway::"gw1") Drupe::Action::"Read"::error(input: { document: "doc1", user: "alice" }, callerPrincipal: Drupe::OAuthUser::"alice", callerResource: Drupe::Gateway::"gw1", requestId: "u1")
+@10 scope(principal: Drupe::OAuthUser::"alice", resource: Drupe::Gateway::"gw1") request_context(input: { document: "doc1", user: "alice" }) Drupe::Action::"Write"::request(input: { document: "doc1", user: "alice" }, callerPrincipal: Drupe::OAuthUser::"alice", callerResource: Drupe::Gateway::"gw1", requestId: "u2")
+```
+
+```
+$ dogwood validate policy.dw --policy-schema schema.cedarschema
+OK: validation passed with no errors or warnings.
+
+$ dogwood replay policy.dw --policy-schema schema.cedarschema --trace trace.log
+@0 (time point 0): DENY
+@10 (time point 1): ALLOW  [rules: 0]
+
+$ dogwood replay dogwood-docs/examples/write_after_read_formerly/policy.dw --policy-schema schema.cedarschema --trace trace.log
+@0 (time point 0): DENY
+@10 (time point 1): DENY
+```
+
+The Read is denied, and the Write is allowed anyway. The guide's version, run from the repository
+unchanged, denies it. Output as of 2026-10-14, from the engine built at the pinned `c6237c88`.

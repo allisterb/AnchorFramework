@@ -162,11 +162,19 @@ the fixed set too.
 
 ## The fix
 
-[`fixed/agent-policy.dw`](fixed/README.md) is the whole set corrected, in AgentCore's own form. It has
-one `permit` for what every trade needs (integrity on what was returned, freshness), and `forbid`s for
-what takes access away (budget over trades, approval over $25,000, trust decay the right way round).
+[`fixed/agent-policy.dw`](fixed/agent-policy.dw) is the whole set corrected, in AgentCore's own form. It
+has one `permit` for what every trade needs (integrity on what was returned, freshness), and `forbid`s
+for what takes access away (budget over trades, approval over $25,000, trust decay the right way round).
 It satisfies every row of every table — 68 decisions, checked by Anchor and confirmed by the engine —
 with finding 6 the only one left.
+
+| | |
+|---|---|
+| [`fixed/agent-policy.dw`](fixed/agent-policy.dw) | the corrected set; its header gives the reason for each change |
+| [`fixed/README.md`](fixed/README.md) | the changes against the findings, what it does not fix, and what it costs |
+| [`tables/90-fixed-set.dw`](tables/90-fixed-set.dw) | every row of every table, replayed against the corrected set |
+| [`fixed/EmptyTrajectory.tla`](fixed/EmptyTrajectory.tla) | finding 1's claim, which holds here |
+| [`fixed/findings.md`](fixed/findings.md) | the audit's report on the corrected set |
 
 ## Everything above, from one command
 
