@@ -343,6 +343,10 @@ public class TranslationHarnessTests : TestsRuntime
         Assert.True(engine.ExitCode == 0, engine.Output);
         Assert.Contains("131 of 131 expected decisions confirmed by the engine", engine.Output);
         Assert.Contains("16 of them FINDINGS", engine.Output);
+        // Each finding by name, and which way the policy gets it wrong: "confirmed" alone read as
+        // "the policies are fine" to anyone who did not know a confirmed finding is a bug.
+        Assert.Contains("FINDING  policy 3's table -- get_market_price never called", engine.Output);
+        Assert.Contains("AWS's table says DENY; the engine ALLOWS it", engine.Output);
 
         // The second article (examples/aws2): its $50,000 / 12h cap resets with a new session, which
         // is AgentCore's reading and was invisible under Dogwood's per-principal default. Its
@@ -357,6 +361,7 @@ public class TranslationHarnessTests : TestsRuntime
             "tests/strands/agentcore_replay.py", "--suite", "examples/aws2/tables");
         Assert.True(aws2Engine.ExitCode == 0, aws2Engine.Output);
         Assert.Contains("11 of 11 expected decisions confirmed by the engine", aws2Engine.Output);
+        Assert.Contains("FINDING  the same two transfers, the second in a NEW session", aws2Engine.Output);
     }
 
     /// <summary>

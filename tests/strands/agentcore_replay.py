@@ -51,6 +51,9 @@ ACTION_SCHEMA = SUITE / "agentcore.cedarschema"
 DOGWOOD = (REPO / "ext" / "dogwood" / "target" / "release"
            / ("dogwood.exe" if sys.platform == "win32" else "dogwood"))
 
+# Who said what a decision should be, as a reader would say it.
+SAYS = {"aws-table": "AWS's table says", "aws-prose": "AWS's text says", "ours": "our row says"}
+
 # Set in main(), from --policy-schema.
 SCHEMAS = ["--policy-schema", str(ACTION_SCHEMA), "--event-schema", str(EVENT_SCHEMA)]
 
@@ -106,7 +109,16 @@ def main() -> int:
 
     failures, findings = 0, 0
     confirmed, contradicted = Counter(), Counter()
-    print(f"validate and replay, verbatim, under agentcore.dwschema + {action_schema.name}\n")
+    print("The Dogwood engine itself, checking every table below. For each, `dogwood validate` checks\n"
+          "its policies exactly as published, then `dogwood replay` runs every row of the table through\n"
+          "them as an event trace, under agentcore.dwschema + " + action_schema.name + ". Anchor only\n"
+          "turns the rows into traces: every decision below is the engine's own, not Anchor's model.\n")
+    # SAID UP FRONT, because the success output reads backwards without it: a table whose every row
+    # is "confirmed" can be a table of bugs, and "agrees" alone read as "the policies are fine".
+    print("Each row is a session, with the decision its source says the policy should make: AWS's\n"
+          "decision table, AWS's text, or a row of ours. A FINDING is a row where the policy as\n"
+          "published does the OPPOSITE of what its source says; there, \"confirmed\" means the engine\n"
+          "reproduces the policy's wrong decision.\n")
 
     with tempfile.TemporaryDirectory(prefix="anchor-agentcore-") as tmp:
         trc = Path(tmp) / "t.log"
@@ -126,7 +138,7 @@ def main() -> int:
                       f"under our schema:\n{text}")
                 continue
 
-            wrong = []
+            wrong, found = [], []
             for n, row in enumerate(c["rows"], 1):
                 trc.write_text("\n".join(trace(c, row, stripped=False)) + "\n", encoding="utf-8")
                 verdicts = replay(path, trc)
@@ -139,6 +151,8 @@ def main() -> int:
                     if got == actual(e):
                         confirmed[e["source"]] += 1
                         findings += e["finding"]
+                        if e["finding"]:
+                            found.append((row["title"], e))
                     else:
                         contradicted[e["source"]] += 1
                         shown = "nothing" if got is None else ("ALLOW" if got else "DENY")
@@ -148,9 +162,21 @@ def main() -> int:
                                      f"{e['tool']}: {said} [{e['source']}], engine {shown}")
             failures += bool(wrong)
             n = sum(e["kind"] == "request" for row in c["rows"] for e in row["events"])
-            print(f"  {c['name']:32} {'ENGINE DISAGREES' if wrong else 'agrees'} ({n} decisions)")
+            if wrong:
+                print(f"  {c['name']:32} ENGINE DISAGREES ({n} decisions)")
+            else:
+                print(f"  {c['name']:32} {n} decisions confirmed, "
+                      + (f"{len(found)} of them {'a FINDING' if len(found) == 1 else 'FINDINGS'}"
+                         if found else "no findings"))
             for w in wrong:
                 print(f"  {'':32}   {w}")
+            # EACH FINDING BY NAME: the row's own title says what happens, and the line under it
+            # says which way the policy gets it wrong.
+            for title, e in found:
+                said, did = e["verdict"], "DENIES" if e["verdict"] == "ALLOW" else "ALLOWS"
+                print(f"      FINDING  {title}")
+                print(f"               {SAYS[e['source']]} {said}; the engine {did} it "
+                      f"({e['tool']} at @{e['time']})")
 
     rejected = sorted((args.suite / "rejected").glob("*.dw"))
     if rejected:
@@ -171,6 +197,10 @@ def main() -> int:
           + ", ".join(f"{s} {confirmed[s]}/{confirmed[s] + contradicted[s]}" for s in SOURCES)
           + (f"; {findings} of them FINDINGS, where the policy as published does the opposite of "
              f"what its source says" if findings else ""))
+    if findings:
+        print(f"{findings} FINDING{'S' if findings != 1 else ''} confirmed: in "
+              f"{'each' if findings != 1 else 'it'}, the policy as published does the opposite of "
+              f"what its source says, and the engine does the same.")
     if failures:
         return 1
     print("the engine agrees with every expected decision, AWS's and ours"
