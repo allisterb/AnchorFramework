@@ -58,7 +58,7 @@ Anchor's auto mode runs the entire property module authoring pipeline autonomous
 describe ─┬─> draft ─> preflight ─┬─> score ─┬─> review ─┬─> check ─> answer ─> report
           │                        │          │           │                        ^
           └────────────────────────┴──────────┴───────────┴────────────────────────┘
-                 every rejection still reports, and nothing raises
+                                    every rejection reports
 ```
 
 **The agent that drafts the property module is not the agent that answers with it.** Asked for both an

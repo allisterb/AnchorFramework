@@ -85,7 +85,7 @@ docker run --rm -v "$PWD:/work" public.ecr.aws/v4q7x8t1/anchor:latest check my-p
 docker run --rm -v ".:/work" public.ecr.aws/v4q7x8t1/anchor:latest check my-policy.dw
 ```
 
-See [Running](https://github.com/allisterb/AnchorFramework/blob/master/README.md#running) for more info and examples of running Anchor.
+See [Running](#running) for more info and examples of running Anchor.
 
 ## Building
 ### Building Prerequisites
@@ -278,8 +278,8 @@ for certain, but it never concludes VACUOUS, REDUNDANT or DEAD: a rule with no w
 ### Check audit mode
 
 ```bash
-[./]anchor check examples/aws1 --full                    # every policy set in the directory
-[./]anchor check examples/aws1/agent-policy.dw --full    # one policy set on its own
+anchor check examples/aws1 --full                    # every policy set in the directory
+anchor check examples/aws1/agent-policy.dw --full    # one policy set on its own
 ```
 
 With `--full` check audits the same policy set or directory and also runs every `.tla` property module
@@ -319,6 +319,50 @@ nobody trusts, so everything it shows is escaped, and its Content-Security-Polic
 own inlined renderer and stylesheet, by hash — nothing else runs, loads or connects.
 `anchor timeline <dir>` redraws it from the witnesses already there, without re-running the checks.
 
+### `auto` mode
+
+Anchor's autoformalization mode runs the entire TLA+ property module authoring pipeline for policy sets autonomously, as a Strands Agents `Graph`, given a natural language brief describing the *intent* of the policy set. 
+```bash
+anchor auto examples/aws1/07-trust-decay.dw --intent "After 15 minutes without advisor interaction, the agent loses write access."
+```
+
+It uses separate agents for drafting, scoring, and reviewing and a number of gates to mechanically check the drafts written by agents before they are accepted.
+
+```
+describe ─┬─> draft ─> preflight ─┬─> score ─┬─> review ─┬─> check ─> answer ─> report
+          │                        │          │           │                        ^
+          └────────────────────────┴──────────┴───────────┴────────────────────────┘
+```                
+See the [docs](./tree/master/src/agent/README.md) for more details on the agents, the gates and the pipeline.
+
+`auto` options:
+| flag | default | note |
+|---|---|---|
+| `--rounds` | 3 | drafting attempts. One model call plus ~1s of SANY each |
+| `--turns` | none | agent loop iterations **per call** — not cumulative, so `--rounds R --turns T` allows `R×T` |
+| `--total-tokens` | none | input+output per call |
+| `--output-tokens` | none | generated per call. Soft — checked at turn boundaries |
+| `--max-node-executions` | `2 × stages` | a backstop; hitting it produces **no findings.md** |
+| `--node-timeout` | none | a timed-out node fail-fasts the run |
+| `--mutants` | 8 | how many broken policies the `score` gate tries |
+
+
+### Sweeping a directory
+
+```bash
+anchor auto examples/aws2 --intents examples/aws2/intents.md
+```
+
+One pipeline per policy with a **stated intent**, read from `intents.md` — `## <policy>.dw`
+headings with the requirement under each. Policies enumerated from the directory, not from the
+intents file, so one with no stated requirement is *named* in the summary rather than skipped
+quietly; a sweep that silently covers two thirds of a directory is a green that means nothing.
+
+The intent has to come from somewhere the policy did not write, which is why it is a separate file.
+For `examples/`, each entry is the article's own sentence and is repeated verbatim in the policy's
+header comment so the transcription can be checked.
+
+Writes `anchor/<policy>/findings.md` per policy and `anchor/summary.md` over the set.
 
 ### Scanning the inputs
 
