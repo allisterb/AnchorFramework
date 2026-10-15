@@ -347,15 +347,15 @@ See the [docs](./tree/master/src/agent/README.md) for more details on the agents
 | `--mutants` | 8 | how many broken policies the `score` gate tries |
 
 
-### Sweeping a directory
+You can sweep an entire directory also using an `intents.md` file:
 
 ```bash
 anchor auto examples/aws2 --intents examples/aws2/intents.md
 ```
 
-One pipeline per policy with a **stated intent**, read from `intents.md` — `## <policy>.dw`
+One pipeline per policy with a stated intent, read from `intents.md` — `## <policy>.dw`
 headings with the requirement under each. Policies enumerated from the directory, not from the
-intents file, so one with no stated requirement is *named* in the summary rather than skipped
+intents file, so one with no stated requirement is named in the summary rather than skipped
 quietly; a sweep that silently covers two thirds of a directory is a green that means nothing.
 
 The intent has to come from somewhere the policy did not write, which is why it is a separate file.
@@ -363,6 +363,58 @@ For `examples/`, each entry is the article's own sentence and is repeated verbat
 header comment so the transcription can be checked.
 
 Writes `anchor/<policy>/findings.md` per policy and `anchor/summary.md` over the set.
+
+## `hitl` mode
+Anchor's HITL mode is the same as `auto` but with one additional step: when a gate rejects a property module draft, it asks the user about the problem *requirement*, (not about TLA+), 
+folds the answer into the brief and tries drafting the property module again. 
+Before the property module is used, it reads the claim back in plain English for the user to confirm the intent is accurate.'
+
+```bash
+anchor hitl examples/aws1/07-trust-decay.dw \
+    --intent "After 15 minutes without advisor interaction, the agent loses write access."
+```
+
+```
+brief ─> [ the graph ] ─> passed? ─ yes ─> checked, and reported
+           ^                 │
+           └── clarify ──────┘        bounded by --refinements, and every exit reports
+```
+
+
+| flag            | default | note                                                                 |
+| --------------- | ------- | -------------------------------------------------------------------- |
+| `--intent`      | none    | a string describing the requirement of the policy set                |
+| `--intents`     | none    | a file with `## <policy>.dw` headings and the requirement under each |
+| `--refinements` | 4       | how many times the person may be asked before the session ends       |
+| `--rounds`      | 3       | drafting attempts *within* one pass, before the person is asked      |
+
+
+[`hitl.py`](tree/master/src/agent/hitl.py) runs the pipeline autonomously and turns to a person only where
+autoformalisation cannot mechanically decide a question. Everything downstream of a property module draft is mechanical — does the draft
+compile, does the decision vary, does it catch a mutant, does it hold — and each of those is a
+criterion in code only. Everything upstream is somebody saying what the policy set means, and nothing in the pipeline can check a property against an intention
+that is is not stated.
+
+
+The person in the loop is never shown TLA+. Each gate already knows what went wrong in terms of the policy
+and the brief; `ask_about` turns that into a question about the property module and policy brief *requirements*, and the answer is
+appended to the brief before the graph runs again.
+
+| what fired | what the person is asked |
+|---|---|
+| the decision never varies | *what has to have happened BEFORE the request you care about?* |
+| the claim cannot fail | *which exact values should this be checked at?* |
+| it catches no mutant | *name one thing it must never allow, **and one it must allow*** |
+| the reviewer disagrees | both texts, side by side — and `keep` **overrules** it |
+| the allowance ran out | say it again, with the policy's own vocabulary shown |
+
+One extra node in the graph is `confirm`, between `review` and `check`. The person is shown, in plain English,
+what the claim forbids before* any TLC runs — the one step that can catch a property which is
+well-formed, discriminating, agreed to by a second model, and about the wrong rule.
+
+
+Writes `anchor/attempt-N/findings.md` per attempt and `anchor/session.md` over the session —
+what was first asked for, what the person was asked and said, and a row per attempt.
 
 ### Scanning the inputs
 

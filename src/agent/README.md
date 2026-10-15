@@ -13,7 +13,7 @@ anchor hitl examples/aws1/07-trust-decay.dw
 ```
 
 Every command in this README calls an LLM, so it needs a model configured (see
-[Configuration](#configuration)). See [three modes](#three-modes-and-the-axis-they-differ-on) for how the `auto` and `hitl` verbs relate to `check`.
+[Model configuration](#model-configuration)). See [the three modes](#the-three-anchor-modes-for-agentic-formal-verification) for how the `auto` and `hitl` verbs relate to `check`.
 
 ## Model configuration
 
@@ -78,16 +78,25 @@ add a server process and break the hermetic harness.
 the property until it catches a mutant — optimising against the gate instead of stating the
 requirement, a documented failure mode in agentic verification. 
 
-`auto` options:
+`auto` options, besides `--config`, `--provider` and `--llm` ([above](#model-configuration)):
+
 | flag | default | note |
 |---|---|---|
+| `--intent` | the policy set's heading in `intents.md` beside it | the requirement, in your own words: prose the policy set did not write |
+| `--intents` | `<directory>/intents.md` | `## <policy-set>.dw` headings with the requirement under each. For a directory, each policy set is drafted against its own heading. Given with one policy set file, **every** heading is drafted against it |
+| `--out` | `anchor/` beside the policy set file, or inside the directory | where the property module, `drafting/` and findings.md go. A sweep gives each requirement its own subdirectory and writes summary.md beside them |
+| `--name` | `Intent` | the property module's name. A sweep names its own |
+| `--event-schema` | AgentCore's for a policy set binding `eventResource`, else Dogwood's default | the `.dwschema` the policy set is deployed under |
+| `--mutants` | 8 | how many broken policies the `score` gate tries, one TLC run each |
+| `--max-fields` | 4 | the checker's bound on input/output fields, for the property module's own runs only |
 | `--rounds` | 3 | drafting attempts. One model call plus ~1s of SANY each |
 | `--turns` | none | agent loop iterations **per call** — not cumulative, so `--rounds R --turns T` allows `R×T` |
 | `--total-tokens` | none | input+output per call |
 | `--output-tokens` | none | generated per call. Soft — checked at turn boundaries |
 | `--max-node-executions` | `2 × stages` | a backstop; hitting it produces **no findings.md** |
-| `--node-timeout` | none | a timed-out node fail-fasts the run |
-| `--mutants` | 8 | how many broken policies the `score` gate tries |
+| `--node-timeout` | none | seconds per node. A timed-out node fail-fasts the run, so this too can leave no report |
+| `--allow-flagged-input` | off | show the model inputs the scan flagged as high severity anyway, for a finding you have read and judged benign. findings.md records it |
+| `--verbose` | off | leave third-party logging as it is, rather than silencing google-genai's once-per-run warning |
 
 A tripped token cap is returned by Strands it as a `stop_reason`
 (`limit_turns`, `limit_total_tokens`, `limit_output_tokens`) with the agent returning normally.
@@ -105,9 +114,9 @@ stage. The same totals go to stderr.
 anchor auto examples/aws2 --intents examples/aws2/intents.md
 ```
 
-One pipeline per policy with a **stated intent**, read from `intents.md` — `## <policy>.dw`
+One pipeline per policy with a stated intent, read from `intents.md` — `## <policy>.dw`
 headings with the requirement under each. Policies enumerated from the directory, not from the
-intents file, so one with no stated requirement is *named* in the summary rather than skipped
+intents file, so one with no stated requirement is named in the summary rather than skipped
 quietly; a sweep that silently covers two thirds of a directory is a green that means nothing.
 
 The intent has to come from somewhere the policy did not write, which is why it is a separate file.
@@ -203,12 +212,27 @@ the harness drives the whole mode with a scripted person and no provider at all.
 stdlib `print`/`input` writing to **stderr**, because stdout carries the session report's path.
 Swapping it for a richer renderer touches that class and nothing else.
 
+`hitl` options, besides `--config`, `--provider` and `--llm` ([above](#model-configuration)):
+
 | flag | default | note |
 |---|---|---|
+| `--intent`, `--brief` | the policy set's heading in `intents.md`, else asked for | the requirement, the same string `auto` takes |
+| `--intents` | `intents.md` beside the policy set file | where to look for that heading. With none for the policy set, you are asked |
+| `--out` | `anchor/hitl/` beside the policy set file | where the session is written. A previous session's `attempt-N/` directories there are removed first, and the removal is said |
+| `--name` | `Intent` | the property module's name |
+| `--event-schema` | as for `auto` | the `.dwschema` the policy set is deployed under |
+| `--mutants` | 8 | as for `auto` |
+| `--max-fields` | 4 | as for `auto` |
 | `--refinements` | 4 | how many times the person may be asked before the session ends |
 | `--rounds` | 3 | drafting attempts *within* one pass, before the person is asked |
+| `--turns`, `--total-tokens`, `--output-tokens` | none | the per-call caps, as for `auto` |
+| `--allow-flagged-input` | off | as for `auto`; the session record says it was used |
+| `--verbose` | off | as for `auto` |
 
-Writes `anchor/attempt-N/findings.md` per attempt and `anchor/session.md` over the session —
+`hitl` takes one policy set file, not a directory, and has no `--max-node-executions` or
+`--node-timeout`.
+
+Writes `anchor/hitl/attempt-N/findings.md` per attempt and `anchor/hitl/session.md` over the session —
 what was first asked for, what the person was asked and said, and a row per attempt. **Being in
 this mode is not a confirmation**: a session whose allowance ran out says so, and the footer
 credits the person only where they actually reached the checkpoint. It refuses to start without a
