@@ -8,7 +8,7 @@ Anchor's objective is to increase the reliability of Dogwood policies while allo
 Anchor provides:
 
 * A parser and [translator](https://github.com/allisterb/AnchorFramework/tree/master/src/translator) from the Dogwood policy language to TLA+.
-* A [specification](https://github.com/allisterb/AnchorFramework/tree/master/specs/policy/TemporalPolicy) that models a large subset of Dogwood temporal policy semantics, validated in [CI](https://github.com/allisterb/Anchor/actions/workflows/build.yml) against the Dogwood unit test and examples corpus.
+* A [specification](https://github.com/allisterb/AnchorFramework/tree/master/specs/policy/TemporalPolicy) that models a large subset of Dogwood temporal policy semantics, validated in [CI](https://github.com/allisterb/AnchorFramework/actions/workflows/build.yml) against the Dogwood unit test and examples corpus.
 * A [model property checker](https://github.com/allisterb/AnchorFramework/tree/master/src/checker) that checks:
      * *derivable* property checks, which can be mechanically derived from all policies e.g. "is this policy vacuous or redundant?"
      * *intentional* property checks where a human or agent authors a *property module* to explicitly capture the intent or requirements of a policy e.g. "Does this Dogwood policy forbid all trades without a human interaction for more than 15 minutes?"
@@ -55,7 +55,7 @@ A `auto --full` run checks the policy set with the newly generated and accepted 
 ### Using Docker
 
 
-Easiest way to get started is to use Docker:
+Easiest way to get started is to use Docker and the [Anchor public repo](https://gallery.ecr.aws/v4q7x8t1/anchor):
 
 
 ```bash
@@ -209,6 +209,8 @@ Credentials are read from the environment first, so a single `-e GEMINI_API_KEY`
 
 The command `check --full` also takes a `--config` param or `ANCHOR_SETTINGS` env var too, for the LLM that answers `questions.md`. 
 
+See the [agent docs](/tree/master/src/agent/README.md) for full documentation on the Anchor agentic modes.
+
 In the sections below we'll use
 ```
 anchor
@@ -317,10 +319,11 @@ nobody trusts, so everything it shows is escaped, and its Content-Security-Polic
 own inlined renderer and stylesheet, by hash — nothing else runs, loads or connects.
 `anchor timeline <dir>` redraws it from the witnesses already there, without re-running the checks.
 
+
 ### Scanning the inputs
 
 ```bash
-[./]anchor scan examples/aws1
+anchor scan examples/aws1
 ```
 
 A policy's text reaches a model in `auto`, `hitl` and an audit's questions, a browser in
