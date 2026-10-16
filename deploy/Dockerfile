@@ -189,6 +189,11 @@ COPY src/agent                   /app/src/agent
 # `hitl` die with ModuleNotFoundError while `check` works perfectly. It is also what
 # translator/strands_graph_to_tla.py imports.
 COPY src/annotations             /app/src/annotations
+# NOT optional either, and silent the same way: the drafter is handed
+# writing-a-property-module.md, which agent/author.py reads from this source path. The CLI carries
+# these articles only as embedded resources, so without the copy every `auto` and `hitl` run fails
+# at `draft` with "No such file or directory" while `check` works perfectly.
+COPY src/Anchor.MCPServer/knowledge /app/src/Anchor.MCPServer/knowledge
 # specs/policy/TemporalPolicy holds Vacuity.tla and DogwoodSemantics.tla, which the checker copies
 # into each scratch directory beside the generated PolicyUnderTest.tla. Nothing reaches it by name;
 # it is read on every run.

@@ -43,8 +43,8 @@ gitignored by `**/*appsettings.json`; the `.example` is not.
 
 ## The three Anchor modes for agentic formal verification
 
-The main diffrentiator between the three modes is *how much of the formalization is yours.* Nothing else about them differs: `hitl` is the
-`auto` graph with one node added, and both run the same model-checker `check` does.
+The main differentiator between the three modes is how much of the formalization is yours. `hitl` is the
+`auto` graph with one node added and both run the same model-checker `check` does.
 
 | | who provides the property module | how to run it |
 |---|---|---|
@@ -132,7 +132,13 @@ Writes `anchor/<policy>/findings.md` per policy and `anchor/summary.md` over the
 ```bash
 anchor hitl examples/aws1/07-trust-decay.dw \
     --intent "After 15 minutes without advisor interaction, the agent loses write access."
+
+# Docker
+docker run -it --rm -v $PWD:/anchor -w /anchor anchor:latest hitl examples/aws1/07-trust-decay.dw \
+    --intent "After 15 minutes without advisor interaction, the agent loses write access."
+
 ```
+
 
 `--intent` is the same flag and the same string `auto` takes; `--brief` remains as an alias. Omit
 both and `hitl` reads the requirement out of `intents.md` beside the policy — the file `auto` sweeps
@@ -237,7 +243,10 @@ what was first asked for, what the person was asked and said, and a row per atte
 this mode is not a confirmation**: a session whose allowance ran out says so, and the footer
 credits the person only where they actually reached the checkpoint. It refuses to start without a
 terminal, because a mode that asks questions and reads EOF as an answer would spend a model call
-per attempt talking to nobody.
+per attempt talking to nobody. 
+
+Not In the container, run it with `docker run -it`.** `-t` alone gets
+past that check but forwards no keystrokes, so the first question would wait forever.
 
 ## The policy review agent: `policy_agent.py`
 

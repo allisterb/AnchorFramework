@@ -268,6 +268,15 @@ for p in "${platform_list[@]}"; do
     printf '%s\n' "$out"
     printf '%s' "$out" | grep -q 'forbid #2 .*DEAD' \
         || die "check ran but did not find the dead forbid it always finds. The image is broken."
+
+    # The drafting modes' own inputs, WITHOUT a model: `auto` and `hitl` cannot be smoke-tested
+    # here, since both call an LLM. Importing the pipeline proves its modules are all copied in, and
+    # manual() reads the knowledge article the drafter is handed. An image without that article
+    # passed every step above and failed every `auto` and `hitl` run at `draft`.
+    step "smoke ($p): drafting inputs"
+    "${run[@]}" --entrypoint python3 "$image" -c \
+        "import agent.pipeline, agent.hitl; from agent.author import manual; manual()" \
+        || die "auto and hitl would fail: their modules or the knowledge article the drafter reads are missing."
 done
 
 echo

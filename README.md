@@ -67,7 +67,7 @@ The image is on Amazon ECR Public and is built for both `linux/amd64` and `linux
 that matches your machine and Apple Silicon runs it natively.
 
 The entry point is the `anchor` launcher, so arguments after the image name are the verb and its
-options — the container behaves like the command.
+options.
 
 ```bash
 docker run --rm public.ecr.aws/v4q7x8t1/anchor:latest help
@@ -168,11 +168,8 @@ or from a container:
 docker run --rm -v "$PWD:/work" public.ecr.aws/v4q7x8t1/anchor:latest check my-policy.dw
 
 # Windows 
-docker run --rm -v ".:/work" public.ecr.aws/v4q7x8t1/anchor:latest auto policy.dw --config /config/appsettings.json --intent "..."
+docker run --rm -v ".:/work" public.ecr.aws/v4q7x8t1/anchor:latest auto policy.dw --config /work/appsettings.json --intent "..."
 ```
-
-You can use `ANCHOR_PYTHON` and `ANCHOR_CLI` environment variables to override the Python interpreter and the CLI binary respectively, otherwise the launcher
-takes the venv at `python/`, and a Release build before a Debug one under `src/Anchor.CLI/bin`.
 
 ### Commands
 | verb | action| 
@@ -198,7 +195,13 @@ docker run --rm -v "$PWD:/work" -v "$HOME/.anchor:/config:ro" public.ecr.aws/v4q
 
 # Windows mount $USERPROFILE\.anchor as /config in the container
 docker run --rm -v ".:/work" -v "$($env:USERPROFILE)\.anchor:/config" public.ecr.aws/v4q7x8t1/anchor:latest auto policy.dw --config /config/appsettings.json --intent "..."
+
+# hitl asks you questions, so it needs the -it flag
+docker run --rm -it -v "$PWD:/work" -v "$HOME/.anchor:/config:ro" public.ecr.aws/v4q7x8t1/anchor:latest hitl policy.dw --config /config/appsettings.json --intent "..."
 ```
+
+Note: `hitl` mode needs both `-it` flags since it is an interactive process.
+
 The `appsettings.json` file should contain the model provider and model name, as well as any necessary credentials (e.g., API keys) for the model provider. See [appsettings.json.example](docs/appsettings.json.example) for a template.
 You can also specify the environment variable `ANCHOR_APPSETTINGS` as a an alternative to `--config` to point to the appsettings.json file. 
 A `--config` or `ANCHOR_APPSETTINGS` path that is not there is refused with exit 2. 
@@ -215,7 +218,8 @@ In the sections below we'll use
 ```
 anchor
 ```
-as an alias for either the launcher script in the repo root or the Docker container launch command with the appropriate directories mounted.
+as an alias for either the launcher script in the repo root or the Docker container launch command with the appropriate directories mounted,
+and the `--config` flag set when needed for `auto` or `hitl` mode.
 
 ### Verifying a Dogwood policy set file
 
@@ -295,30 +299,6 @@ For a single policy set, `--full --property Other.tla` checks a module as well a
 header: one kept elsewhere, not yet given the header, or written for several policy sets. It is
 added, never substituted, and the report marks it as given.
 
-Both modes start by saying what they are about to do, from the options given: what is checked and
-how exhaustively, under which reading, which property modules and questions, which LLM and where its
-credentials come from, and where the report goes. Anything that can be known to be wrong is said
-there too, before the first TLC run.
-
-**The LLM is the optional part of an audit.** `--llm` picks the model for one run; to name it once,
-set `Gemini:Model` or `Bedrock:Model` in `appsettings.json` (see
-[model-providers.md](docs/model-providers.md#choosing-the-model)). Without `--llm`, `--provider` or `--config`, an LLM that
-cannot be reached (no key, no credentials, a key with no region) is a warning: the questions are
-skipped, every check runs, and the report says why. Naming any of the three is a request for LLM
-calls, so it is proven before the run with a one-token test request through the same client the
-questions use: a bad key, an unknown model id, a model the account may not call, or one that cannot
-take tools stops the run before it starts (exit 3). A question that still fails at the call gets
-the report written, then exits 3. Without any of the three nothing is spent on the test, and an LLM
-problem found at the first question is a warning. So `--full --provider auto` is how to say "use
-the LLM I have configured, and stop before the run if it cannot be reached". A directory with no property module is a warning
-too: the rule-by-rule checks still run, and the report says what they cannot establish.
-
-`findings.html` is a single file with nothing beside it, so it can be attached to a ticket and opens
-the same from disk as from a server. It quotes policy text, and a policy under analysis is often one
-nobody trusts, so everything it shows is escaped, and its Content-Security-Policy allows exactly its
-own inlined renderer and stylesheet, by hash — nothing else runs, loads or connects.
-`anchor timeline <dir>` redraws it from the witnesses already there, without re-running the checks.
-
 ### `auto` mode
 
 Anchor's autoformalization mode runs the entire TLA+ property module authoring pipeline for policy sets autonomously, as a Strands Agents `Graph`, given a natural language brief describing the *intent* of the policy set. 
@@ -372,6 +352,10 @@ Before the property module is used, it reads the claim back in plain English for
 ```bash
 anchor hitl examples/aws1/07-trust-decay.dw \
     --intent "After 15 minutes without advisor interaction, the agent loses write access."
+
+# Docker needs the -it flags for interactive mode
+docker run --rm -it -v "$PWD:/work" public.ecr.aws/v4q7x8t1/anchor:latest hitl /work/examples/aws1/07-trust-decay.dw \
+    --intent "After 15 minutes without advisor interaction, the agent loses write access."
 ```
 
 ```
@@ -392,9 +376,7 @@ brief ─> [ the graph ] ─> passed? ─ yes ─> checked, and reported
 [`hitl.py`](tree/master/src/agent/hitl.py) runs the pipeline autonomously and turns to a person only where
 autoformalisation cannot mechanically decide a question. Everything downstream of a property module draft is mechanical — does the draft
 compile, does the decision vary, does it catch a mutant, does it hold — and each of those is a
-criterion in code only. Everything upstream is somebody saying what the policy set means, and nothing in the pipeline can check a property against an intention
-that is is not stated.
-
+criterion in code only. 
 
 The person in the loop is never shown TLA+. Each gate already knows what went wrong in terms of the policy
 and the brief; `ask_about` turns that into a question about the property module and policy brief *requirements*, and the answer is
