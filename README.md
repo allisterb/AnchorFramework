@@ -187,8 +187,8 @@ docker run --rm -v ".:/work" public.ecr.aws/v4q7x8t1/anchor:latest auto policy.d
 ### Using LLM models
 The agentic modes: `auto` and `hitl` need a model which can be specified in an appsettings.json file and passed to the Anchor CLI e.g.
 ```bash
-# From the repo root, with the appsettings.json file in /config
-./anchor auto policy.dw --config /config/appsettings.json --intent "..."
+# From the repo root, with the appsettings.json file in ./config
+./anchor auto policy.dw --config config/appsettings.json --intent "..."
 
 # Linux mount ~/.anchor as /config in the container
 docker run --rm -v "$PWD:/work" -v "$HOME/.anchor:/config:ro" public.ecr.aws/v4q7x8t1/anchor:latest auto policy.dw --config /config/appsettings.json --intent "..."
@@ -206,7 +206,7 @@ The `appsettings.json` file should contain the model provider and model name, as
 You can also specify the environment variable `ANCHOR_APPSETTINGS` as a an alternative to `--config` to point to the appsettings.json file. 
 A `--config` or `ANCHOR_APPSETTINGS` path that is not there is refused with exit 2. 
 
-Without either, the `appsettings.json`file is looked for beside `src/agent/` and at the repo root. The two differ when the file is not there. A missing `--config` path is refused with exit 2. A missing `ANCHOR_APPSETTINGS` path means just no settings file is read, and the search is not used either. 
+Without either, the `appsettings.json`file is looked for beside `src/agent/` and at the repo root. The two differ when the file is not there. A missing `--config` path is refused with exit 2. A missing `ANCHOR_APPSETTINGS` path just means no settings file is read, and the search is not used either. 
 Every LLM mode warns about that before its first call, even when the environment supplies the key, because the file's `Model` and `Region` settings then quietly stop applying.
 Credentials are read from the environment first, so a single `-e GEMINI_API_KEY` also works if a key is all you need for the Gemini provider.
 

@@ -19,7 +19,7 @@ Every command in this README calls an LLM, so it needs a model configured (see
 
 | | taken by | |
 |---|---|---|
-| `--config` | `auto`, `hitl` | the settings file holding the model configuration and API key. Sets `ANCHOR_APPSETTINGS`, so there is one answer to which file that is; unlike the variable it refuses a path that is not there, because somebody who typed it named a file. Exit 2 |
+| `--config` | `auto`, `hitl` | the settings file holding the model configuration and API key. Refuses a path that is not there with exit 2 |
 | `ANCHOR_APPSETTINGS` | every entry point | the same thing from the environment, for something that wrote the file on your behalf. When set, the usual search (beside `src/agent/`, then the repo root) is not used: a path that is not there means no settings file, never a different one. Every LLM mode warns about it before its first call, even when the environment supplies the key, since the file's `Model` and `Region` then stop applying |
 | `--provider` | `auto`, `hitl`, `policy_agent.py` | `auto`, `bedrock` or `gemini`. `auto` picks Gemini when a key is present and Bedrock otherwise — an API key in config was put there deliberately, whereas `~/.aws` exists on most machines whether or not the account can call a model |
 | `--llm` | `auto`, `hitl`, `policy_agent.py` | the LLM's model id. Defaults to the provider's `Model` setting (`Gemini:Model`, `Bedrock:Model`), then the provider's own default. See [model-providers.md](../../docs/model-providers.md#choosing-the-model) |
