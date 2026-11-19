@@ -314,9 +314,19 @@ JAVA_UTF8 = ["-Dfile.encoding=UTF-8", "-Dstdout.encoding=UTF-8", "-Dstderr.encod
 # The JVM flags to start TLC with, and there is deliberately no default.
 JAVA_OPTIONS = "ANCHOR_TLC_JAVA_OPTS"
 
+# Always passed, ahead of ANCHOR_TLC_JAVA_OPTS, so replacing that variable cannot drop them.
+#
+# CVE-2026-114938: HotSpot's AVX-512 Base64 decoder corrupts the heap on crafted input (OpenJDK
+# 17.0.6 and later on x86-64 with AVX-512 VBMI; fixed in 17.0.21.1, 21.0.13.1, 25.0.5.1). TLC never
+# decodes Base64 -- no class in tla2tools references java.util.Base64 -- so switching the intrinsic
+# off costs nothing, and it protects whatever JDK Anchor is run on, not only the image's. It is
+# the vendors' own mitigation. Java 11, the floor, accepts it.
+JAVA_HARDENING = ["-XX:-UseBASE64Intrinsics"]
+
 
 def java_options() -> list[str]:
-    """Extra JVM flags for TLC, from `ANCHOR_TLC_JAVA_OPTS`. Empty unless somebody sets it.
+    """JVM flags for TLC: `JAVA_HARDENING`, then `ANCHOR_TLC_JAVA_OPTS`, which is empty unless
+    somebody sets it.
 
     THE ONE WORTH KNOWING ABOUT IS `-XX:TieredStopAtLevel=1`, which stops the JVM's C2 optimising
     compiler from running. It is a real trade and the crossover was measured rather than guessed:
@@ -336,7 +346,7 @@ def java_options() -> list[str]:
     be the big one -- and set by the TEST harness, where every model is bounded small by
     construction and six of them compete for the machine. See tests/Anchor.Tests.Verifier.
     """
-    return shlex.split(os.environ.get(JAVA_OPTIONS, ""))
+    return [*JAVA_HARDENING, *shlex.split(os.environ.get(JAVA_OPTIONS, ""))]
 
 
 # ---------------------------------------------------------------------------- reading a trace back

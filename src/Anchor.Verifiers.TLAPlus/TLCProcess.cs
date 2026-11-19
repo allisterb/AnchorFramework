@@ -67,10 +67,16 @@ public class TLCProcess : Runtime
         // -XX:TieredStopAtLevel=1, which is a large win when six model checks compete for the
         // machine and a large LOSS on a search big enough to profit from the optimising compiler;
         // tests/*/anchor.runsettings carries the measurements.
-        var argv = new List<string>(
-            (Environment.GetEnvironmentVariable("ANCHOR_TLC_JAVA_OPTS") ?? "")
-                .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-        {
+        List<string> argv =
+        [
+            // CVE-2026-114938: HotSpot's AVX-512 Base64 decoder corrupts the heap on crafted input
+            // (OpenJDK 17.0.6+, fixed in 17.0.21.1 / 21.0.13.1 / 25.0.5.1). TLC never decodes
+            // Base64, so switching the intrinsic off costs nothing; it is the vendors' mitigation,
+            // as in src/translator/tlc.py. FIRST, so ANCHOR_TLC_JAVA_OPTS cannot drop it by
+            // replacement -- only by asking for +UseBASE64Intrinsics outright.
+            "-XX:-UseBASE64Intrinsics",
+            .. (Environment.GetEnvironmentVariable("ANCHOR_TLC_JAVA_OPTS") ?? "")
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
             // UTF-8 in and out, as in src/translator/tlc.py: the JVM's default charset is the
             // platform's -- cp1252 on Windows -- for reading .tla files and for writing stdout.
             // file.encoding covers both on Java 11-17; stdout/stderr.encoding are Java 19+, and a
@@ -78,7 +84,7 @@ public class TLCProcess : Runtime
             "-Dfile.encoding=UTF-8", "-Dstdout.encoding=UTF-8", "-Dstderr.encoding=UTF-8",
             $"-Djava.io.tmpdir={metadir}",
             "-cp", tools.Value, "tlc2.TLC", "-tool", "-metadir", metadir
-        };
+        ];
         if (config is not null)
         {
             argv.AddRange(["-config", Path.GetFullPath(config)]);
